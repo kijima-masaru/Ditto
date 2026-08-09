@@ -1,0 +1,38 @@
+{
+  "name": "auto-test-tool",
+  "version": "0.1.0",
+  "description": "PC画面上のWEB/デスクトップアプリ操作を記録し自動再生するテスト自動化ツール",
+  "main": "./out/main/index.js",
+  "author": "kijima-masaru",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "tsc --noEmit -p tsconfig.node.json && electron-vite build",
+    "build:win": "npm run build && electron-builder --win",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
+  },
+  "dependencies": {
+    "electron": "43.3.0",
+    "electron-vite": "5.0.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "vite": "7.3.6"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true,
+    "electron-winstaller@5.4.0": true,
+    "electron@43.3.0": true
+  },
+  "devDependencies": {
+    "@electron-toolkit/tsconfig": "^2.0.0",
+    "@electron-toolkit/utils": "^4.0.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^4.7.0",
+    "electron-builder": "^26.15.3",
+    "typescript": "^7.0.2"
+  }
+}

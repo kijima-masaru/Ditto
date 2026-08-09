@@ -1,0 +1,245 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', 'Yu Gothic UI', sans-serif;
+  background: #f4f5f7;
+  color: #1a1a1a;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #1f2933;
+  color: white;
+}
+
+.app-header h1 {
+  font-size: 18px;
+  margin: 0;
+}
+
+.app-header nav button {
+  background: transparent;
+  color: #cbd2d9;
+  border: none;
+  padding: 8px 14px;
+  margin-left: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.app-header nav button.active,
+.app-header nav button:hover {
+  background: #323f4b;
+  color: white;
+}
+
+.app-main {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+}
+
+.panel {
+  background: white;
+  border-radius: 10px;
+  padding: 24px;
+  max-width: 780px;
+  margin: 0 auto;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.panel h2 {
+  margin-top: 0;
+}
+
+.target-type-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.target-type-toggle button {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #d9dde3;
+  background: #fafbfc;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.target-type-toggle button.active {
+  border-color: #2f80ed;
+  background: #eaf2fe;
+  color: #2f80ed;
+  font-weight: 600;
+}
+
+.field {
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 13px;
+  color: #52606d;
+}
+
+.field input {
+  padding: 8px 10px;
+  border: 1px solid #d9dde3;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.row input {
+  flex: 1;
+}
+
+button {
+  font-size: 14px;
+}
+
+button.primary {
+  background: #2f80ed;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button.primary:disabled {
+  background: #9fb8d9;
+  cursor: not-allowed;
+}
+
+button.danger {
+  background: #fdecea;
+  color: #c0392b;
+  border: 1px solid #f5c6cb;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button:not(.primary):not(.danger) {
+  background: #f0f2f5;
+  border: 1px solid #d9dde3;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.hint {
+  font-size: 12px;
+  color: #829ab1;
+}
+
+.error {
+  color: #c0392b;
+  background: #fdecea;
+  padding: 10px;
+  border-radius: 6px;
+}
+
+.status-line {
+  font-weight: 600;
+  color: #334e68;
+}
+
+.step-list {
+  list-style: none;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid #eceff1;
+  border-radius: 8px;
+  margin: 14px 0;
+}
+
+.step-list li {
+  display: flex;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f2f5;
+  font-size: 13px;
+  align-items: center;
+}
+
+.step-list li:last-child {
+  border-bottom: none;
+}
+
+.step-type {
+  font-weight: 700;
+  color: #2f80ed;
+  min-width: 70px;
+}
+
+.step-detail {
+  color: #52606d;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step-message {
+  color: #c0392b;
+  font-size: 12px;
+}
+
+.status-running {
+  background: #fff9e6;
+}
+
+.status-ok {
+  background: #eafaf1;
+}
+
+.status-fail {
+  background: #fdecea;
+}
+
+.test-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.test-table th,
+.test-table td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid #f0f2f5;
+  font-size: 13px;
+}
+
+.badge {
+  display: inline-block;
+  background: #eaf2fe;
+  color: #2f80ed;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}

@@ -1,0 +1,17 @@
+appId: com.flatline.autotesttool
+productName: 自動テストツール
+directories:
+  buildResources: build
+files:
+  - out/**/*
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+asarUnpack:
+  - resources/**
+win:
+  target: nsis
+  artifactName: ${productName}-${version}-setup.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
