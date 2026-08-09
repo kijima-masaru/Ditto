@@ -14,18 +14,23 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
   },
   "dependencies": {
+    "@nut-tree-fork/nut-js": "^4.2.6",
+    "active-win": "^8.2.1",
     "electron": "43.3.0",
     "electron-vite": "5.0.0",
     "playwright": "1.62.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "uiohook-napi": "^1.5.5",
     "vite": "7.3.6"
   },
   "allowScripts": {
     "esbuild@0.25.12": true,
     "esbuild@0.28.2": true,
     "electron-winstaller@5.4.0": true,
-    "electron@43.3.0": true
+    "electron@43.3.0": true,
+    "uiohook-napi@1.5.5": true,
+    "active-win@8.2.1": true
   },
   "devDependencies": {
     "@electron-toolkit/tsconfig": "^2.0.0",
