@@ -44,8 +44,7 @@ export async function saveTest(input: Omit<TestCase, 'id' | 'createdAt' | 'updat
   const testCase: TestCase = {
     id: existing?.id ?? input.id ?? randomUUID(),
     name: input.name,
-    target: input.target,
-    targetArgs: input.targetArgs,
+    targets: input.targets,
     steps: input.steps,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now

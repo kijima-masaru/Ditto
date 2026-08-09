@@ -1,5 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { IPC, type RecordedStep, type PlaybackProgress, type TestCase } from '../shared/types'
+import {
+  IPC,
+  type RecordedStep,
+  type PlaybackProgress,
+  type PlaybackResult,
+  type TestCase,
+  type TestTarget,
+  type ViewportRect
+} from '../shared/types'
 
 const api = {
   listTests: (): Promise<TestCase[]> => ipcRenderer.invoke(IPC.listTests),
@@ -10,8 +18,11 @@ const api = {
 
   pickExecutable: (): Promise<string | null> => ipcRenderer.invoke(IPC.pickExecutable),
 
-  startRecording: (target: string, targetArgs?: string): Promise<void> =>
-    ipcRenderer.invoke(IPC.recordingStart, target, targetArgs),
+  updateViewport: (viewport: ViewportRect): Promise<void> => ipcRenderer.invoke(IPC.viewportUpdate, viewport),
+
+  startRecording: (targets: TestTarget[]): Promise<void> => ipcRenderer.invoke(IPC.recordingStart, targets),
+  setActiveTarget: (targetId: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.recordingSetActiveTarget, targetId),
   stopRecording: (): Promise<RecordedStep[]> => ipcRenderer.invoke(IPC.recordingStop),
   onRecordingStep: (cb: (step: RecordedStep) => void): (() => void) => {
     const listener = (_e: unknown, step: RecordedStep): void => cb(step)
@@ -19,8 +30,8 @@ const api = {
     return () => ipcRenderer.removeListener(IPC.recordingStep, listener)
   },
 
-  runPlayback: (testCase: TestCase): Promise<import('../shared/types').PlaybackResult> =>
-    ipcRenderer.invoke(IPC.playbackRun, testCase),
+  runPlayback: (testCase: TestCase, speed: number): Promise<PlaybackResult> =>
+    ipcRenderer.invoke(IPC.playbackRun, testCase, speed),
   abortPlayback: (): Promise<void> => ipcRenderer.invoke(IPC.playbackAbort),
   onPlaybackProgress: (cb: (progress: PlaybackProgress) => void): (() => void) => {
     const listener = (_e: unknown, progress: PlaybackProgress): void => cb(progress)

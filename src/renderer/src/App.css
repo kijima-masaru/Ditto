@@ -51,6 +51,12 @@ body {
   padding: 20px;
 }
 
+.app-main--workspace {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .panel {
   background: white;
   border-radius: 10px;
@@ -62,6 +68,33 @@ body {
 
 .panel h2 {
   margin-top: 0;
+}
+
+.target-type-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.target-type-toggle button {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #d9dde3;
+  background: #fafbfc;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.target-type-toggle button.active {
+  border-color: #2f80ed;
+  background: #eaf2fe;
+  color: #2f80ed;
+  font-weight: 600;
+}
+
+.target-list h3 {
+  font-size: 14px;
+  margin-bottom: 6px;
 }
 
 .field {
@@ -220,4 +253,75 @@ button:not(.primary):not(.danger) {
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 4px;
+}
+
+.workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 10px;
+}
+
+.workspace-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.target-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.target-tabs button {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #d9dde3;
+  background: #fff;
+  cursor: pointer;
+}
+
+.target-tabs button.active {
+  background: #2f80ed;
+  color: white;
+  border-color: #2f80ed;
+}
+
+.target-tabs button.active .badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+}
+
+.viewport {
+  flex: 1;
+  min-height: 240px;
+  background: #0b0b0c;
+  border: 1px dashed #55606b;
+  border-radius: 8px;
+}
+
+.workspace-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.workspace-footer .step-list {
+  max-height: 140px;
+  margin: 0;
+}
+
+.field--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.field--inline label {
+  white-space: nowrap;
 }

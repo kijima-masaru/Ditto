@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import type { TestCase } from '../../shared/types'
+import type { TestCase, TestTarget } from '../../shared/types'
 import TargetSelect from './components/TargetSelect'
 import Recording from './components/Recording'
 import TestList from './components/TestList'
@@ -7,7 +7,7 @@ import Playback from './components/Playback'
 
 type View =
   | { name: 'target-select' }
-  | { name: 'recording'; target: string; targetArgs?: string }
+  | { name: 'recording'; targets: TestTarget[] }
   | { name: 'test-list' }
   | { name: 'playback'; testCase: TestCase }
 
@@ -19,6 +19,8 @@ export default function App(): React.JSX.Element {
     setRefreshKey((k) => k + 1)
     setView({ name: 'test-list' })
   }, [])
+
+  const isWorkspace = view.name === 'recording' || view.name === 'playback'
 
   return (
     <div className="app">
@@ -40,14 +42,12 @@ export default function App(): React.JSX.Element {
         </nav>
       </header>
 
-      <main className="app-main">
+      <main className={`app-main${isWorkspace ? ' app-main--workspace' : ''}`}>
         {view.name === 'target-select' && (
-          <TargetSelect onStart={(target, targetArgs) => setView({ name: 'recording', target, targetArgs })} />
+          <TargetSelect onStart={(targets) => setView({ name: 'recording', targets })} />
         )}
 
-        {view.name === 'recording' && (
-          <Recording target={view.target} targetArgs={view.targetArgs} onDone={goHome} onCancel={goHome} />
-        )}
+        {view.name === 'recording' && <Recording targets={view.targets} onDone={goHome} onCancel={goHome} />}
 
         {view.name === 'test-list' && (
           <TestList key={refreshKey} onRun={(testCase) => setView({ name: 'playback', testCase })} />

@@ -1,15 +1,13 @@
-import { ipcMain, dialog, BrowserWindow } from 'electron'
-import { IPC, type RecordedStep, type TestCase } from '../shared/types'
+import { ipcMain, dialog, type BrowserWindow } from 'electron'
+import { IPC, type TestCase, type TestTarget, type ViewportRect } from '../shared/types'
 import * as store from './store'
-import { DesktopRecorderEngine, DesktopPlayerEngine } from './engines/desktopEngine'
-
-const recorder = new DesktopRecorderEngine()
-const player = new DesktopPlayerEngine()
-
-let recording = false
-let recordedSteps: RecordedStep[] = []
+import { TargetManager } from './targetManager'
 
 export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
+  const win = getWindow()
+  if (!win) throw new Error('メインウィンドウが初期化されていません')
+  const manager = new TargetManager(win)
+
   ipcMain.handle(IPC.listTests, async () => store.listTests())
 
   ipcMain.handle(IPC.saveTest, async (_e, testCase: Parameters<typeof store.saveTest>[0]) =>
@@ -21,9 +19,9 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   ipcMain.handle(IPC.renameTest, async (_e, id: string, name: string) => store.renameTest(id, name))
 
   ipcMain.handle(IPC.pickExecutable, async () => {
-    const win = getWindow()
-    if (!win) return null
-    const result = await dialog.showOpenDialog(win, {
+    const w = getWindow()
+    if (!w) return null
+    const result = await dialog.showOpenDialog(w, {
       title: '対象アプリの実行ファイルを選択',
       properties: ['openFile'],
       filters: [{ name: 'Executable', extensions: ['exe'] }]
@@ -32,33 +30,31 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     return result.filePaths[0]
   })
 
-  ipcMain.handle(IPC.recordingStart, async (_e, target: string, targetArgs?: string) => {
-    recordedSteps = []
-    const win = getWindow()
-    await recorder.start(target, targetArgs, (step) => {
-      recordedSteps.push(step)
-      win?.webContents.send(IPC.recordingStep, step)
+  ipcMain.handle(IPC.viewportUpdate, async (_e, viewport: ViewportRect) => {
+    manager.updateViewport(viewport)
+  })
+
+  ipcMain.handle(IPC.recordingStart, async (_e, targets: TestTarget[]) => {
+    const w = getWindow()
+    await manager.startRecording(targets, (step) => {
+      w?.webContents.send(IPC.recordingStep, step)
     })
-    recording = true
   })
 
-  ipcMain.handle(IPC.recordingStop, async () => {
-    if (!recording) return recordedSteps
-    await recorder.stop()
-    const steps = recordedSteps
-    recording = false
-    recordedSteps = []
-    return steps
+  ipcMain.handle(IPC.recordingSetActiveTarget, async (_e, targetId: string) => {
+    await manager.setActiveTarget(targetId)
   })
 
-  ipcMain.handle(IPC.playbackRun, async (_e, testCase: TestCase) => {
-    const win = getWindow()
-    return player.run(testCase, (progress) => {
-      win?.webContents.send(IPC.playbackProgress, progress)
+  ipcMain.handle(IPC.recordingStop, async () => manager.stopRecording())
+
+  ipcMain.handle(IPC.playbackRun, async (_e, testCase: TestCase, speed: number) => {
+    const w = getWindow()
+    return manager.runPlayback(testCase, speed, (progress) => {
+      w?.webContents.send(IPC.playbackProgress, progress)
     })
   })
 
   ipcMain.handle(IPC.playbackAbort, async () => {
-    await player.abort()
+    manager.abort()
   })
 }

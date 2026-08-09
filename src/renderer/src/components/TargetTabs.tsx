@@ -1,0 +1,25 @@
+import type { TestTarget } from '../../../shared/types'
+
+interface Props {
+  targets: TestTarget[]
+  activeId: string
+  onSelect: (id: string) => void
+  disabled?: boolean
+}
+
+export default function TargetTabs({ targets, activeId, onSelect, disabled }: Props): React.JSX.Element {
+  return (
+    <div className="target-tabs">
+      {targets.map((t) => (
+        <button
+          key={t.id}
+          className={t.id === activeId ? 'active' : ''}
+          disabled={disabled}
+          onClick={() => onSelect(t.id)}
+        >
+          <span className="badge">{t.kind === 'web' ? 'WEB' : 'APP'}</span> {t.label}
+        </button>
+      ))}
+    </div>
+  )
+}

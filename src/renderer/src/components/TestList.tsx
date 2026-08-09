@@ -60,7 +60,13 @@ export default function TestList({ onRun }: Props): React.JSX.Element {
           {tests.map((t) => (
             <tr key={t.id}>
               <td>{t.name}</td>
-              <td>{t.target}</td>
+              <td>
+                {t.targets.map((target) => (
+                  <span key={target.id} className="badge" style={{ marginRight: 4 }}>
+                    {target.kind === 'web' ? 'WEB' : 'APP'} {target.label}
+                  </span>
+                ))}
+              </td>
               <td>{t.steps.length}</td>
               <td>{new Date(t.updatedAt).toLocaleString('ja-JP')}</td>
               <td className="row">

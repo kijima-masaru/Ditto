@@ -18,6 +18,7 @@
     "active-win": "^8.2.1",
     "electron": "43.3.0",
     "electron-vite": "5.0.0",
+    "koffi": "^3.1.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "uiohook-napi": "^1.5.5",
@@ -29,7 +30,8 @@
     "electron-winstaller@5.4.0": true,
     "electron@43.3.0": true,
     "uiohook-napi@1.5.5": true,
-    "active-win@8.2.1": true
+    "active-win@8.2.1": true,
+    "koffi@3.1.4": true
   },
   "devDependencies": {
     "@electron-toolkit/tsconfig": "^2.0.0",

@@ -1,19 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
-import type { RecordedStep } from '../../../shared/types'
+import type { RecordedStep, TestTarget } from '../../../shared/types'
+import { reportViewport, watchViewport } from '../viewport'
+import TargetTabs from './TargetTabs'
 
 interface Props {
-  target: string
-  targetArgs?: string
+  targets: TestTarget[]
   onDone: () => void
   onCancel: () => void
 }
 
-export default function Recording({ target, targetArgs, onDone, onCancel }: Props): React.JSX.Element {
+export default function Recording({ targets, onDone, onCancel }: Props): React.JSX.Element {
   const [steps, setSteps] = useState<RecordedStep[]>([])
   const [status, setStatus] = useState<'starting' | 'recording' | 'stopping' | 'error'>('starting')
   const [error, setError] = useState<string | null>(null)
   const [testName, setTestName] = useState('')
+  const [activeTargetId, setActiveTargetId] = useState<string>(targets[0]?.id ?? '')
   const started = useRef(false)
+  const viewportRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (started.current) return
@@ -23,16 +26,33 @@ export default function Recording({ target, targetArgs, onDone, onCancel }: Prop
       setSteps((prev) => [...prev, step])
     })
 
-    window.api
-      .startRecording(target, targetArgs)
-      .then(() => setStatus('recording'))
-      .catch((e: Error) => {
+    let stopWatch = (): void => {}
+    void (async () => {
+      const el = viewportRef.current
+      if (el) {
+        await reportViewport(el)
+        stopWatch = watchViewport(el)
+      }
+      try {
+        await window.api.startRecording(targets)
+        setStatus('recording')
+      } catch (e) {
         setStatus('error')
-        setError(e.message)
-      })
+        setError((e as Error).message)
+      }
+    })()
 
-    return () => unsubscribe()
-  }, [target, targetArgs])
+    return () => {
+      unsubscribe()
+      stopWatch()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleSelectTarget = async (id: string): Promise<void> => {
+    setActiveTargetId(id)
+    await window.api.setActiveTarget(id)
+  }
 
   const handleStopAndSave = async (): Promise<void> => {
     setStatus('stopping')
@@ -41,12 +61,7 @@ export default function Recording({ target, targetArgs, onDone, onCancel }: Prop
       onDone()
       return
     }
-    await window.api.saveTest({
-      name: testName.trim(),
-      target,
-      targetArgs,
-      steps: finalSteps
-    })
+    await window.api.saveTest({ name: testName.trim(), targets, steps: finalSteps })
     onDone()
   }
 
@@ -58,37 +73,53 @@ export default function Recording({ target, targetArgs, onDone, onCancel }: Prop
     }
   }
 
+  const labelFor = (id: string): string => targets.find((t) => t.id === id)?.label ?? id
+
   return (
-    <div className="panel">
-      <h2>録画中: {target}</h2>
-
-      {status === 'error' && <p className="error">録画の開始に失敗しました: {error}</p>}
-
-      <p className="status-line">
-        状態: {status === 'starting' && '起動中...'}
-        {status === 'recording' && `記録中 (${steps.length} ステップ)`}
-        {status === 'stopping' && '停止処理中...'}
-      </p>
-
-      <ul className="step-list">
-        {steps.map((s) => (
-          <li key={s.id}>
-            <span className="step-type">{s.type}</span>
-            <span className="step-detail">{s.key ?? `(${s.winX},${s.winY})`}</span>
-          </li>
-        ))}
-      </ul>
-
-      <div className="field">
-        <label>保存するテスト名</label>
-        <input value={testName} onChange={(e) => setTestName(e.target.value)} placeholder="例: ログインフロー確認" />
+    <div className="workspace">
+      <div className="workspace-header">
+        <TargetTabs
+          targets={targets}
+          activeId={activeTargetId}
+          onSelect={handleSelectTarget}
+          disabled={status !== 'recording'}
+        />
+        <span className="status-line">
+          {status === 'starting' && '起動中...'}
+          {status === 'recording' && `記録中 (${steps.length} ステップ)`}
+          {status === 'stopping' && '停止処理中...'}
+          {status === 'error' && `録画の開始に失敗しました: ${error}`}
+        </span>
       </div>
 
-      <div className="row">
-        <button className="primary" onClick={handleStopAndSave} disabled={status !== 'recording'}>
-          録画を停止して保存
-        </button>
-        <button onClick={handleCancel}>キャンセル</button>
+      <div className="viewport" ref={viewportRef} />
+
+      <div className="workspace-footer">
+        <ul className="step-list">
+          {steps.map((s) => (
+            <li key={s.id}>
+              <span className="step-type">{s.type}</span>
+              <span className="step-detail">
+                {labelFor(s.targetId)}: {s.selector ?? s.url ?? s.key ?? `(${s.winX},${s.winY})`}
+              </span>
+            </li>
+          ))}
+        </ul>
+
+        <div className="row">
+          <div className="field field--inline">
+            <label>保存するテスト名</label>
+            <input
+              value={testName}
+              onChange={(e) => setTestName(e.target.value)}
+              placeholder="例: ログインフロー確認"
+            />
+          </div>
+          <button className="primary" onClick={handleStopAndSave} disabled={status !== 'recording'}>
+            録画を停止して保存
+          </button>
+          <button onClick={handleCancel}>キャンセル</button>
+        </div>
       </div>
     </div>
   )
