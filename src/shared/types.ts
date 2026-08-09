@@ -1,18 +1,9 @@
 /**
  * アプリ全体で共有する型定義。
- * Web用エンジン・デスクトップ用エンジンはどちらもこのインターフェースを実装する。
+ * デスクトップアプリ操作の記録・再生エンジンはこのインターフェースを実装する。
  */
 
-export type TargetType = 'web' | 'desktop'
-
-export type StepType =
-  | 'click'
-  | 'dblclick'
-  | 'input'
-  | 'navigate'
-  | 'keypress'
-  | 'wait'
-  | 'scroll'
+export type StepType = 'click' | 'dblclick' | 'keypress' | 'wait'
 
 export interface RecordedStep {
   id: string
@@ -21,18 +12,6 @@ export interface RecordedStep {
   /** 前ステップからの待機時間(ms)。再生時のタイミング再現に使用 */
   delayMs: number
 
-  // --- web 用 (targetType === 'web') ---
-  /** CSSセレクタ (Playwrightのplaywright-generated selectorを想定) */
-  selector?: string
-  /** input系ステップの入力値 */
-  value?: string
-  /** navigate系ステップの遷移先URL */
-  url?: string
-  /** クリック位置のページ内相対座標(デバッグ・フォールバック用) */
-  pageX?: number
-  pageY?: number
-
-  // --- desktop 用 (targetType === 'desktop') ---
   /** 対象ウィンドウ左上を基準とした相対座標 */
   winX?: number
   winY?: number
@@ -48,10 +27,9 @@ export interface RecordedStep {
 export interface TestCase {
   id: string
   name: string
-  targetType: TargetType
-  /** web: URL / desktop: 実行ファイルパスまたは既存ウィンドウ検索用のプロセス名 */
+  /** 対象アプリの実行ファイルパス */
   target: string
-  /** desktop用: 実行ファイルの引数 */
+  /** 実行ファイルの起動引数 */
   targetArgs?: string
   steps: RecordedStep[]
   createdAt: string

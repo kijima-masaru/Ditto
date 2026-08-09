@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import type { RecordedStep, TargetType } from '../../../shared/types'
+import type { RecordedStep } from '../../../shared/types'
 
 interface Props {
-  targetType: TargetType
   target: string
   targetArgs?: string
   onDone: () => void
   onCancel: () => void
 }
 
-export default function Recording({ targetType, target, targetArgs, onDone, onCancel }: Props): React.JSX.Element {
+export default function Recording({ target, targetArgs, onDone, onCancel }: Props): React.JSX.Element {
   const [steps, setSteps] = useState<RecordedStep[]>([])
   const [status, setStatus] = useState<'starting' | 'recording' | 'stopping' | 'error'>('starting')
   const [error, setError] = useState<string | null>(null)
@@ -25,7 +24,7 @@ export default function Recording({ targetType, target, targetArgs, onDone, onCa
     })
 
     window.api
-      .startRecording(targetType, target, targetArgs)
+      .startRecording(target, targetArgs)
       .then(() => setStatus('recording'))
       .catch((e: Error) => {
         setStatus('error')
@@ -33,7 +32,7 @@ export default function Recording({ targetType, target, targetArgs, onDone, onCa
       })
 
     return () => unsubscribe()
-  }, [targetType, target, targetArgs])
+  }, [target, targetArgs])
 
   const handleStopAndSave = async (): Promise<void> => {
     setStatus('stopping')
@@ -44,7 +43,6 @@ export default function Recording({ targetType, target, targetArgs, onDone, onCa
     }
     await window.api.saveTest({
       name: testName.trim(),
-      targetType,
       target,
       targetArgs,
       steps: finalSteps
@@ -64,13 +62,7 @@ export default function Recording({ targetType, target, targetArgs, onDone, onCa
     <div className="panel">
       <h2>録画中: {target}</h2>
 
-      {status === 'error' && (
-        <p className="error">
-          録画の開始に失敗しました: {error}
-          <br />
-          (Web/デスクトップエンジンが未実装の可能性があります)
-        </p>
-      )}
+      {status === 'error' && <p className="error">録画の開始に失敗しました: {error}</p>}
 
       <p className="status-line">
         状態: {status === 'starting' && '起動中...'}
@@ -82,7 +74,7 @@ export default function Recording({ targetType, target, targetArgs, onDone, onCa
         {steps.map((s) => (
           <li key={s.id}>
             <span className="step-type">{s.type}</span>
-            <span className="step-detail">{s.selector ?? s.url ?? s.key ?? `(${s.winX},${s.winY})`}</span>
+            <span className="step-detail">{s.key ?? `(${s.winX},${s.winY})`}</span>
           </li>
         ))}
       </ul>

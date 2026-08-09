@@ -1,9 +1,12 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
 import { IPC, type RecordedStep, type TestCase } from '../shared/types'
 import * as store from './store'
-import { getRecorder, getPlayer } from './engines'
+import { DesktopRecorderEngine, DesktopPlayerEngine } from './engines/desktopEngine'
 
-let currentRecordingType: 'web' | 'desktop' | null = null
+const recorder = new DesktopRecorderEngine()
+const player = new DesktopPlayerEngine()
+
+let recording = false
 let recordedSteps: RecordedStep[] = []
 
 export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
@@ -29,39 +32,33 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     return result.filePaths[0]
   })
 
-  ipcMain.handle(
-    IPC.recordingStart,
-    async (_e, targetType: 'web' | 'desktop', target: string, targetArgs?: string) => {
-      currentRecordingType = targetType
-      recordedSteps = []
-      const recorder = getRecorder(targetType)
-      const win = getWindow()
-      await recorder.start(target, targetArgs, (step) => {
-        recordedSteps.push(step)
-        win?.webContents.send(IPC.recordingStep, step)
-      })
-    }
-  )
+  ipcMain.handle(IPC.recordingStart, async (_e, target: string, targetArgs?: string) => {
+    recordedSteps = []
+    const win = getWindow()
+    await recorder.start(target, targetArgs, (step) => {
+      recordedSteps.push(step)
+      win?.webContents.send(IPC.recordingStep, step)
+    })
+    recording = true
+  })
 
   ipcMain.handle(IPC.recordingStop, async () => {
-    if (!currentRecordingType) return recordedSteps
-    const recorder = getRecorder(currentRecordingType)
+    if (!recording) return recordedSteps
     await recorder.stop()
     const steps = recordedSteps
-    currentRecordingType = null
+    recording = false
     recordedSteps = []
     return steps
   })
 
   ipcMain.handle(IPC.playbackRun, async (_e, testCase: TestCase) => {
-    const player = getPlayer(testCase.targetType)
     const win = getWindow()
     return player.run(testCase, (progress) => {
       win?.webContents.send(IPC.playbackProgress, progress)
     })
   })
 
-  ipcMain.handle(IPC.playbackAbort, async (_e, targetType: 'web' | 'desktop') => {
-    await getPlayer(targetType).abort()
+  ipcMain.handle(IPC.playbackAbort, async () => {
+    await player.abort()
   })
 }

@@ -55,7 +55,7 @@ export default function Playback({ testCase, onDone }: Props): React.JSX.Element
           return (
             <li key={s.id} className={p ? `status-${p.status}` : ''}>
               <span className="step-type">{s.type}</span>
-              <span className="step-detail">{s.selector ?? s.url ?? s.key ?? `(${s.winX},${s.winY})`}</span>
+              <span className="step-detail">{s.key ?? `(${s.winX},${s.winY})`}</span>
               {p?.message && <span className="step-message">{p.message}</span>}
             </li>
           )
