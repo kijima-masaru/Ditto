@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import type { RecordedStep, TestTarget } from '../../../shared/types'
-import { reportViewport, watchViewport } from '../viewport'
 import TargetTabs from './TargetTabs'
 
 interface Props {
@@ -15,8 +14,8 @@ export default function Recording({ targets, onDone, onCancel }: Props): React.J
   const [error, setError] = useState<string | null>(null)
   const [testName, setTestName] = useState('')
   const [activeTargetId, setActiveTargetId] = useState<string>(targets[0]?.id ?? '')
+  const [paused, setPaused] = useState(false)
   const started = useRef(false)
-  const viewportRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (started.current) return
@@ -26,13 +25,7 @@ export default function Recording({ targets, onDone, onCancel }: Props): React.J
       setSteps((prev) => [...prev, step])
     })
 
-    let stopWatch = (): void => {}
     void (async () => {
-      const el = viewportRef.current
-      if (el) {
-        await reportViewport(el)
-        stopWatch = watchViewport(el)
-      }
       try {
         await window.api.startRecording(targets)
         setStatus('recording')
@@ -44,7 +37,6 @@ export default function Recording({ targets, onDone, onCancel }: Props): React.J
 
     return () => {
       unsubscribe()
-      stopWatch()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -52,6 +44,12 @@ export default function Recording({ targets, onDone, onCancel }: Props): React.J
   const handleSelectTarget = async (id: string): Promise<void> => {
     setActiveTargetId(id)
     await window.api.setActiveTarget(id)
+  }
+
+  const handleTogglePause = async (): Promise<void> => {
+    const next = !paused
+    setPaused(next)
+    await window.api.setRecordingPaused(next)
   }
 
   const handleStopAndSave = async (): Promise<void> => {
@@ -86,13 +84,19 @@ export default function Recording({ targets, onDone, onCancel }: Props): React.J
         />
         <span className="status-line">
           {status === 'starting' && '起動中...'}
-          {status === 'recording' && `記録中 (${steps.length} ステップ)`}
+          {status === 'recording' && !paused && `記録中 (${steps.length} ステップ)`}
+          {status === 'recording' && paused && `一時停止中 (${steps.length} ステップ)`}
           {status === 'stopping' && '停止処理中...'}
           {status === 'error' && `録画の開始に失敗しました: ${error}`}
         </span>
       </div>
 
-      <div className="viewport" ref={viewportRef} />
+      <div className="notice-panel">
+        <p>
+          選択中のタブの対象がOS上で最前面に表示されます。そちらに切り替えて実際に操作してください。
+          ログインなど記録に残したくない操作の間は、下の「一時停止」で記録を止められます。
+        </p>
+      </div>
 
       <div className="workspace-footer">
         <ul className="step-list">
@@ -100,7 +104,7 @@ export default function Recording({ targets, onDone, onCancel }: Props): React.J
             <li key={s.id}>
               <span className="step-type">{s.type}</span>
               <span className="step-detail">
-                {labelFor(s.targetId)}: {s.selector ?? s.url ?? s.key ?? `(${s.winX},${s.winY})`}
+                {labelFor(s.targetId)}: {s.key ?? `(${s.winX},${s.winY})`}
               </span>
             </li>
           ))}
@@ -115,6 +119,9 @@ export default function Recording({ targets, onDone, onCancel }: Props): React.J
               placeholder="例: ログインフロー確認"
             />
           </div>
+          <button onClick={handleTogglePause} disabled={status !== 'recording'}>
+            {paused ? '記録を再開' : '一時停止'}
+          </button>
           <button className="primary" onClick={handleStopAndSave} disabled={status !== 'recording'}>
             録画を停止して保存
           </button>

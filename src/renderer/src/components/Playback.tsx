@@ -1,6 +1,5 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import type { PlaybackProgress, TestCase } from '../../../shared/types'
-import { reportViewport, watchViewport } from '../viewport'
 import TargetTabs from './TargetTabs'
 
 interface Props {
@@ -17,8 +16,6 @@ export default function Playback({ testCase, onDone }: Props): React.JSX.Element
   const [activeTargetId, setActiveTargetId] = useState<string>(testCase.targets[0]?.id ?? '')
   const [success, setSuccess] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const viewportRef = useRef<HTMLDivElement>(null)
-  const stopWatchRef = useRef<() => void>(() => {})
 
   const handleStart = async (): Promise<void> => {
     setPhase('running')
@@ -34,12 +31,6 @@ export default function Playback({ testCase, onDone }: Props): React.JSX.Element
       if (p.targetId) setActiveTargetId(p.targetId)
     })
 
-    const el = viewportRef.current
-    if (el) {
-      await reportViewport(el)
-      stopWatchRef.current = watchViewport(el)
-    }
-
     try {
       const result = await window.api.runPlayback(testCase, speed)
       setSuccess(result.success)
@@ -49,7 +40,6 @@ export default function Playback({ testCase, onDone }: Props): React.JSX.Element
     } finally {
       setPhase('done')
       unsubscribe()
-      stopWatchRef.current()
     }
   }
 
@@ -84,7 +74,9 @@ export default function Playback({ testCase, onDone }: Props): React.JSX.Element
         </div>
       </div>
 
-      <div className="viewport" ref={viewportRef} />
+      <div className="notice-panel">
+        <p>アクティブなタブの対象がOS上で最前面に表示され、そのウィンドウに対して操作を再生します。</p>
+      </div>
 
       <div className="workspace-footer">
         <ol className="step-list">
@@ -94,7 +86,7 @@ export default function Playback({ testCase, onDone }: Props): React.JSX.Element
               <li key={s.id} className={p ? `status-${p.status}` : ''}>
                 <span className="step-type">{s.type}</span>
                 <span className="step-detail">
-                  {labelFor(s.targetId)}: {s.selector ?? s.url ?? s.key ?? `(${s.winX},${s.winY})`}
+                  {labelFor(s.targetId)}: {s.key ?? `(${s.winX},${s.winY})`}
                 </span>
                 {p?.message && <span className="step-message">{p.message}</span>}
               </li>

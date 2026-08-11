@@ -1,12 +1,10 @@
 import { ipcMain, dialog, type BrowserWindow } from 'electron'
-import { IPC, type TestCase, type TestTarget, type ViewportRect } from '../shared/types'
+import { IPC, type TestCase, type TestTarget } from '../shared/types'
 import * as store from './store'
 import { TargetManager } from './targetManager'
 
 export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
-  const win = getWindow()
-  if (!win) throw new Error('メインウィンドウが初期化されていません')
-  const manager = new TargetManager(win)
+  const manager = new TargetManager()
 
   ipcMain.handle(IPC.listTests, async () => store.listTests())
 
@@ -30,10 +28,6 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     return result.filePaths[0]
   })
 
-  ipcMain.handle(IPC.viewportUpdate, async (_e, viewport: ViewportRect) => {
-    manager.updateViewport(viewport)
-  })
-
   ipcMain.handle(IPC.recordingStart, async (_e, targets: TestTarget[]) => {
     const w = getWindow()
     await manager.startRecording(targets, (step) => {
@@ -43,6 +37,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.recordingSetActiveTarget, async (_e, targetId: string) => {
     await manager.setActiveTarget(targetId)
+  })
+
+  ipcMain.handle(IPC.recordingSetPaused, async (_e, paused: boolean) => {
+    manager.setPaused(paused)
   })
 
   ipcMain.handle(IPC.recordingStop, async () => manager.stopRecording())

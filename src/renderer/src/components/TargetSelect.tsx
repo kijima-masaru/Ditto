@@ -65,7 +65,7 @@ export default function TargetSelect({ onStart }: Props): React.JSX.Element {
 
       {kind === 'web' ? (
         <div className="field">
-          <label>対象URL</label>
+          <label>対象URL(あなたの既定ブラウザで開きます)</label>
           <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com" />
         </div>
       ) : (
@@ -103,11 +103,12 @@ export default function TargetSelect({ onStart }: Props): React.JSX.Element {
       )}
 
       <p className="hint">
-        ※ 複数の対象を登録すると、録画中にタブで切り替えながら操作を記録できます。WEBアプリはこのアプリの
-        表示エリア内に埋め込んで表示されます。デスクトップアプリはタブを選択すると最前面に表示され、
-        他のタブに切り替えると自動的に最小化されます(Windowsの制約上、アプリの表示エリア内に正確に
-        重ねて表示することはできません)。記録・再生は画面座標ベースのため、ウィンドウのサイズ・表示
-        スケールが記録時と大きく異なると再生に失敗する場合があります。
+        ※ 複数の対象を登録すると、録画中にタブで切り替えながら操作を記録できます。WEBアプリ・デスクトップ
+        アプリのどちらも、タブを選択するとそのウィンドウが最前面に表示され、他のタブに切り替えると自動的に
+        最小化されます。WEBアプリはこのアプリに埋め込まず、あなたの既定ブラウザで開くため、ログインなどの
+        操作もいつも通りご自身のブラウザ(保存済みパスワードやセッション)で行えます。記録・再生は画面座標
+        ベースのため、ウィンドウのサイズ・表示スケールが記録時と大きく異なると再生に失敗する場合があります。
+        ログイン操作など記録に残したくない部分は、録画画面の「一時停止」で記録を止められます。
       </p>
 
       <button className="primary" disabled={targets.length === 0} onClick={() => onStart(targets)}>

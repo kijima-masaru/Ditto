@@ -43,8 +43,6 @@ app.whenReady().then(() => {
   })
 
   createWindow()
-
-  // TargetManagerはmainWindowが存在する前提のため、生成後に登録する
   registerIpcHandlers(() => mainWindow)
 
   app.on('activate', function () {

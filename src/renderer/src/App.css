@@ -295,23 +295,30 @@ button:not(.primary):not(.danger) {
   color: white;
 }
 
-.viewport {
-  flex: 1;
-  min-height: 240px;
-  background: #0b0b0c;
-  border: 1px dashed #55606b;
+.notice-panel {
+  background: #eaf2fe;
+  border: 1px solid #cfe2fb;
   border-radius: 8px;
+  padding: 12px 16px;
+  color: #1c3d5a;
+  font-size: 13px;
+}
+
+.notice-panel p {
+  margin: 0;
 }
 
 .workspace-footer {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  flex-shrink: 0;
+  flex: 1;
+  min-height: 0;
 }
 
 .workspace-footer .step-list {
-  max-height: 140px;
+  flex: 1;
+  max-height: none;
   margin: 0;
 }
 

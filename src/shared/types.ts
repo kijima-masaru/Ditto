@@ -1,7 +1,14 @@
 /**
  * アプリ全体で共有する型定義。
- * 1つのテストは複数の対象(Web/デスクトップアプリ)を持ち、記録した各ステップは
+ * 1つのテストは複数の対象(WEBアプリ/デスクトップアプリ)を持ち、記録した各ステップは
  * どの対象に対する操作かを targetId で識別する。
+ *
+ * WEBアプリ対象もデスクトップアプリ対象も、実体は「OS上の1つのウィンドウ」として
+ * 同じ方式(グローバルフックでの座標/キー記録、タブ切り替え時に最前面表示/最小化)で
+ * 扱う。WEBアプリをこのアプリ内に埋め込んで表示する方式は、ログインページ等で
+ * パスワードをこのアプリの管理下にあるページに入力させることになり適切でないため
+ * 採用していない。URLはユーザー自身の既定ブラウザで開かれ、そのブラウザ上での
+ * 操作をあくまで外部ウィンドウとして記録する。
  */
 
 export type TargetKind = 'web' | 'desktop'
@@ -11,7 +18,7 @@ export interface TestTarget {
   kind: TargetKind
   /** タブ表示用のラベル */
   label: string
-  /** web: 対象URL */
+  /** web: 対象URL(ユーザーの既定ブラウザで開く) */
   url?: string
   /** desktop: 実行ファイルパス */
   exePath?: string
@@ -19,7 +26,7 @@ export interface TestTarget {
   exeArgs?: string
 }
 
-export type StepType = 'click' | 'dblclick' | 'input' | 'navigate' | 'keypress' | 'wait' | 'scroll'
+export type StepType = 'click' | 'dblclick' | 'keypress' | 'wait'
 
 export interface RecordedStep {
   id: string
@@ -30,18 +37,6 @@ export interface RecordedStep {
   /** 前ステップからの待機時間(ms)。再生時のタイミング再現に使用 */
   delayMs: number
 
-  // --- web 対象用 ---
-  /** CSSセレクタ */
-  selector?: string
-  /** input系ステップの入力値 */
-  value?: string
-  /** navigate系ステップの遷移先URL */
-  url?: string
-  /** クリック位置のページ内相対座標(デバッグ・フォールバック用) */
-  pageX?: number
-  pageY?: number
-
-  // --- desktop 対象用 ---
   /** 対象ウィンドウ左上を基準とした相対座標 */
   winX?: number
   winY?: number
@@ -77,31 +72,19 @@ export interface PlaybackResult {
   log: PlaybackProgress[]
 }
 
-/** レンダラーのビューポート要素(埋め込み表示領域)の画面内での位置とサイズ */
-export interface ViewportRect {
-  x: number
-  y: number
-  width: number
-  height: number
-  /** window.devicePixelRatio。デスクトップ埋め込みの物理ピクセル変換に使用 */
-  scaleFactor: number
-}
-
-/** 対象アダプタ(Web用/デスクトップ用)が共通で実装するインターフェース */
+/** 対象アダプタ(WEBアプリ用/デスクトップアプリ用)が共通で実装するインターフェース */
 export interface TargetAdapter {
-  /** 対象を起動し、ビューポート領域に埋め込む */
-  init(viewport: ViewportRect): Promise<void>
-  /** このターゲットを表示状態(アクティブ)にするかどうかを切り替える */
-  setActive(active: boolean, viewport: ViewportRect): Promise<void>
-  /** ビューポートのサイズ・位置が変わった際に呼ばれる */
-  updateViewport(viewport: ViewportRect): Promise<void>
+  /** 対象を起動する(デスクトップ: プロセス起動 / web: 既定ブラウザでURLを開く) */
+  init(): Promise<void>
+  /** このターゲットを表示状態(アクティブ)にするかどうかを切り替える(最前面表示/最小化) */
+  setActive(active: boolean): Promise<void>
   /** 記録を開始する。アクティブな間に発生した操作を onStep に渡す */
   startRecording(onStep: (step: Omit<RecordedStep, 'id' | 'targetId' | 'timestamp' | 'delayMs'>) => void): Promise<void>
   /** 記録を停止する */
   stopRecording(): Promise<void>
   /** 1ステップを再生する。speedは再生速度倍率(1=等速、2=2倍速など) */
   execStep(step: RecordedStep, speed: number): Promise<void>
-  /** 対象を破棄する(プロセス終了・ビュー削除など) */
+  /** 対象を破棄する(デスクトップ: プロセス終了。web: ユーザーのブラウザなので何もしない) */
   dispose(): Promise<void>
 }
 
@@ -114,11 +97,10 @@ export const IPC = {
 
   pickExecutable: 'dialog:pickExecutable',
 
-  viewportUpdate: 'viewport:update',
-
   recordingStart: 'recording:start',
   recordingStop: 'recording:stop',
   recordingSetActiveTarget: 'recording:setActiveTarget',
+  recordingSetPaused: 'recording:setPaused',
   recordingStep: 'recording:step', // main -> renderer push
 
   playbackRun: 'playback:run',

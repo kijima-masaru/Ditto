@@ -5,8 +5,7 @@ import {
   type PlaybackProgress,
   type PlaybackResult,
   type TestCase,
-  type TestTarget,
-  type ViewportRect
+  type TestTarget
 } from '../shared/types'
 
 const api = {
@@ -18,11 +17,11 @@ const api = {
 
   pickExecutable: (): Promise<string | null> => ipcRenderer.invoke(IPC.pickExecutable),
 
-  updateViewport: (viewport: ViewportRect): Promise<void> => ipcRenderer.invoke(IPC.viewportUpdate, viewport),
-
   startRecording: (targets: TestTarget[]): Promise<void> => ipcRenderer.invoke(IPC.recordingStart, targets),
   setActiveTarget: (targetId: string): Promise<void> =>
     ipcRenderer.invoke(IPC.recordingSetActiveTarget, targetId),
+  setRecordingPaused: (paused: boolean): Promise<void> =>
+    ipcRenderer.invoke(IPC.recordingSetPaused, paused),
   stopRecording: (): Promise<RecordedStep[]> => ipcRenderer.invoke(IPC.recordingStop),
   onRecordingStep: (cb: (step: RecordedStep) => void): (() => void) => {
     const listener = (_e: unknown, step: RecordedStep): void => cb(step)

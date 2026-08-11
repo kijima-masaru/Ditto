@@ -1,67 +1,54 @@
 import { randomUUID } from 'crypto'
-import type { BrowserWindow } from 'electron'
 import type {
   PlaybackProgress,
   PlaybackResult,
   RecordedStep,
   TargetAdapter,
   TestCase,
-  TestTarget,
-  ViewportRect
+  TestTarget
 } from '../shared/types'
-import { createWebAdapter } from './adapters/webTargetAdapter'
-import { createDesktopAdapter, DesktopTargetAdapter } from './adapters/desktopTargetAdapter'
+import { createBrowserAdapter } from './adapters/browserTargetAdapter'
+import { createDesktopAdapter } from './adapters/desktopTargetAdapter'
+import { stopGlobalHook } from './adapters/windowTargetBase'
 
-function createAdapter(target: TestTarget, mainWindow: BrowserWindow): TargetAdapter {
-  return target.kind === 'web' ? createWebAdapter(target, mainWindow) : createDesktopAdapter(target)
+function createAdapter(target: TestTarget): TargetAdapter {
+  return target.kind === 'web' ? createBrowserAdapter(target) : createDesktopAdapter(target)
 }
 
-const DEFAULT_VIEWPORT: ViewportRect = { x: 0, y: 0, width: 0, height: 0, scaleFactor: 1 }
-
 /**
- * 複数対象(Web/デスクトップアプリ)の記録・再生を統括する。
- * どの対象が「アクティブ」か(=ビューポートに表示され、操作を受け付けているか)を管理し、
+ * 複数対象(WEBアプリ/デスクトップアプリ)の記録・再生を統括する。
+ * どの対象が「アクティブ」か(=最前面表示され、操作を受け付けているか)を管理し、
  * 記録時は発生したイベントにアクティブな対象のidを付与、再生時はステップのtargetIdに応じて
- * アクティブ対象を自動的に切り替える。
+ * アクティブ対象を自動的に切り替える。一時停止中は発生したイベントを記録に含めない
+ * (ログイン操作等、記録に残したくない操作を挟めるようにするため)。
  */
 export class TargetManager {
-  private readonly mainWindow: BrowserWindow
   private adapters = new Map<string, TargetAdapter>()
   private activeTargetId: string | null = null
-  private viewport: ViewportRect = DEFAULT_VIEWPORT
   private recording = false
+  private paused = false
   private recordedSteps: RecordedStep[] = []
   private lastStepTime: number | null = null
   private onStepPush: ((step: RecordedStep) => void) | null = null
   private aborted = false
-
-  constructor(mainWindow: BrowserWindow) {
-    this.mainWindow = mainWindow
-  }
-
-  updateViewport(viewport: ViewportRect): void {
-    this.viewport = viewport
-    for (const adapter of this.adapters.values()) {
-      adapter.updateViewport(viewport).catch(() => {})
-    }
-  }
 
   async startRecording(targets: TestTarget[], onStep: (step: RecordedStep) => void): Promise<void> {
     if (targets.length === 0) throw new Error('対象が指定されていません')
     await this.disposeAll()
     this.recordedSteps = []
     this.lastStepTime = null
+    this.paused = false
     this.onStepPush = onStep
 
     try {
       for (const target of targets) {
-        const adapter = createAdapter(target, this.mainWindow)
-        await adapter.init(this.viewport)
+        const adapter = createAdapter(target)
+        await adapter.init()
         this.adapters.set(target.id, adapter)
         await adapter.startRecording((partial) => this.handleStep(target.id, partial))
       }
     } catch (err) {
-      // 一部の対象だけ起動済みのまま残ると、埋め込んだウィンドウが孤立して
+      // 一部の対象だけ起動済みのまま残ると、最小化されたウィンドウが孤立して
       // ユーザーが操作できなくなるため、失敗時は必ず全て破棄する
       await this.disposeAll()
       throw err
@@ -72,7 +59,7 @@ export class TargetManager {
   }
 
   private handleStep(targetId: string, partial: Omit<RecordedStep, 'id' | 'targetId' | 'timestamp' | 'delayMs'>): void {
-    if (!this.recording) return
+    if (!this.recording || this.paused) return
     const now = Date.now()
     const delayMs = this.lastStepTime === null ? 0 : now - this.lastStepTime
     this.lastStepTime = now
@@ -81,22 +68,29 @@ export class TargetManager {
     this.onStepPush?.(step)
   }
 
+  setPaused(paused: boolean): void {
+    this.paused = paused
+    // 再開時に不自然な長い待機時間が記録されないよう、直前時刻をリセットする
+    if (!paused) this.lastStepTime = null
+  }
+
   async setActiveTarget(targetId: string): Promise<void> {
     if (this.activeTargetId === targetId) return
     const prevId = this.activeTargetId
     this.activeTargetId = targetId
     if (prevId) {
-      await this.adapters.get(prevId)?.setActive(false, this.viewport)
+      await this.adapters.get(prevId)?.setActive(false)
     }
-    await this.adapters.get(targetId)?.setActive(true, this.viewport)
+    await this.adapters.get(targetId)?.setActive(true)
   }
 
   async stopRecording(): Promise<RecordedStep[]> {
     this.recording = false
+    this.paused = false
     for (const adapter of this.adapters.values()) {
       await adapter.stopRecording().catch(() => {})
     }
-    DesktopTargetAdapter.stopGlobalHook()
+    stopGlobalHook()
     const steps = this.recordedSteps
     this.recordedSteps = []
     this.onStepPush = null
@@ -119,8 +113,8 @@ export class TargetManager {
 
     try {
       for (const target of testCase.targets) {
-        const adapter = createAdapter(target, this.mainWindow)
-        await adapter.init(this.viewport)
+        const adapter = createAdapter(target)
+        await adapter.init()
         this.adapters.set(target.id, adapter)
       }
     } catch (err) {
