@@ -2,6 +2,10 @@ appId: com.flatline.autotesttool
 productName: 自動テストツール
 directories:
   buildResources: build
+# ネイティブ依存(active-win/uiohook-napi/koffi/@nut-tree-fork)はいずれもElectronの
+# ABIでそのまま動くprebuildバイナリを使っており、node-gypでのリビルドは不要かつ
+# このビルド環境にVisual Studio Build Toolsが無いため失敗する。無効化する。
+npmRebuild: false
 publish:
   provider: github
   owner: kijima-masaru
