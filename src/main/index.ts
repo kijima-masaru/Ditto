@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerIpcHandlers } from './ipcHandlers'
+import { setupAutoUpdater, checkForUpdates } from './autoUpdater'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -44,6 +45,12 @@ app.whenReady().then(() => {
 
   createWindow()
   registerIpcHandlers(() => mainWindow)
+
+  setupAutoUpdater(() => mainWindow)
+  if (app.isPackaged) {
+    // 起動時に自動でアップデートを確認する(パッケージ化されたビルドのみ。開発時は行わない)
+    checkForUpdates()
+  }
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

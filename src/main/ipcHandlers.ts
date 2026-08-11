@@ -1,7 +1,8 @@
-import { ipcMain, dialog, type BrowserWindow } from 'electron'
+import { app, ipcMain, dialog, type BrowserWindow } from 'electron'
 import { IPC, type TestCase, type TestTarget } from '../shared/types'
 import * as store from './store'
 import { TargetManager } from './targetManager'
+import { checkForUpdates, installUpdateNow } from './autoUpdater'
 
 export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
   const manager = new TargetManager()
@@ -54,5 +55,15 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.playbackAbort, async () => {
     manager.abort()
+  })
+
+  ipcMain.handle(IPC.getAppVersion, () => app.getVersion())
+
+  ipcMain.handle(IPC.updateCheck, () => {
+    checkForUpdates()
+  })
+
+  ipcMain.handle(IPC.updateInstall, () => {
+    installUpdateNow()
   })
 }

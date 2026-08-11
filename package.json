@@ -1,6 +1,6 @@
 {
   "name": "auto-test-tool",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "PC画面上のWEB/デスクトップアプリ操作を記録し自動再生するテスト自動化ツール",
   "main": "./out/main/index.js",
   "author": "kijima-masaru",
@@ -17,6 +17,7 @@
     "@nut-tree-fork/nut-js": "^4.2.6",
     "active-win": "^8.2.1",
     "electron": "43.3.0",
+    "electron-updater": "^6.8.9",
     "electron-vite": "5.0.0",
     "koffi": "^3.1.4",
     "react": "19.2.8",

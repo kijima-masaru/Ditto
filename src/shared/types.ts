@@ -88,6 +88,16 @@ export interface TargetAdapter {
   dispose(): Promise<void>
 }
 
+/** ソフトウェアアップデートの状態 */
+export type UpdateStatus =
+  | { state: 'idle' }
+  | { state: 'checking' }
+  | { state: 'available'; version: string }
+  | { state: 'not-available' }
+  | { state: 'downloading'; percent: number }
+  | { state: 'downloaded'; version: string }
+  | { state: 'error'; message: string }
+
 /** renderer <-> main の IPC チャンネル名 */
 export const IPC = {
   listTests: 'tests:list',
@@ -105,5 +115,10 @@ export const IPC = {
 
   playbackRun: 'playback:run',
   playbackAbort: 'playback:abort',
-  playbackProgress: 'playback:progress' // main -> renderer push
+  playbackProgress: 'playback:progress', // main -> renderer push
+
+  getAppVersion: 'app:getVersion',
+  updateCheck: 'update:check',
+  updateInstall: 'update:install',
+  updateStatus: 'update:status' // main -> renderer push
 } as const

@@ -5,7 +5,8 @@ import {
   type PlaybackProgress,
   type PlaybackResult,
   type TestCase,
-  type TestTarget
+  type TestTarget,
+  type UpdateStatus
 } from '../shared/types'
 
 const api = {
@@ -36,6 +37,15 @@ const api = {
     const listener = (_e: unknown, progress: PlaybackProgress): void => cb(progress)
     ipcRenderer.on(IPC.playbackProgress, listener)
     return () => ipcRenderer.removeListener(IPC.playbackProgress, listener)
+  },
+
+  getAppVersion: (): Promise<string> => ipcRenderer.invoke(IPC.getAppVersion),
+  checkForUpdate: (): Promise<void> => ipcRenderer.invoke(IPC.updateCheck),
+  installUpdate: (): Promise<void> => ipcRenderer.invoke(IPC.updateInstall),
+  onUpdateStatus: (cb: (status: UpdateStatus) => void): (() => void) => {
+    const listener = (_e: unknown, status: UpdateStatus): void => cb(status)
+    ipcRenderer.on(IPC.updateStatus, listener)
+    return () => ipcRenderer.removeListener(IPC.updateStatus, listener)
   }
 }
 

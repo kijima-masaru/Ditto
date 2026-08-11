@@ -11,6 +11,7 @@ PC画面上で選択したWEBアプリ・Windowsデスクトップアプリの�
 - 記録したテストの保存（ローカルJSON、`app.getPath('userData')/tests/`配下）
 - 保存済みテスト一覧からの選択・名前変更・削除
 - 再生速度の指定（0.25x〜4x）を選んでから自動再生
+- 自動アップデート（起動時に自動確認、または画面上部の「アップデートを確認」ボタンで手動確認。ダウンロード完了後にワンクリックでインストール）
 
 ## WEBアプリの扱いについて
 
@@ -20,6 +21,16 @@ WEB対象はこのアプリの中に埋め込んで表示するのではなく�
 
 - Electron + React + TypeScript ([electron-vite](https://electron-vite.org/) ベース)
 - 記録・再生エンジン(WEB/デスクトップ共通): [uiohook-napi](https://github.com/SnosMe/uiohook-napi)（グローバルフック） + [@nut-tree-fork/nut-js](https://github.com/nut-tree/nut.js)（操作シミュレーション） + [active-win](https://github.com/sindresorhus/active-win)（対象ウィンドウの検出・座標取得） + [koffi](https://koffi.dev/)（Win32 API呼び出し、最前面表示/最小化用）
+- 自動アップデート: [electron-updater](https://www.electron.build/auto-update)（GitHub Releasesを配信元に使用。リポジトリが公開である必要がある）
+
+## リリース手順
+
+```bash
+npm version patch|minor|major   # package.jsonのバージョンを更新
+GH_TOKEN=<repo権限のあるトークン> npm run build:win -- --publish always
+```
+
+`--publish always` により、Windows向けインストーラのビルドとGitHub Releaseへのアップロード（`latest.yml`込み）が一度に行われる。既存ユーザーのアプリは次回起動時（または「アップデートを確認」ボタン）で新バージョンを検知する。
 
 アーキテクチャの詳細は [`src/shared/types.ts`](src/shared/types.ts) の `TargetAdapter` インターフェース、[`src/main/adapters/windowTargetBase.ts`](src/main/adapters/windowTargetBase.ts)（WEB/デスクトップ共通の記録・再生ロジック）、[`src/main/targetManager.ts`](src/main/targetManager.ts)（複数対象のアクティブ切り替え・記録/再生の統括）を参照してください。
 

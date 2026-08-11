@@ -2,6 +2,10 @@ appId: com.flatline.autotesttool
 productName: 自動テストツール
 directories:
   buildResources: build
+publish:
+  provider: github
+  owner: kijima-masaru
+  repo: auto-test-tool
 files:
   - out/**/*
   - '!**/.vscode/*'
