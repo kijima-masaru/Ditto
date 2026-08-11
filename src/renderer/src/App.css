@@ -30,9 +30,9 @@ body {
 }
 
 .app-header nav button {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.08);
   color: #cbd2d9;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.18);
   padding: 8px 14px;
   margin-left: 6px;
   border-radius: 6px;
@@ -41,7 +41,8 @@ body {
 
 .app-header nav button.active,
 .app-header nav button:hover {
-  background: #323f4b;
+  background: #2f80ed;
+  border-color: #2f80ed;
   color: white;
 }
 
@@ -119,10 +120,15 @@ body {
 .target-type-toggle button {
   flex: 1;
   padding: 10px;
-  border: 1px solid #d9dde3;
-  background: #fafbfc;
+  border: 1.5px solid #aab4bf;
+  background: #ffffff;
+  color: #334e68;
   border-radius: 8px;
   cursor: pointer;
+}
+
+.target-type-toggle button:hover {
+  background: #f0f4f9;
 }
 
 .target-type-toggle button.active {
@@ -187,18 +193,35 @@ button.primary:disabled {
 button.danger {
   background: #fdecea;
   color: #c0392b;
-  border: 1px solid #f5c6cb;
+  border: 1.5px solid #f0a8a3;
   padding: 8px 12px;
   border-radius: 6px;
   cursor: pointer;
 }
 
+button.danger:hover {
+  background: #fbdad6;
+}
+
 button:not(.primary):not(.danger) {
-  background: #f0f2f5;
-  border: 1px solid #d9dde3;
+  background: #ffffff;
+  color: #334e68;
+  border: 1.5px solid #aab4bf;
   padding: 8px 12px;
   border-radius: 6px;
   cursor: pointer;
+}
+
+button:not(.primary):not(.danger):hover {
+  background: #eef1f4;
+  border-color: #8d99a5;
+}
+
+button:not(.primary):not(.danger):disabled {
+  background: #f4f5f7;
+  color: #a7b1bc;
+  border-color: #d9dde3;
+  cursor: not-allowed;
 }
 
 .hint {
@@ -319,15 +342,24 @@ button:not(.primary):not(.danger) {
 .target-tabs button {
   padding: 6px 12px;
   border-radius: 6px;
-  border: 1px solid #d9dde3;
-  background: #fff;
+  border: 1.5px solid #aab4bf;
+  background: #ffffff;
+  color: #334e68;
   cursor: pointer;
+}
+
+.target-tabs button:hover:not(:disabled) {
+  background: #eef1f4;
 }
 
 .target-tabs button.active {
   background: #2f80ed;
   color: white;
   border-color: #2f80ed;
+}
+
+.target-tabs button:disabled {
+  cursor: default;
 }
 
 .target-tabs button.active .badge {
