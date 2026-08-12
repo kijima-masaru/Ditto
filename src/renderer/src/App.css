@@ -652,6 +652,7 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 }
 
 .folder-card {
+  position: relative;
   background: var(--panel-bg-alt);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -661,6 +662,50 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   justify-content: space-between;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+/* フォルダにカーソルを乗せた時に中身を先読み表示するフライアウト(「別窓」風のプレビュー) */
+.folder-preview-flyout {
+  position: absolute;
+  top: 100%;
+  left: 4px;
+  right: 4px;
+  margin-top: 6px;
+  z-index: 30;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px var(--shadow);
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.folder-preview-empty {
+  margin: 4px;
+}
+
+.folder-preview-item {
+  margin: 0;
+}
+
+.folder-preview-folder {
+  text-align: left;
+  background: var(--panel-bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.folder-preview-folder:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .folder-card-name {

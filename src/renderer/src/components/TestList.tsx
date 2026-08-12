@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ContextMenuItem, TestCase, TestFolder } from '../../../shared/types'
 import { flattenFolders, folderBreadcrumb } from '../folderTree'
+import { useHoverIntent } from '../hooks/useHoverIntent'
 
 interface Props {
   onRun: (testCase: TestCase) => void
@@ -30,6 +31,8 @@ export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Elem
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
   const [renameFolderInput, setRenameFolderInput] = useState('')
   const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null)
+
+  const folderPreview = useHoverIntent()
 
   const reload = async (): Promise<void> => {
     setLoading(true)
@@ -205,7 +208,13 @@ export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Elem
           {subfolders.length > 0 && (
             <ul className="folder-cards">
               {subfolders.map((f) => (
-                <li key={f.id} className="folder-card" onContextMenu={(e) => handleFolderContextMenu(e, f)}>
+                <li
+                  key={f.id}
+                  className="folder-card"
+                  onContextMenu={(e) => handleFolderContextMenu(e, f)}
+                  onMouseEnter={() => folderPreview.scheduleShow(f.id)}
+                  onMouseLeave={folderPreview.scheduleHide}
+                >
                   {renamingFolderId === f.id ? (
                     <div className="row inline-form">
                       <input
@@ -231,6 +240,44 @@ export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Elem
                     <button className="folder-card-name" onClick={() => setCurrentFolderId(f.id)}>
                       📁 {f.name}
                     </button>
+                  )}
+
+                  {folderPreview.activeId === f.id && renamingFolderId !== f.id && deletingFolderId !== f.id && (
+                    <div
+                      className="folder-preview-flyout"
+                      onMouseEnter={folderPreview.cancelHide}
+                      onMouseLeave={folderPreview.scheduleHide}
+                    >
+                      {(() => {
+                        const previewSubfolders = folders.filter((sf) => sf.parentId === f.id)
+                        const previewTests = tests.filter((t) => (t.folderId ?? null) === f.id)
+                        if (previewSubfolders.length === 0 && previewTests.length === 0) {
+                          return <p className="hint folder-preview-empty">このフォルダは空です。</p>
+                        }
+                        return (
+                          <>
+                            {previewSubfolders.map((sf) => (
+                              <button
+                                key={sf.id}
+                                className="folder-preview-item folder-preview-folder"
+                                onClick={() => setCurrentFolderId(sf.id)}
+                              >
+                                📁 {sf.name}
+                              </button>
+                            ))}
+                            {previewTests.map((t) => (
+                              <div
+                                key={t.id}
+                                className="folder-preview-item test-name-item"
+                                onContextMenu={(e) => handleTestContextMenu(e, t)}
+                              >
+                                {t.name}
+                              </div>
+                            ))}
+                          </>
+                        )
+                      })()}
+                    </div>
                   )}
                 </li>
               ))}

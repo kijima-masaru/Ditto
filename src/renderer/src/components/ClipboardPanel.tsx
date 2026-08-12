@@ -6,6 +6,7 @@ import type {
   ContextMenuItem
 } from '../../../shared/types'
 import { flattenFolders, folderBreadcrumb } from '../folderTree'
+import { useHoverIntent } from '../hooks/useHoverIntent'
 
 type SubTab = 'history' | 'templates'
 
@@ -45,6 +46,8 @@ export default function ClipboardPanel(): React.JSX.Element {
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
   const [renameFolderInput, setRenameFolderInput] = useState('')
   const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null)
+
+  const folderPreview = useHoverIntent()
 
   const reload = async (): Promise<void> => {
     const [h, t, f] = await Promise.all([
@@ -270,7 +273,13 @@ export default function ClipboardPanel(): React.JSX.Element {
           {subfolders.length > 0 && (
             <ul className="folder-cards">
               {subfolders.map((f) => (
-                <li key={f.id} className="folder-card" onContextMenu={(e) => handleFolderContextMenu(e, f)}>
+                <li
+                  key={f.id}
+                  className="folder-card"
+                  onContextMenu={(e) => handleFolderContextMenu(e, f)}
+                  onMouseEnter={() => folderPreview.scheduleShow(f.id)}
+                  onMouseLeave={folderPreview.scheduleHide}
+                >
                   {renamingFolderId === f.id ? (
                     <div className="row inline-form">
                       <input
@@ -296,6 +305,47 @@ export default function ClipboardPanel(): React.JSX.Element {
                     <button className="folder-card-name" onClick={() => setCurrentFolderId(f.id)}>
                       📁 {f.name}
                     </button>
+                  )}
+
+                  {folderPreview.activeId === f.id && renamingFolderId !== f.id && deletingFolderId !== f.id && (
+                    <div
+                      className="folder-preview-flyout"
+                      onMouseEnter={folderPreview.cancelHide}
+                      onMouseLeave={folderPreview.scheduleHide}
+                    >
+                      {(() => {
+                        const previewSubfolders = templateFolders.filter((sf) => sf.parentId === f.id)
+                        const previewTemplates = templates.filter((t) => (t.folderId ?? null) === f.id)
+                        if (previewSubfolders.length === 0 && previewTemplates.length === 0) {
+                          return <p className="hint folder-preview-empty">このフォルダは空です。</p>
+                        }
+                        return (
+                          <>
+                            {previewSubfolders.map((sf) => (
+                              <button
+                                key={sf.id}
+                                className="folder-preview-item folder-preview-folder"
+                                onClick={() => setCurrentFolderId(sf.id)}
+                              >
+                                📁 {sf.name}
+                              </button>
+                            ))}
+                            {previewTemplates.map((t) => (
+                              <div
+                                key={t.id}
+                                className={`folder-preview-item clip-item${copiedId === t.id ? ' clip-item--copied' : ''}`}
+                                onClick={() => handleCopy(t.id, t.text)}
+                                onContextMenu={(e) => handleTemplateContextMenu(e, t)}
+                              >
+                                {t.label && <div className="clip-item-label">{t.label}</div>}
+                                <div className="clip-item-text">{truncate(t.text)}</div>
+                                {copiedId === t.id && <span className="clip-copied-badge">コピーしました</span>}
+                              </div>
+                            ))}
+                          </>
+                        )
+                      })()}
+                    </div>
                   )}
                 </li>
               ))}
