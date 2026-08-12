@@ -235,11 +235,6 @@ export default function ClipboardPanel(): React.JSX.Element {
                 onChange={(e) => setHistoryQuery(e.target.value)}
                 placeholder="履歴を検索"
               />
-              {historyQuery && (
-                <button className="history-search-clear" onClick={() => setHistoryQuery('')} title="検索をクリア">
-                  ×
-                </button>
-              )}
             </div>
           )}
 
