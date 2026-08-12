@@ -4,7 +4,6 @@ import TargetSelect from './components/TargetSelect'
 import Recording from './components/Recording'
 import TestList from './components/TestList'
 import Playback from './components/Playback'
-import UpdateBanner from './components/UpdateBanner'
 
 type View =
   | { name: 'target-select' }
@@ -42,8 +41,6 @@ export default function App(): React.JSX.Element {
           </button>
         </nav>
       </header>
-
-      <UpdateBanner />
 
       <main className={`app-main${isWorkspace ? ' app-main--workspace' : ''}`}>
         {view.name === 'target-select' && (

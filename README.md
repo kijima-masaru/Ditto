@@ -11,7 +11,7 @@ PC画面上で選択したWEBアプリ・Windowsデスクトップアプリの�
 - 記録したテストの保存（ローカルJSON、`app.getPath('userData')/tests/`配下）
 - 保存済みテスト一覧からの選択・名前変更・削除
 - 再生速度の指定（0.25x〜4x）を選んでから自動再生
-- 自動アップデート（起動時に自動確認、または画面上部の「アップデートを確認」ボタンで手動確認。ダウンロード完了後にワンクリックでインストール）
+- 自動アップデート（常時表示のUIは無く、起動時にバックグラウンドで自動確認・ダウンロードし、新バージョンの準備ができた時だけ再起動確認ダイアログを表示）
 
 ## WEBアプリの扱いについて
 
@@ -30,7 +30,7 @@ npm version patch|minor|major   # package.jsonのバージョンを更新
 GH_TOKEN=<repo権限のあるトークン> npm run build:win -- --publish always
 ```
 
-`--publish always` により、Windows向けインストーラのビルドとGitHub Releaseへのアップロード（`latest.yml`込み）が一度に行われる。既存ユーザーのアプリは次回起動時（または「アップデートを確認」ボタン）で新バージョンを検知する。
+`--publish always` により、Windows向けインストーラのビルドとGitHub Releaseへのアップロード（`latest.yml`込み）が一度に行われる。既存ユーザーのアプリは次回起動時に自動で新バージョンを検知・ダウンロードし、準備ができると再起動確認ダイアログが表示される。
 
 アーキテクチャの詳細は [`src/shared/types.ts`](src/shared/types.ts) の `TargetAdapter` インターフェース、[`src/main/adapters/windowTargetBase.ts`](src/main/adapters/windowTargetBase.ts)（WEB/デスクトップ共通の記録・再生ロジック）、[`src/main/targetManager.ts`](src/main/targetManager.ts)（複数対象のアクティブ切り替え・記録/再生の統括）を参照してください。
 

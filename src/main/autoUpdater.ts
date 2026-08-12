@@ -1,39 +1,41 @@
 import { autoUpdater } from 'electron-updater'
-import type { BrowserWindow } from 'electron'
-import { IPC, type UpdateStatus } from '../shared/types'
+import { dialog, type BrowserWindow } from 'electron'
 
 /**
  * GitHub Releases(electron-builder.ymlのpublish設定)を配信元とした自動アップデート。
- * 新しいバージョンが見つかったら自動でダウンロードし、ダウンロード完了後に
- * ユーザーが任意のタイミングで再起動してインストールできるようにする
- * (autoInstallOnAppQuitによりアプリを閉じたタイミングでも自動的に適用される)。
+ * 常時表示のUIは持たず、アプリ起動時にバックグラウンドで確認・ダウンロードし、
+ * 新しいバージョンの準備ができた時だけネイティブの確認ダイアログを表示する。
  */
 export function setupAutoUpdater(getWindow: () => BrowserWindow | null): void {
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true
 
-  const send = (status: UpdateStatus): void => {
-    getWindow()?.webContents.send(IPC.updateStatus, status)
-  }
-
-  autoUpdater.on('checking-for-update', () => send({ state: 'checking' }))
-  autoUpdater.on('update-available', (info) => send({ state: 'available', version: info.version }))
-  autoUpdater.on('update-not-available', () => send({ state: 'not-available' }))
-  autoUpdater.on('download-progress', (progress) => {
-    send({ state: 'downloading', percent: Math.round(progress.percent) })
+  autoUpdater.on('update-downloaded', (info) => {
+    const win = getWindow()
+    const options = {
+      type: 'info' as const,
+      title: 'アップデートの確認',
+      message: `新しいバージョン v${info.version} の準備ができました。今すぐ再起動してインストールしますか?`,
+      buttons: ['今すぐ再起動', '後で'],
+      defaultId: 0,
+      cancelId: 1
+    }
+    const promise = win ? dialog.showMessageBox(win, options) : dialog.showMessageBox(options)
+    promise.then((result) => {
+      if (result.response === 0) {
+        autoUpdater.quitAndInstall()
+      }
+    })
   })
-  autoUpdater.on('update-downloaded', (info) => send({ state: 'downloaded', version: info.version }))
+
   autoUpdater.on('error', (err) => {
-    send({ state: 'error', message: err.message })
+    // 開発時やネットワーク不通時にも発火しうるため、ユーザーには通知せずログのみ残す
+    console.error('[autoUpdater] error:', err)
   })
 }
 
 export function checkForUpdates(): void {
   autoUpdater.checkForUpdates().catch(() => {
-    // 開発時(未パッケージ)やネットワーク不通時は静かに無視する。エラーはerrorイベント側でも通知される
+    // 開発時(未パッケージ)やネットワーク不通時は静かに無視する
   })
-}
-
-export function installUpdateNow(): void {
-  autoUpdater.quitAndInstall()
 }
