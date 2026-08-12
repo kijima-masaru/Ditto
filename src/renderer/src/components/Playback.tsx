@@ -50,7 +50,7 @@ export default function Playback({ testCase, onDone }: Props): React.JSX.Element
       <div className="workspace-header">
         <TargetTabs targets={testCase.targets} activeId={activeTargetId} onSelect={() => {}} disabled />
         <div className="row">
-          {phase === 'idle' && (
+          {(phase === 'idle' || phase === 'done') && (
             <>
               <label>速度</label>
               <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>
@@ -61,7 +61,7 @@ export default function Playback({ testCase, onDone }: Props): React.JSX.Element
                 ))}
               </select>
               <button className="primary" onClick={handleStart}>
-                再生を開始
+                {phase === 'done' ? 'もう一度実行' : '再生を開始'}
               </button>
             </>
           )}
