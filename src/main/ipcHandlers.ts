@@ -21,6 +21,7 @@ import { TargetManager } from './targetManager'
 import * as recordingFrame from './recordingFrame'
 import * as screenCapture from './screenCapture'
 import * as clipboardStore from './clipboardStore'
+import * as clipboardTransforms from './clipboardTransforms'
 import * as settingsStore from './settingsStore'
 import * as targetHistoryStore from './targetHistoryStore'
 import { setHotkeyCombo, startHotkeyCapture, cancelHotkeyCapture } from './hotkey'
@@ -178,6 +179,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.showClipboardHistoryMenu, async (_e, entryId: string, text: string) => {
     const w = getWindow()
+    const setClipboard = (transform: (t: string) => string): void => clipboard.writeText(transform(text))
     const menu = Menu.buildFromTemplate([
       {
         label: '定型文に登録',
@@ -189,6 +191,34 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
       {
         label: 'コピー',
         click: () => clipboard.writeText(text)
+      },
+      { type: 'separator' },
+      {
+        label: 'クリップボードにセット(整形)',
+        submenu: [
+          {
+            label: '各行先頭に "> " を挿入',
+            click: () => setClipboard((t) => clipboardTransforms.insertLinePrefix(t, '> '))
+          },
+          {
+            label: '各行先頭に "// " を挿入',
+            click: () => setClipboard((t) => clipboardTransforms.insertLinePrefix(t, '// '))
+          },
+          { label: '各行を " で囲む', click: () => setClipboard(clipboardTransforms.wrapLinesInQuotes) },
+          { label: '各行先頭に連番(001:)を挿入', click: () => setClipboard(clipboardTransforms.numberLines) }
+        ]
+      },
+      {
+        label: 'クリップボードにセット(変換)',
+        submenu: [
+          { label: '小文字に変換', click: () => setClipboard(clipboardTransforms.toLowerCase) },
+          { label: '大文字に変換', click: () => setClipboard(clipboardTransforms.toUpperCase) },
+          { label: '全角→半角', click: () => setClipboard(clipboardTransforms.toHalfWidth) },
+          { label: '半角→全角', click: () => setClipboard(clipboardTransforms.toFullWidth) },
+          { label: 'TAB→空白', click: () => setClipboard(clipboardTransforms.tabToSpace) },
+          { label: '空白→TAB', click: () => setClipboard(clipboardTransforms.spaceToTab) },
+          { label: '改行コードを削除', click: () => setClipboard(clipboardTransforms.removeLineBreaks) }
+        ]
       },
       { type: 'separator' },
       {
