@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { TestCase, TestFolder } from '../../../shared/types'
+import { flattenFolders, folderBreadcrumb } from '../folderTree'
 
 interface Props {
   onRun: (testCase: TestCase) => void
@@ -8,18 +9,6 @@ interface Props {
 function formatDate(iso?: string): string {
   if (!iso) return '未実行'
   return new Date(iso).toLocaleString('ja-JP')
-}
-
-function flattenFolders(folders: TestFolder[]): { folder: TestFolder; depth: number }[] {
-  const result: { folder: TestFolder; depth: number }[] = []
-  const addChildren = (parentId: string | null, depth: number): void => {
-    for (const f of folders.filter((x) => x.parentId === parentId)) {
-      result.push({ folder: f, depth })
-      addChildren(f.id, depth + 1)
-    }
-  }
-  addChildren(null, 0)
-  return result
 }
 
 export default function TestList({ onRun }: Props): React.JSX.Element {
@@ -107,14 +96,7 @@ export default function TestList({ onRun }: Props): React.JSX.Element {
   const subfolders = folders.filter((f) => f.parentId === currentFolderId)
   const visibleTests = tests.filter((t) => (t.folderId ?? null) === currentFolderId)
 
-  const breadcrumb: TestFolder[] = []
-  let cursor = currentFolderId
-  while (cursor) {
-    const f = folders.find((x) => x.id === cursor)
-    if (!f) break
-    breadcrumb.unshift(f)
-    cursor = f.parentId
-  }
+  const breadcrumb = folderBreadcrumb(folders, currentFolderId)
 
   const flatFolders = flattenFolders(folders)
 
@@ -168,7 +150,7 @@ export default function TestList({ onRun }: Props): React.JSX.Element {
           <p>
             {currentFolderId
               ? 'このフォルダにはテストがありません。'
-              : '保存されたテストはまだありません。「新規録画」からテストを記録してください。'}
+              : '保存されたテストはまだありません。「テスト作成」からテストを記録してください。'}
           </p>
         </div>
       ) : (

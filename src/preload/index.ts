@@ -4,6 +4,7 @@ import {
   type CaptureInfo,
   type ClipboardHistoryEntry,
   type ClipboardTemplate,
+  type ClipboardTemplateFolder,
   type RecordedStep,
   type RecordingFrameBounds,
   type PlaybackProgress,
@@ -72,11 +73,23 @@ const api = {
     ipcRenderer.invoke(IPC.deleteClipboardHistoryEntry, id),
   clearClipboardHistory: (): Promise<void> => ipcRenderer.invoke(IPC.clearClipboardHistory),
   listClipboardTemplates: (): Promise<ClipboardTemplate[]> => ipcRenderer.invoke(IPC.listClipboardTemplates),
-  createClipboardTemplate: (text: string, label?: string): Promise<ClipboardTemplate> =>
-    ipcRenderer.invoke(IPC.createClipboardTemplate, text, label),
+  createClipboardTemplate: (text: string, label?: string, folderId?: string | null): Promise<ClipboardTemplate> =>
+    ipcRenderer.invoke(IPC.createClipboardTemplate, text, label, folderId),
   updateClipboardTemplate: (id: string, text: string, label?: string): Promise<void> =>
     ipcRenderer.invoke(IPC.updateClipboardTemplate, id, text, label),
   deleteClipboardTemplate: (id: string): Promise<void> => ipcRenderer.invoke(IPC.deleteClipboardTemplate, id),
+  moveClipboardTemplate: (id: string, folderId: string | null): Promise<void> =>
+    ipcRenderer.invoke(IPC.moveClipboardTemplate, id, folderId),
+
+  listClipboardTemplateFolders: (): Promise<ClipboardTemplateFolder[]> =>
+    ipcRenderer.invoke(IPC.listClipboardTemplateFolders),
+  createClipboardTemplateFolder: (name: string, parentId: string | null): Promise<ClipboardTemplateFolder> =>
+    ipcRenderer.invoke(IPC.createClipboardTemplateFolder, name, parentId),
+  renameClipboardTemplateFolder: (id: string, name: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.renameClipboardTemplateFolder, id, name),
+  deleteClipboardTemplateFolder: (id: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.deleteClipboardTemplateFolder, id),
+
   copyToClipboard: (text: string): Promise<void> => ipcRenderer.invoke(IPC.copyToClipboard, text),
   showClipboardHistoryMenu: (entryId: string, text: string): Promise<void> =>
     ipcRenderer.invoke(IPC.showClipboardHistoryMenu, entryId, text),

@@ -22,7 +22,7 @@ function formatElapsed(ms: number): string {
 }
 
 export default function App(): React.JSX.Element {
-  const [view, setView] = useState<View>({ name: 'test-list' })
+  const [view, setView] = useState<View>({ name: 'clipboard' })
   const [refreshKey, setRefreshKey] = useState(0)
   const recorder = useScreenRecording()
 
@@ -41,6 +41,12 @@ export default function App(): React.JSX.Element {
       <header className="app-header">
         <nav>
           <button
+            className={view.name === 'clipboard' ? 'active' : ''}
+            onClick={() => setView({ name: 'clipboard' })}
+          >
+            クリップボード
+          </button>
+          <button
             className={view.name === 'test-list' ? 'active' : ''}
             onClick={() => setView({ name: 'test-list' })}
           >
@@ -50,13 +56,7 @@ export default function App(): React.JSX.Element {
             className={view.name === 'target-select' ? 'active' : ''}
             onClick={() => setView({ name: 'target-select' })}
           >
-            新規録画
-          </button>
-          <button
-            className={view.name === 'clipboard' ? 'active' : ''}
-            onClick={() => setView({ name: 'clipboard' })}
-          >
-            クリップボード
+            テスト作成
           </button>
         </nav>
       </header>

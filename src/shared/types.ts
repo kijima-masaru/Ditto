@@ -99,6 +99,16 @@ export interface ClipboardTemplate {
   text: string
   label?: string
   createdAt: string
+  /** 所属フォルダ(ClipboardTemplateFolder.id)。未設定/nullはルート直下 */
+  folderId?: string | null
+}
+
+/** 定型文を整理するための階層フォルダ */
+export interface ClipboardTemplateFolder {
+  id: string
+  name: string
+  /** 親フォルダのid。nullはルート直下 */
+  parentId: string | null
 }
 
 export type StepStatus = 'pending' | 'running' | 'ok' | 'fail' | 'skipped'
@@ -181,7 +191,13 @@ export const IPC = {
   createClipboardTemplate: 'clipboard:create-template',
   updateClipboardTemplate: 'clipboard:update-template',
   deleteClipboardTemplate: 'clipboard:delete-template',
+  moveClipboardTemplate: 'clipboard:move-template',
   copyToClipboard: 'clipboard:copy',
   showClipboardHistoryMenu: 'clipboard:show-history-menu',
-  clipboardDataChanged: 'clipboard:data-changed' // main -> renderer push
+  clipboardDataChanged: 'clipboard:data-changed', // main -> renderer push
+
+  listClipboardTemplateFolders: 'clipboard:list-template-folders',
+  createClipboardTemplateFolder: 'clipboard:create-template-folder',
+  renameClipboardTemplateFolder: 'clipboard:rename-template-folder',
+  deleteClipboardTemplateFolder: 'clipboard:delete-template-folder'
 } as const

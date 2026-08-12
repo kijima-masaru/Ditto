@@ -125,8 +125,8 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.listClipboardTemplates, async () => clipboardStore.listTemplates())
 
-  ipcMain.handle(IPC.createClipboardTemplate, async (_e, text: string, label?: string) =>
-    clipboardStore.createTemplate(text, label)
+  ipcMain.handle(IPC.createClipboardTemplate, async (_e, text: string, label?: string, folderId?: string | null) =>
+    clipboardStore.createTemplate(text, label, folderId ?? null)
   )
 
   ipcMain.handle(IPC.updateClipboardTemplate, async (_e, id: string, text: string, label?: string) =>
@@ -134,6 +134,24 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   )
 
   ipcMain.handle(IPC.deleteClipboardTemplate, async (_e, id: string) => clipboardStore.deleteTemplate(id))
+
+  ipcMain.handle(IPC.moveClipboardTemplate, async (_e, id: string, folderId: string | null) =>
+    clipboardStore.moveTemplate(id, folderId)
+  )
+
+  ipcMain.handle(IPC.listClipboardTemplateFolders, async () => clipboardStore.listTemplateFolders())
+
+  ipcMain.handle(IPC.createClipboardTemplateFolder, async (_e, name: string, parentId: string | null) =>
+    clipboardStore.createTemplateFolder(name, parentId)
+  )
+
+  ipcMain.handle(IPC.renameClipboardTemplateFolder, async (_e, id: string, name: string) =>
+    clipboardStore.renameTemplateFolder(id, name)
+  )
+
+  ipcMain.handle(IPC.deleteClipboardTemplateFolder, async (_e, id: string) =>
+    clipboardStore.deleteTemplateFolder(id)
+  )
 
   ipcMain.handle(IPC.copyToClipboard, async (_e, text: string) => {
     clipboard.writeText(text)
