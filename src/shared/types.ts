@@ -54,6 +54,8 @@ export interface TestCase {
   steps: RecordedStep[]
   createdAt: string
   updatedAt: string
+  /** 最後に実行(再生)した日時。一度も実行していなければ未設定 */
+  lastRunAt?: string
 }
 
 export type StepStatus = 'pending' | 'running' | 'ok' | 'fail' | 'skipped'

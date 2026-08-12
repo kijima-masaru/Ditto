@@ -7,6 +7,7 @@ body {
   font-family: 'Segoe UI', 'Yu Gothic UI', sans-serif;
   background: #f4f5f7;
   color: #1a1a1a;
+  font-size: 13px;
 }
 
 .app {
@@ -18,25 +19,27 @@ body {
 .app-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px;
+  gap: 6px;
+  padding: 8px 10px;
   background: #1f2933;
   color: white;
 }
 
-.app-header h1 {
-  font-size: 18px;
-  margin: 0;
+.app-header nav {
+  display: flex;
+  gap: 6px;
+  flex: 1;
 }
 
 .app-header nav button {
+  flex: 1;
   background: rgba(255, 255, 255, 0.08);
   color: #cbd2d9;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  padding: 8px 14px;
-  margin-left: 6px;
+  padding: 7px 8px;
   border-radius: 6px;
   cursor: pointer;
+  font-size: 12px;
 }
 
 .app-header nav button.active,
@@ -49,7 +52,7 @@ body {
 .app-main {
   flex: 1;
   overflow: auto;
-  padding: 20px;
+  padding: 12px;
 }
 
 .app-main--workspace {
@@ -61,30 +64,32 @@ body {
 .panel {
   background: white;
   border-radius: 10px;
-  padding: 24px;
-  max-width: 780px;
-  margin: 0 auto;
+  padding: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .panel h2 {
   margin-top: 0;
+  font-size: 15px;
 }
 
 .target-type-toggle {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 16px;
 }
 
 .target-type-toggle button {
   flex: 1;
-  padding: 10px;
+  min-width: 110px;
+  padding: 9px;
   border: 1.5px solid #aab4bf;
   background: #ffffff;
   color: #334e68;
   border-radius: 8px;
   cursor: pointer;
+  font-size: 12px;
 }
 
 .target-type-toggle button:hover {
@@ -99,7 +104,7 @@ body {
 }
 
 .target-list h3 {
-  font-size: 14px;
+  font-size: 13px;
   margin-bottom: 6px;
 }
 
@@ -111,7 +116,7 @@ body {
 }
 
 .field label {
-  font-size: 13px;
+  font-size: 12px;
   color: #52606d;
 }
 
@@ -119,28 +124,31 @@ body {
   padding: 8px 10px;
   border: 1px solid #d9dde3;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 13px;
+  width: 100%;
 }
 
 .row {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
 }
 
 .row input {
   flex: 1;
+  min-width: 0;
 }
 
 button {
-  font-size: 14px;
+  font-size: 13px;
 }
 
 button.primary {
   background: #2f80ed;
   color: white;
   border: none;
-  padding: 10px 18px;
+  padding: 9px 14px;
   border-radius: 6px;
   cursor: pointer;
 }
@@ -154,7 +162,7 @@ button.danger {
   background: #fdecea;
   color: #c0392b;
   border: 1.5px solid #f0a8a3;
-  padding: 8px 12px;
+  padding: 8px 10px;
   border-radius: 6px;
   cursor: pointer;
 }
@@ -167,7 +175,7 @@ button:not(.primary):not(.danger):not(.app-header button) {
   background: #ffffff;
   color: #334e68;
   border: 1.5px solid #aab4bf;
-  padding: 8px 12px;
+  padding: 8px 10px;
   border-radius: 6px;
   cursor: pointer;
 }
@@ -185,26 +193,28 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 }
 
 .hint {
-  font-size: 12px;
+  font-size: 11px;
   color: #829ab1;
 }
 
 .error {
   color: #c0392b;
   background: #fdecea;
-  padding: 10px;
+  padding: 8px 10px;
   border-radius: 6px;
+  font-size: 12px;
 }
 
 .status-line {
   font-weight: 600;
   color: #334e68;
+  font-size: 12px;
 }
 
 .step-list {
   list-style: none;
   padding: 0;
-  max-height: 320px;
+  max-height: 220px;
   overflow-y: auto;
   border: 1px solid #eceff1;
   border-radius: 8px;
@@ -213,10 +223,11 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 
 .step-list li {
   display: flex;
-  gap: 10px;
-  padding: 8px 12px;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 7px 10px;
   border-bottom: 1px solid #f0f2f5;
-  font-size: 13px;
+  font-size: 12px;
   align-items: center;
 }
 
@@ -227,7 +238,7 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 .step-type {
   font-weight: 700;
   color: #2f80ed;
-  min-width: 70px;
+  min-width: 56px;
 }
 
 .step-detail {
@@ -236,11 +247,12 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .step-message {
   color: #c0392b;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .status-running {
@@ -255,24 +267,63 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   background: #fdecea;
 }
 
-.test-table {
-  width: 100%;
-  border-collapse: collapse;
+.test-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.test-table th,
-.test-table td {
-  text-align: left;
-  padding: 10px 8px;
-  border-bottom: 1px solid #f0f2f5;
-  font-size: 13px;
+.test-card {
+  background: white;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.test-card-title {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.test-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.test-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: #829ab1;
+}
+
+.test-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.test-card-actions button {
+  flex: 1;
+  min-width: 64px;
+  font-size: 12px;
+  padding: 7px 8px;
 }
 
 .badge {
   display: inline-block;
   background: #eaf2fe;
   color: #2f80ed;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 4px;
@@ -289,7 +340,7 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -300,12 +351,13 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 }
 
 .target-tabs button {
-  padding: 6px 12px;
+  padding: 6px 10px;
   border-radius: 6px;
   border: 1.5px solid #aab4bf;
   background: #ffffff;
   color: #334e68;
   cursor: pointer;
+  font-size: 12px;
 }
 
 .target-tabs button:hover:not(:disabled) {
@@ -331,9 +383,9 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   background: #eaf2fe;
   border: 1px solid #cfe2fb;
   border-radius: 8px;
-  padding: 12px 16px;
+  padding: 10px 12px;
   color: #1c3d5a;
-  font-size: 13px;
+  font-size: 11px;
 }
 
 .notice-panel p {
@@ -359,8 +411,13 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   align-items: center;
   gap: 8px;
   margin-bottom: 0;
+  flex-wrap: wrap;
 }
 
 .field--inline label {
   white-space: nowrap;
+}
+
+.field--inline input {
+  min-width: 120px;
 }

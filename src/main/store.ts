@@ -65,3 +65,15 @@ export async function renameTest(id: string, name: string): Promise<TestCase> {
   await fs.writeFile(filePathFor(id), JSON.stringify(testCase, null, 2), 'utf-8')
   return testCase
 }
+
+/** テストを実行した日時を記録する(更新日時 updatedAt とは別に、最終実行日時として保持する) */
+export async function recordRun(id: string, runAt: string): Promise<void> {
+  try {
+    const raw = await fs.readFile(filePathFor(id), 'utf-8')
+    const testCase = JSON.parse(raw) as TestCase
+    testCase.lastRunAt = runAt
+    await fs.writeFile(filePathFor(id), JSON.stringify(testCase, null, 2), 'utf-8')
+  } catch {
+    // テストが既に削除されている場合などは無視する
+  }
+}

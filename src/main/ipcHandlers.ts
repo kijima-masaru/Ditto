@@ -47,9 +47,11 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.playbackRun, async (_e, testCase: TestCase) => {
     const w = getWindow()
-    return manager.runPlayback(testCase, (progress) => {
+    const result = await manager.runPlayback(testCase, (progress) => {
       w?.webContents.send(IPC.playbackProgress, progress)
     })
+    await store.recordRun(testCase.id, result.finishedAt)
+    return result
   })
 
   ipcMain.handle(IPC.playbackAbort, async () => {

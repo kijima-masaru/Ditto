@@ -8,10 +8,10 @@ let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 1100,
-    height: 760,
-    minWidth: 900,
-    minHeight: 600,
+    width: 360,
+    height: 640,
+    minWidth: 300,
+    minHeight: 420,
     show: false,
     autoHideMenuBar: true,
     webPreferences: {

@@ -5,6 +5,11 @@ interface Props {
   onRun: (testCase: TestCase) => void
 }
 
+function formatDate(iso?: string): string {
+  if (!iso) return '未実行'
+  return new Date(iso).toLocaleString('ja-JP')
+}
+
 export default function TestList({ onRun }: Props): React.JSX.Element {
   const [tests, setTests] = useState<TestCase[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,44 +49,33 @@ export default function TestList({ onRun }: Props): React.JSX.Element {
   }
 
   return (
-    <div className="panel">
-      <h2>保存済みテスト</h2>
-      <table className="test-table">
-        <thead>
-          <tr>
-            <th>名前</th>
-            <th>対象</th>
-            <th>ステップ数</th>
-            <th>更新日時</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {tests.map((t) => (
-            <tr key={t.id}>
-              <td>{t.name}</td>
-              <td>
-                {t.targets.map((target) => (
-                  <span key={target.id} className="badge" style={{ marginRight: 4 }}>
-                    {target.kind === 'web' ? 'WEB' : 'APP'} {target.label}
-                  </span>
-                ))}
-              </td>
-              <td>{t.steps.length}</td>
-              <td>{new Date(t.updatedAt).toLocaleString('ja-JP')}</td>
-              <td className="row">
-                <button className="primary" onClick={() => onRun(t)}>
-                  実行
-                </button>
-                <button onClick={() => handleRename(t)}>名前変更</button>
-                <button className="danger" onClick={() => handleDelete(t)}>
-                  削除
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <ul className="test-cards">
+      {tests.map((t) => (
+        <li key={t.id} className="test-card">
+          <div className="test-card-title">{t.name}</div>
+          <div className="test-card-badges">
+            {t.targets.map((target) => (
+              <span key={target.id} className="badge">
+                {target.kind === 'web' ? 'WEB' : 'APP'} {target.label}
+              </span>
+            ))}
+          </div>
+          <div className="test-card-meta">
+            <span>{t.steps.length}ステップ</span>
+            <span>実行: {formatDate(t.lastRunAt)}</span>
+            <span>更新: {formatDate(t.updatedAt)}</span>
+          </div>
+          <div className="test-card-actions">
+            <button className="primary" onClick={() => onRun(t)}>
+              実行
+            </button>
+            <button onClick={() => handleRename(t)}>名前変更</button>
+            <button className="danger" onClick={() => handleDelete(t)}>
+              削除
+            </button>
+          </div>
+        </li>
+      ))}
+    </ul>
   )
 }

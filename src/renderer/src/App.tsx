@@ -25,7 +25,6 @@ export default function App(): React.JSX.Element {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>自動テストツール</h1>
         <nav>
           <button
             className={view.name === 'test-list' ? 'active' : ''}
