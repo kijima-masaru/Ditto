@@ -264,5 +264,7 @@ export const IPC = {
 
   // 録画枠のフッターボタン(枠のオーバーレイウィンドウ)とメインウィンドウの録画状態を橋渡しする
   recordingFrameFooterAction: 'recording-frame:footer-action', // overlay -> main -> メインウィンドウ
-  setRecordingFrameFooterState: 'recording-frame:set-footer-state' // メインウィンドウ -> main -> overlay
+  setRecordingFrameFooterState: 'recording-frame:set-footer-state', // メインウィンドウ -> main -> overlay
+  // 枠のタイトルバーの閉じる/最小化ボタンで枠が非表示になったことをメインウィンドウへ知らせる
+  recordingFrameVisibilityChanged: 'recording-frame:visibility-changed' // main -> renderer push
 } as const

@@ -4,9 +4,7 @@ export type ScreenRecordingState = 'idle' | 'recording' | 'paused'
 
 export interface ScreenRecorderApi {
   frameVisible: boolean
-  frameSize: { width: number; height: number }
   toggleFrame: () => Promise<void>
-  applyFrameSize: (width: number, height: number) => Promise<void>
   recordingState: ScreenRecordingState
   elapsedMs: number
   savedPath: string | null
@@ -20,11 +18,8 @@ export interface ScreenRecorderApi {
   canvasRef: React.RefObject<HTMLCanvasElement | null>
 }
 
-const DEFAULT_SIZE = { width: 480, height: 320 }
-
 export function useScreenRecording(): ScreenRecorderApi {
   const [frameVisible, setFrameVisible] = useState(false)
-  const [frameSize, setFrameSize] = useState(DEFAULT_SIZE)
   const [recordingState, setRecordingState] = useState<ScreenRecordingState>('idle')
   const [elapsedMs, setElapsedMs] = useState(0)
   const [savedPath, setSavedPath] = useState<string | null>(null)
@@ -42,7 +37,7 @@ export function useScreenRecording(): ScreenRecorderApi {
   const pauseStartRef = useRef(0)
 
   useEffect(() => {
-    window.api.getRecordingFrameBounds().then((b) => setFrameSize({ width: b.width, height: b.height }))
+    return window.api.onRecordingFrameVisibilityChanged((visible) => setFrameVisible(visible))
   }, [])
 
   const toggleFrame = useCallback(async () => {
@@ -51,16 +46,9 @@ export function useScreenRecording(): ScreenRecorderApi {
       setFrameVisible(false)
     } else {
       await window.api.showRecordingFrame()
-      const b = await window.api.getRecordingFrameBounds()
-      setFrameSize({ width: b.width, height: b.height })
       setFrameVisible(true)
     }
   }, [frameVisible])
-
-  const applyFrameSize = useCallback(async (width: number, height: number) => {
-    const b = await window.api.setRecordingFrameSize(width, height)
-    setFrameSize({ width: b.width, height: b.height })
-  }, [])
 
   const drawLoop = useCallback(() => {
     const video = videoRef.current
@@ -226,9 +214,7 @@ export function useScreenRecording(): ScreenRecorderApi {
 
   return {
     frameVisible,
-    frameSize,
     toggleFrame,
-    applyFrameSize,
     recordingState,
     elapsedMs,
     savedPath,

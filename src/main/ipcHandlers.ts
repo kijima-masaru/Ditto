@@ -266,4 +266,8 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   recordingFrame.onFooterAction((action) => {
     getWindow()?.webContents.send(IPC.recordingFrameFooterAction, action)
   })
+
+  recordingFrame.onVisibilityChange((visible) => {
+    getWindow()?.webContents.send(IPC.recordingFrameVisibilityChanged, visible)
+  })
 }

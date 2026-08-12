@@ -138,6 +138,11 @@ const api = {
     const listener = (_e: unknown, action: 'start' | 'pause' | 'resume' | 'stop'): void => cb(action)
     ipcRenderer.on(IPC.recordingFrameFooterAction, listener)
     return () => ipcRenderer.removeListener(IPC.recordingFrameFooterAction, listener)
+  },
+  onRecordingFrameVisibilityChanged: (cb: (visible: boolean) => void): (() => void) => {
+    const listener = (_e: unknown, visible: boolean): void => cb(visible)
+    ipcRenderer.on(IPC.recordingFrameVisibilityChanged, listener)
+    return () => ipcRenderer.removeListener(IPC.recordingFrameVisibilityChanged, listener)
   }
 }
 

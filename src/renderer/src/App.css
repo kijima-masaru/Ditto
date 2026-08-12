@@ -138,8 +138,17 @@ body {
   line-height: 1;
 }
 
+/* 録画マークは常に赤色(録画UIの共通色)にし、テーマやhover/active状態で色が変わらないようにする */
+.record-icon-btn {
+  color: #ff4d4f;
+}
+
 .record-icon-btn.active,
-.record-icon-btn:hover,
+.record-icon-btn:hover {
+  background: rgba(255, 77, 79, 0.16);
+  border-color: #ff4d4f;
+}
+
 .settings-icon-btn.active,
 .settings-icon-btn:hover {
   background: var(--accent);
