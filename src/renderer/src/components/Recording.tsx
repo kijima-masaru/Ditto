@@ -10,9 +10,12 @@ interface Props {
 
 export default function Recording({ targets, onDone, onCancel }: Props): React.JSX.Element {
   const [steps, setSteps] = useState<RecordedStep[]>([])
-  const [status, setStatus] = useState<'starting' | 'recording' | 'stopping' | 'error'>('starting')
+  const [status, setStatus] = useState<'starting' | 'recording' | 'stopping' | 'stopped' | 'error'>('starting')
   const [error, setError] = useState<string | null>(null)
   const [testName, setTestName] = useState('')
+  const [nameError, setNameError] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
   const [activeTargetId, setActiveTargetId] = useState<string>(targets[0]?.id ?? '')
   const [paused, setPaused] = useState(false)
   const started = useRef(false)
@@ -52,15 +55,33 @@ export default function Recording({ targets, onDone, onCancel }: Props): React.J
     await window.api.setRecordingPaused(next)
   }
 
-  const handleStopAndSave = async (): Promise<void> => {
+  // 録画を停止するだけで、保存はしない(名前の入力・確認は別ステップにする)
+  const handleStop = async (): Promise<void> => {
     setStatus('stopping')
-    const finalSteps = await window.api.stopRecording()
+    await window.api.stopRecording()
+    setStatus('stopped')
+  }
+
+  const handleSave = async (): Promise<void> => {
     if (!testName.trim()) {
-      onDone()
+      setNameError(true)
       return
     }
-    await window.api.saveTest({ name: testName.trim(), targets, steps: finalSteps })
-    onDone()
+    setNameError(false)
+    setSaveError(null)
+    setSaving(true)
+    try {
+      await window.api.saveTest({ name: testName.trim(), targets, steps })
+      onDone()
+    } catch (e) {
+      setSaveError((e as Error).message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDiscard = (): void => {
+    onCancel()
   }
 
   const handleCancel = async (): Promise<void> => {
@@ -87,6 +108,7 @@ export default function Recording({ targets, onDone, onCancel }: Props): React.J
           {status === 'recording' && !paused && `記録中 (${steps.length} ステップ)`}
           {status === 'recording' && paused && `一時停止中 (${steps.length} ステップ)`}
           {status === 'stopping' && '停止処理中...'}
+          {status === 'stopped' && `記録を停止しました (${steps.length} ステップ)`}
           {status === 'error' && `録画の開始に失敗しました: ${error}`}
         </span>
       </div>
@@ -110,23 +132,42 @@ export default function Recording({ targets, onDone, onCancel }: Props): React.J
           ))}
         </ul>
 
-        <div className="row">
-          <div className="field field--inline">
-            <label>保存するテスト名</label>
-            <input
-              value={testName}
-              onChange={(e) => setTestName(e.target.value)}
-              placeholder="例: ログインフロー確認"
-            />
+        {status !== 'stopped' && (
+          <div className="row">
+            <button onClick={handleTogglePause} disabled={status !== 'recording'}>
+              {paused ? '記録を再開' : '一時停止'}
+            </button>
+            <button className="primary" onClick={handleStop} disabled={status !== 'recording'}>
+              録画を停止する
+            </button>
+            <button onClick={handleCancel}>キャンセル</button>
           </div>
-          <button onClick={handleTogglePause} disabled={status !== 'recording'}>
-            {paused ? '記録を再開' : '一時停止'}
-          </button>
-          <button className="primary" onClick={handleStopAndSave} disabled={status !== 'recording'}>
-            録画を停止して保存
-          </button>
-          <button onClick={handleCancel}>キャンセル</button>
-        </div>
+        )}
+
+        {status === 'stopped' && (
+          <div className="row">
+            <div className="field field--inline">
+              <label>保存するテスト名</label>
+              <input
+                value={testName}
+                onChange={(e) => {
+                  setTestName(e.target.value)
+                  if (e.target.value.trim()) setNameError(false)
+                }}
+                placeholder="例: ログインフロー確認"
+                autoFocus
+              />
+            </div>
+            <button className="primary" onClick={handleSave} disabled={saving}>
+              {saving ? '保存中...' : 'この内容で保存'}
+            </button>
+            <button onClick={handleDiscard} disabled={saving}>
+              保存せずに破棄
+            </button>
+          </div>
+        )}
+        {nameError && <p className="error">テスト名を入力してください。</p>}
+        {saveError && <p className="error">保存に失敗しました: {saveError}</p>}
       </div>
     </div>
   )

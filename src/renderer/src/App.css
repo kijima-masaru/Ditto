@@ -203,7 +203,7 @@ button.danger:hover {
   background: #fbdad6;
 }
 
-button:not(.primary):not(.danger) {
+button:not(.primary):not(.danger):not(.app-header button) {
   background: #ffffff;
   color: #334e68;
   border: 1.5px solid #aab4bf;
@@ -212,12 +212,12 @@ button:not(.primary):not(.danger) {
   cursor: pointer;
 }
 
-button:not(.primary):not(.danger):hover {
+button:not(.primary):not(.danger):not(.app-header button):hover {
   background: #eef1f4;
   border-color: #8d99a5;
 }
 
-button:not(.primary):not(.danger):disabled {
+button:not(.primary):not(.danger):not(.app-header button):disabled {
   background: #f4f5f7;
   color: #a7b1bc;
   border-color: #d9dde3;
