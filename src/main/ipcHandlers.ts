@@ -8,12 +8,14 @@ import {
   type BrowserWindow,
   type MenuItemConstructorOptions
 } from 'electron'
-import { IPC, type ContextMenuItem, type TestCase, type TestTarget } from '../shared/types'
+import { IPC, type ContextMenuItem, type HotkeyModifier, type TestCase, type TestTarget } from '../shared/types'
 import * as store from './store'
 import { TargetManager } from './targetManager'
 import * as recordingFrame from './recordingFrame'
 import * as screenCapture from './screenCapture'
 import * as clipboardStore from './clipboardStore'
+import * as settingsStore from './settingsStore'
+import { setHotkeyModifier } from './hotkey'
 
 export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
   const manager = new TargetManager()
@@ -219,5 +221,13 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
         }
       })
     })
+  })
+
+  ipcMain.handle(IPC.getSettings, async () => settingsStore.getSettings())
+
+  ipcMain.handle(IPC.setHotkeyModifier, async (_e, modifier: HotkeyModifier) => {
+    const settings = await settingsStore.setHotkeyModifier(modifier)
+    setHotkeyModifier(modifier)
+    return settings
   })
 }

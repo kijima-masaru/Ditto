@@ -5,6 +5,7 @@ import Recording from './components/Recording'
 import TestList from './components/TestList'
 import Playback from './components/Playback'
 import ClipboardPanel from './components/ClipboardPanel'
+import SettingsPanel from './components/SettingsPanel'
 import { useScreenRecording } from './hooks/useScreenRecording'
 
 type View =
@@ -13,6 +14,7 @@ type View =
   | { name: 'test-list' }
   | { name: 'playback'; testCase: TestCase }
   | { name: 'clipboard' }
+  | { name: 'settings' }
 
 function formatElapsed(ms: number): string {
   const total = Math.floor(ms / 1000)
@@ -53,6 +55,13 @@ export default function App(): React.JSX.Element {
             テスト一覧
           </button>
         </nav>
+        <button
+          className={`settings-icon-btn${view.name === 'settings' ? ' active' : ''}`}
+          onClick={() => setView({ name: 'settings' })}
+          title="設定"
+        >
+          ⚙
+        </button>
       </header>
 
       {recorder.recordingState !== 'idle' && (
@@ -105,6 +114,8 @@ export default function App(): React.JSX.Element {
         {view.name === 'playback' && <Playback testCase={view.testCase} onDone={goHome} recorder={recorder} />}
 
         {view.name === 'clipboard' && <ClipboardPanel />}
+
+        {view.name === 'settings' && <SettingsPanel />}
       </main>
     </div>
   )

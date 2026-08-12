@@ -8,6 +8,7 @@ import * as recordingFrame from './recordingFrame'
 import { createTray } from './tray'
 import { setupGlobalHotkey } from './hotkey'
 import { startClipboardWatcher } from './clipboardWatcher'
+import * as settingsStore from './settingsStore'
 
 // 表示名は"Ditto"だが、内部的な名前(userDataの保存先フォルダ名等に影響)は
 // 旧アプリ名のまま固定し、既存インストールのテストデータ・設定を引き継ぐ
@@ -67,7 +68,7 @@ function createWindow(): void {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.flatline.autotesttool')
 
   app.on('browser-window-created', (_, window) => {
@@ -81,7 +82,7 @@ app.whenReady().then(() => {
   if (app.isPackaged) {
     // 起動時に自動でアップデートを確認する(パッケージ化されたビルドのみ。開発時は行わない)
     checkForUpdates()
-    // Ctrl2回押しのホットキーをいつでも使えるよう、ログイン時に自動起動しておく
+    // ホットキーをいつでも使えるよう、ログイン時に自動起動しておく
     app.setLoginItemSettings({ openAtLogin: true })
   }
 
@@ -89,7 +90,8 @@ app.whenReady().then(() => {
     isQuitting = true
     app.quit()
   })
-  setupGlobalHotkey(showMainWindow)
+  const settings = await settingsStore.getSettings()
+  setupGlobalHotkey(settings.hotkeyModifier, showMainWindow)
 
   // ウィンドウが閉じられていてもクリップボード履歴を記録し続けるため、常時監視する
   startClipboardWatcher((entry) => {

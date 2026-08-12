@@ -1,11 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import {
   IPC,
+  type AppSettings,
   type CaptureInfo,
   type ClipboardHistoryEntry,
   type ClipboardTemplate,
   type ClipboardTemplateFolder,
   type ContextMenuItem,
+  type HotkeyModifier,
   type RecordedStep,
   type RecordingFrameBounds,
   type PlaybackProgress,
@@ -101,7 +103,11 @@ const api = {
   },
 
   showContextMenu: (items: ContextMenuItem[]): Promise<string | null> =>
-    ipcRenderer.invoke(IPC.showContextMenu, items)
+    ipcRenderer.invoke(IPC.showContextMenu, items),
+
+  getSettings: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.getSettings),
+  setHotkeyModifier: (modifier: HotkeyModifier): Promise<AppSettings> =>
+    ipcRenderer.invoke(IPC.setHotkeyModifier, modifier)
 }
 
 contextBridge.exposeInMainWorld('api', api)

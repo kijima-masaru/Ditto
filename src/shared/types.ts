@@ -123,6 +123,13 @@ export interface ContextMenuItem {
   submenu?: ContextMenuItem[]
 }
 
+/** ウィンドウ表示ホットキーとして素早く2回押すキー */
+export type HotkeyModifier = 'Ctrl' | 'Shift' | 'Alt'
+
+export interface AppSettings {
+  hotkeyModifier: HotkeyModifier
+}
+
 export type StepStatus = 'pending' | 'running' | 'ok' | 'fail' | 'skipped'
 
 export interface PlaybackProgress {
@@ -214,5 +221,9 @@ export const IPC = {
   deleteClipboardTemplateFolder: 'clipboard:delete-template-folder',
 
   // 汎用の右クリックメニュー(テスト一覧・定型文のフォルダ操作/移動サブメニュー等に使う)
-  showContextMenu: 'context-menu:show'
+  showContextMenu: 'context-menu:show',
+
+  // アプリ設定(ホットキー等)
+  getSettings: 'settings:get',
+  setHotkeyModifier: 'settings:set-hotkey-modifier'
 } as const
