@@ -56,10 +56,8 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
 
       <div className="field">
         <label>ウィンドウ表示ホットキー</label>
-        <p className="hint">
-          「変更」を押してからキーを押してください。修飾キー(Ctrl/Shift/Alt/Win)単体なら素早く2回、
-          修飾キーを押しながら別のキーを押せば1回押しで発火します。
-        </p>
+        <p className="hint">「変更」を押してからキーを押してください。</p>
+        <p className="hint">修飾キー(Ctrl/Shift/Alt/Win)単体なら素早く2回、修飾キーを押しながら別のキーを押せば1回押しで発火します。</p>
         {capturing ? (
           <div className="row inline-form">
             <span className="hotkey-preview">{previewLabel}</span>

@@ -8,7 +8,7 @@ interface Props {
 }
 
 function buildMoveSubmenu(flatFolders: { folder: TestFolder; depth: number }[]): ContextMenuItem[] {
-  const items: ContextMenuItem[] = [{ id: 'move:root', label: 'ルート' }]
+  const items: ContextMenuItem[] = [{ id: 'move:root', label: 'home' }]
   for (const { folder, depth } of flatFolders) {
     items.push({ id: `move:${folder.id}`, label: `${'　'.repeat(depth)}${folder.name}` })
   }
@@ -157,9 +157,9 @@ export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Elem
     <div className="folder-browser" onContextMenu={handleAreaContextMenu}>
       <div className="breadcrumb">
         {currentFolderId === null ? (
-          <span className="breadcrumb-current">ルート</span>
+          <span className="breadcrumb-current">home</span>
         ) : (
-          <button onClick={() => setCurrentFolderId(null)}>ルート</button>
+          <button onClick={() => setCurrentFolderId(null)}>home</button>
         )}
         {breadcrumb.map((f, i) => (
           <span key={f.id} className="breadcrumb-item">
@@ -191,11 +191,14 @@ export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Elem
 
       {subfolders.length === 0 && visibleTests.length === 0 && !creatingFolder ? (
         <div className="panel">
-          <p>
-            {currentFolderId
-              ? 'このフォルダにはテストがありません。'
-              : '保存されたテストはまだありません。右クリックして「新規テストを作成」から記録してください。'}
-          </p>
+          {currentFolderId ? (
+            <p>このフォルダにはテストがありません。</p>
+          ) : (
+            <>
+              <p>保存されたテストケースはまだありません。</p>
+              <p>右クリックして「新規テストを作成」から記録してください。</p>
+            </>
+          )}
         </div>
       ) : (
         <>

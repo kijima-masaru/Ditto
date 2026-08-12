@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { app, shell, BrowserWindow, screen } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { IPC } from '../shared/types'
@@ -19,12 +19,24 @@ let mainWindow: BrowserWindow | null = null
 // トレイメニューの「終了」からのみ本当に終了する。
 let isQuitting = false
 
+// ウィンドウをマウスカーソル位置(中心が合うよう)に移動する。カーソルがいる
+// ディスプレイの作業領域からはみ出さないようクランプする
+function positionAtCursor(win: BrowserWindow): void {
+  const cursor = screen.getCursorScreenPoint()
+  const { workArea } = screen.getDisplayNearestPoint(cursor)
+  const [width, height] = win.getSize()
+  const x = Math.min(Math.max(cursor.x - Math.round(width / 2), workArea.x), workArea.x + workArea.width - width)
+  const y = Math.min(Math.max(cursor.y - Math.round(height / 2), workArea.y), workArea.y + workArea.height - height)
+  win.setPosition(x, y)
+}
+
 function showMainWindow(): void {
   if (!mainWindow || mainWindow.isDestroyed()) {
     createWindow()
     return
   }
   if (mainWindow.isMinimized()) mainWindow.restore()
+  positionAtCursor(mainWindow)
   mainWindow.show()
   mainWindow.focus()
 }

@@ -15,7 +15,7 @@ function truncate(text: string, max = 80): string {
 }
 
 function buildMoveSubmenu(flatFolders: { folder: ClipboardTemplateFolder; depth: number }[]): ContextMenuItem[] {
-  const items: ContextMenuItem[] = [{ id: 'move:root', label: 'ルート' }]
+  const items: ContextMenuItem[] = [{ id: 'move:root', label: 'home' }]
   for (const { folder, depth } of flatFolders) {
     items.push({ id: `move:${folder.id}`, label: `${'　'.repeat(depth)}${folder.name}` })
   }
@@ -150,7 +150,7 @@ export default function ClipboardPanel(): React.JSX.Element {
       items.push({ id: 'sep1', type: 'separator' })
       items.push({ id: 'go-up', label: '上の階層に戻る' })
       if (currentFolder?.parentId !== null) {
-        items.push({ id: 'go-root', label: 'ルートに移動' })
+        items.push({ id: 'go-root', label: 'homeに移動' })
       }
     }
     const result = await window.api.showContextMenu(items)
@@ -197,7 +197,7 @@ export default function ClipboardPanel(): React.JSX.Element {
   }
 
   return (
-    <div>
+    <div className="clipboard-panel">
       <div className="clipboard-subtabs">
         <button className={subTab === 'history' ? 'active' : ''} onClick={() => setSubTab('history')}>
           履歴
@@ -237,7 +237,7 @@ export default function ClipboardPanel(): React.JSX.Element {
         <div className="folder-browser" onContextMenu={handleAreaContextMenu}>
           {breadcrumb.length > 0 && (
             <div className="breadcrumb">
-              <button onClick={() => setCurrentFolderId(null)}>ルート</button>
+              <button onClick={() => setCurrentFolderId(null)}>home</button>
               {breadcrumb.map((f, i) => (
                 <span key={f.id} className="breadcrumb-item">
                   <span className="breadcrumb-sep">/</span>
@@ -323,7 +323,8 @@ export default function ClipboardPanel(): React.JSX.Element {
 
           {visibleTemplates.length === 0 && !creating && subfolders.length === 0 ? (
             <div className="panel">
-              <p>定型文はまだありません。右クリックして「新規定型文を作成」、または履歴を右クリックして登録できます。</p>
+              <p>定型文はまだありません。</p>
+              <p>右クリックして「新規定型文を作成」、または履歴を右クリックして登録できます。</p>
             </div>
           ) : (
             <ul className="clip-list">
