@@ -1,22 +1,25 @@
 import { useEffect, useState } from 'react'
-import type { TestCase, TestFolder } from '../../../shared/types'
+import type { ContextMenuItem, TestCase, TestFolder } from '../../../shared/types'
 import { flattenFolders, folderBreadcrumb } from '../folderTree'
 
 interface Props {
   onRun: (testCase: TestCase) => void
+  onCreateTest: () => void
 }
 
-function formatDate(iso?: string): string {
-  if (!iso) return '未実行'
-  return new Date(iso).toLocaleString('ja-JP')
+function buildMoveSubmenu(flatFolders: { folder: TestFolder; depth: number }[]): ContextMenuItem[] {
+  const items: ContextMenuItem[] = [{ id: 'move:root', label: 'ルート' }]
+  for (const { folder, depth } of flatFolders) {
+    items.push({ id: `move:${folder.id}`, label: `${'　'.repeat(depth)}${folder.name}` })
+  }
+  return items
 }
 
-export default function TestList({ onRun }: Props): React.JSX.Element {
+export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Element {
   const [tests, setTests] = useState<TestCase[]>([])
   const [folders, setFolders] = useState<TestFolder[]>([])
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [movingTestId, setMovingTestId] = useState<string | null>(null)
 
   const [renamingTestId, setRenamingTestId] = useState<string | null>(null)
   const [renameTestInput, setRenameTestInput] = useState('')
@@ -58,9 +61,8 @@ export default function TestList({ onRun }: Props): React.JSX.Element {
     reload()
   }
 
-  const handleMove = async (t: TestCase, folderId: string | null): Promise<void> => {
-    await window.api.moveTest(t.id, folderId)
-    setMovingTestId(null)
+  const handleMoveTest = async (id: string, folderId: string | null): Promise<void> => {
+    await window.api.moveTest(id, folderId)
     reload()
   }
 
@@ -91,17 +93,68 @@ export default function TestList({ onRun }: Props): React.JSX.Element {
     reload()
   }
 
+  const flatFolders = flattenFolders(folders)
+  const breadcrumb = folderBreadcrumb(folders, currentFolderId)
+  const currentFolder = folders.find((f) => f.id === currentFolderId) ?? null
+
+  const handleAreaContextMenu = async (e: React.MouseEvent): Promise<void> => {
+    e.preventDefault()
+    const items: ContextMenuItem[] = [
+      { id: 'create-folder', label: '新規フォルダを作成' },
+      { id: 'create-test', label: '新規テストを作成' }
+    ]
+    if (currentFolderId !== null) {
+      items.push({ id: 'sep1', type: 'separator' })
+      items.push({ id: 'go-up', label: '上の階層に戻る' })
+    }
+    const result = await window.api.showContextMenu(items)
+    if (result === 'create-folder') {
+      setCreatingFolder(true)
+      setNewFolderName('')
+    } else if (result === 'create-test') {
+      onCreateTest()
+    } else if (result === 'go-up') {
+      setCurrentFolderId(currentFolder?.parentId ?? null)
+    }
+  }
+
+  const handleFolderContextMenu = async (e: React.MouseEvent, f: TestFolder): Promise<void> => {
+    e.preventDefault()
+    e.stopPropagation()
+    const result = await window.api.showContextMenu([
+      { id: 'rename', label: '名前変更' },
+      { id: 'delete', label: '削除' }
+    ])
+    if (result === 'rename') startRenameFolder(f)
+    else if (result === 'delete') setDeletingFolderId(f.id)
+  }
+
+  const handleTestContextMenu = async (e: React.MouseEvent, t: TestCase): Promise<void> => {
+    e.preventDefault()
+    e.stopPropagation()
+    const result = await window.api.showContextMenu([
+      { id: 'run', label: '実行' },
+      { id: 'rename', label: '名前変更' },
+      { id: 'move', label: '移動', submenu: buildMoveSubmenu(flatFolders) },
+      { id: 'sep', type: 'separator' },
+      { id: 'delete', label: '削除' }
+    ])
+    if (result === 'run') onRun(t)
+    else if (result === 'rename') startRenameTest(t)
+    else if (result === 'delete') setDeletingTestId(t.id)
+    else if (result?.startsWith('move:')) {
+      const dest = result.slice('move:'.length)
+      handleMoveTest(t.id, dest === 'root' ? null : dest)
+    }
+  }
+
   if (loading) return <div className="panel">読み込み中...</div>
 
   const subfolders = folders.filter((f) => f.parentId === currentFolderId)
   const visibleTests = tests.filter((t) => (t.folderId ?? null) === currentFolderId)
 
-  const breadcrumb = folderBreadcrumb(folders, currentFolderId)
-
-  const flatFolders = flattenFolders(folders)
-
   return (
-    <div>
+    <div className="folder-browser" onContextMenu={handleAreaContextMenu}>
       <div className="breadcrumb">
         {currentFolderId === null ? (
           <span className="breadcrumb-current">ルート</span>
@@ -118,19 +171,10 @@ export default function TestList({ onRun }: Props): React.JSX.Element {
             )}
           </span>
         ))}
-        <button
-          className="new-folder-btn"
-          onClick={() => {
-            setCreatingFolder((v) => !v)
-            setNewFolderName('')
-          }}
-        >
-          + 新規フォルダ
-        </button>
       </div>
 
       {creatingFolder && (
-        <div className="row inline-form">
+        <div className="row inline-form" onContextMenu={(e) => e.stopPropagation()}>
           <input
             value={newFolderName}
             onChange={(e) => setNewFolderName(e.target.value)}
@@ -150,7 +194,7 @@ export default function TestList({ onRun }: Props): React.JSX.Element {
           <p>
             {currentFolderId
               ? 'このフォルダにはテストがありません。'
-              : '保存されたテストはまだありません。「テスト作成」からテストを記録してください。'}
+              : '保存されたテストはまだありません。右クリックして「新規テストを作成」から記録してください。'}
           </p>
         </div>
       ) : (
@@ -158,7 +202,7 @@ export default function TestList({ onRun }: Props): React.JSX.Element {
           {subfolders.length > 0 && (
             <ul className="folder-cards">
               {subfolders.map((f) => (
-                <li key={f.id} className="folder-card">
+                <li key={f.id} className="folder-card" onContextMenu={(e) => handleFolderContextMenu(e, f)}>
                   {renamingFolderId === f.id ? (
                     <div className="row inline-form">
                       <input
@@ -181,17 +225,9 @@ export default function TestList({ onRun }: Props): React.JSX.Element {
                       <button onClick={() => setDeletingFolderId(null)}>キャンセル</button>
                     </div>
                   ) : (
-                    <>
-                      <button className="folder-card-name" onClick={() => setCurrentFolderId(f.id)}>
-                        📁 {f.name}
-                      </button>
-                      <div className="folder-card-actions">
-                        <button onClick={() => startRenameFolder(f)}>名前変更</button>
-                        <button className="danger" onClick={() => setDeletingFolderId(f.id)}>
-                          削除
-                        </button>
-                      </div>
-                    </>
+                    <button className="folder-card-name" onClick={() => setCurrentFolderId(f.id)}>
+                      📁 {f.name}
+                    </button>
                   )}
                 </li>
               ))}
@@ -199,23 +235,9 @@ export default function TestList({ onRun }: Props): React.JSX.Element {
           )}
 
           {visibleTests.length > 0 && (
-            <ul className="test-cards">
+            <ul className="test-name-list">
               {visibleTests.map((t) => (
-                <li key={t.id} className="test-card">
-                  <div className="test-card-title">{t.name}</div>
-                  <div className="test-card-badges">
-                    {t.targets.map((target) => (
-                      <span key={target.id} className="badge">
-                        {target.kind === 'web' ? 'WEB' : 'APP'} {target.label}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="test-card-meta">
-                    <span>{t.steps.length}ステップ</span>
-                    <span>実行: {formatDate(t.lastRunAt)}</span>
-                    <span>更新: {formatDate(t.updatedAt)}</span>
-                  </div>
-
+                <li key={t.id}>
                   {renamingTestId === t.id ? (
                     <div className="row inline-form">
                       <input
@@ -238,32 +260,8 @@ export default function TestList({ onRun }: Props): React.JSX.Element {
                       <button onClick={() => setDeletingTestId(null)}>キャンセル</button>
                     </div>
                   ) : (
-                    <div className="test-card-actions">
-                      <button className="primary" onClick={() => onRun(t)}>
-                        実行
-                      </button>
-                      <button onClick={() => startRenameTest(t)}>名前変更</button>
-                      <button onClick={() => setMovingTestId(movingTestId === t.id ? null : t.id)}>移動</button>
-                      <button className="danger" onClick={() => setDeletingTestId(t.id)}>
-                        削除
-                      </button>
-                    </div>
-                  )}
-
-                  {movingTestId === t.id && (
-                    <div className="move-picker">
-                      <select
-                        defaultValue={t.folderId ?? ''}
-                        onChange={(e) => handleMove(t, e.target.value || null)}
-                      >
-                        <option value="">ルート</option>
-                        {flatFolders.map(({ folder, depth }) => (
-                          <option key={folder.id} value={folder.id}>
-                            {'　'.repeat(depth)}
-                            {folder.name}
-                          </option>
-                        ))}
-                      </select>
+                    <div className="test-name-item" onContextMenu={(e) => handleTestContextMenu(e, t)}>
+                      {t.name}
                     </div>
                   )}
                 </li>

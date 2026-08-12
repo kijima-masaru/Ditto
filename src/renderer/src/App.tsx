@@ -52,12 +52,6 @@ export default function App(): React.JSX.Element {
           >
             テスト一覧
           </button>
-          <button
-            className={view.name === 'target-select' ? 'active' : ''}
-            onClick={() => setView({ name: 'target-select' })}
-          >
-            テスト作成
-          </button>
         </nav>
       </header>
 
@@ -101,7 +95,11 @@ export default function App(): React.JSX.Element {
         {view.name === 'recording' && <Recording targets={view.targets} onDone={goHome} onCancel={goHome} />}
 
         {view.name === 'test-list' && (
-          <TestList key={refreshKey} onRun={(testCase) => setView({ name: 'playback', testCase })} />
+          <TestList
+            key={refreshKey}
+            onRun={(testCase) => setView({ name: 'playback', testCase })}
+            onCreateTest={() => setView({ name: 'target-select' })}
+          />
         )}
 
         {view.name === 'playback' && <Playback testCase={view.testCase} onDone={goHome} recorder={recorder} />}

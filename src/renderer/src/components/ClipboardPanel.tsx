@@ -1,16 +1,25 @@
 import { useEffect, useState } from 'react'
-import type { ClipboardHistoryEntry, ClipboardTemplate, ClipboardTemplateFolder } from '../../../shared/types'
+import type {
+  ClipboardHistoryEntry,
+  ClipboardTemplate,
+  ClipboardTemplateFolder,
+  ContextMenuItem
+} from '../../../shared/types'
 import { flattenFolders, folderBreadcrumb } from '../folderTree'
 
 type SubTab = 'history' | 'templates'
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleString('ja-JP')
-}
-
 function truncate(text: string, max = 80): string {
   const oneLine = text.replace(/\s+/g, ' ').trim()
   return oneLine.length > max ? `${oneLine.slice(0, max)}…` : oneLine
+}
+
+function buildMoveSubmenu(flatFolders: { folder: ClipboardTemplateFolder; depth: number }[]): ContextMenuItem[] {
+  const items: ContextMenuItem[] = [{ id: 'move:root', label: 'ルート' }]
+  for (const { folder, depth } of flatFolders) {
+    items.push({ id: `move:${folder.id}`, label: `${'　'.repeat(depth)}${folder.name}` })
+  }
+  return items
 }
 
 export default function ClipboardPanel(): React.JSX.Element {
@@ -29,9 +38,7 @@ export default function ClipboardPanel(): React.JSX.Element {
   const [editText, setEditText] = useState('')
   const [editLabel, setEditLabel] = useState('')
 
-  const [clearingHistory, setClearingHistory] = useState(false)
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null)
-  const [movingTemplateId, setMovingTemplateId] = useState<string | null>(null)
 
   const [creatingFolder, setCreatingFolder] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
@@ -67,17 +74,6 @@ export default function ClipboardPanel(): React.JSX.Element {
     window.api.showClipboardHistoryMenu(entry.id, entry.text)
   }
 
-  const handleDeleteHistory = async (id: string): Promise<void> => {
-    await window.api.deleteClipboardHistoryEntry(id)
-    reload()
-  }
-
-  const handleClearHistory = async (): Promise<void> => {
-    await window.api.clearClipboardHistory()
-    setClearingHistory(false)
-    reload()
-  }
-
   const handleCreateTemplate = async (): Promise<void> => {
     if (!newText.trim()) return
     await window.api.createClipboardTemplate(newText.trim(), newLabel.trim() || undefined, currentFolderId)
@@ -108,7 +104,6 @@ export default function ClipboardPanel(): React.JSX.Element {
 
   const handleMoveTemplate = async (id: string, folderId: string | null): Promise<void> => {
     await window.api.moveClipboardTemplate(id, folderId)
-    setMovingTemplateId(null)
     reload()
   }
 
@@ -143,43 +138,78 @@ export default function ClipboardPanel(): React.JSX.Element {
   const visibleTemplates = templates.filter((t) => (t.folderId ?? null) === currentFolderId)
   const breadcrumb = folderBreadcrumb(templateFolders, currentFolderId)
   const flatFolders = flattenFolders(templateFolders)
+  const currentFolder = templateFolders.find((f) => f.id === currentFolderId) ?? null
+
+  const handleAreaContextMenu = async (e: React.MouseEvent): Promise<void> => {
+    e.preventDefault()
+    const items: ContextMenuItem[] = [
+      { id: 'create-folder', label: '新規フォルダを作成' },
+      { id: 'create-template', label: '新規定型文を作成' }
+    ]
+    if (currentFolderId !== null) {
+      items.push({ id: 'sep1', type: 'separator' })
+      items.push({ id: 'go-up', label: '上の階層に戻る' })
+      if (currentFolder?.parentId !== null) {
+        items.push({ id: 'go-root', label: 'ルートに移動' })
+      }
+    }
+    const result = await window.api.showContextMenu(items)
+    if (result === 'create-folder') {
+      setCreatingFolder(true)
+      setNewFolderName('')
+    } else if (result === 'create-template') {
+      setCreating(true)
+      setNewText('')
+      setNewLabel('')
+    } else if (result === 'go-up') {
+      setCurrentFolderId(currentFolder?.parentId ?? null)
+    } else if (result === 'go-root') {
+      setCurrentFolderId(null)
+    }
+  }
+
+  const handleFolderContextMenu = async (e: React.MouseEvent, f: ClipboardTemplateFolder): Promise<void> => {
+    e.preventDefault()
+    e.stopPropagation()
+    const result = await window.api.showContextMenu([
+      { id: 'rename', label: '名前変更' },
+      { id: 'delete', label: '削除' }
+    ])
+    if (result === 'rename') startRenameFolder(f)
+    else if (result === 'delete') setDeletingFolderId(f.id)
+  }
+
+  const handleTemplateContextMenu = async (e: React.MouseEvent, t: ClipboardTemplate): Promise<void> => {
+    e.preventDefault()
+    e.stopPropagation()
+    const result = await window.api.showContextMenu([
+      { id: 'edit', label: '編集' },
+      { id: 'move', label: '移動', submenu: buildMoveSubmenu(flatFolders) },
+      { id: 'sep', type: 'separator' },
+      { id: 'delete', label: '削除' }
+    ])
+    if (result === 'edit') startEdit(t)
+    else if (result === 'delete') setDeletingTemplateId(t.id)
+    else if (result?.startsWith('move:')) {
+      const dest = result.slice('move:'.length)
+      handleMoveTemplate(t.id, dest === 'root' ? null : dest)
+    }
+  }
 
   return (
     <div>
       <div className="clipboard-subtabs">
-        <button
-          className={subTab === 'history' ? 'active' : ''}
-          onClick={() => setSubTab('history')}
-        >
+        <button className={subTab === 'history' ? 'active' : ''} onClick={() => setSubTab('history')}>
           履歴
         </button>
-        <button
-          className={subTab === 'templates' ? 'active' : ''}
-          onClick={() => setSubTab('templates')}
-        >
+        <button className={subTab === 'templates' ? 'active' : ''} onClick={() => setSubTab('templates')}>
           定型文
         </button>
       </div>
 
       {subTab === 'history' && (
         <>
-          <div className="row clipboard-toolbar">
-            <span className="hint">左クリックでコピー、右クリックで定型文登録などの操作ができます。</span>
-            {history.length > 0 &&
-              (clearingHistory ? (
-                <>
-                  <span className="hint">履歴をすべて削除しますか?</span>
-                  <button className="danger" onClick={handleClearHistory}>
-                    削除する
-                  </button>
-                  <button onClick={() => setClearingHistory(false)}>キャンセル</button>
-                </>
-              ) : (
-                <button className="danger" onClick={() => setClearingHistory(true)}>
-                  履歴をクリア
-                </button>
-              ))}
-          </div>
+          <p className="hint">左クリックでコピー、右クリックで定型文登録などの操作ができます。</p>
 
           {history.length === 0 ? (
             <div className="panel">
@@ -195,18 +225,6 @@ export default function ClipboardPanel(): React.JSX.Element {
                   onContextMenu={(e) => handleHistoryContextMenu(e, h)}
                 >
                   <div className="clip-item-text">{truncate(h.text)}</div>
-                  <div className="clip-item-meta">
-                    <span>{formatTime(h.copiedAt)}</span>
-                    <button
-                      className="danger clip-item-delete"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteHistory(h.id)
-                      }}
-                    >
-                      削除
-                    </button>
-                  </div>
                   {copiedId === h.id && <span className="clip-copied-badge">コピーしました</span>}
                 </li>
               ))}
@@ -216,36 +234,25 @@ export default function ClipboardPanel(): React.JSX.Element {
       )}
 
       {subTab === 'templates' && (
-        <>
-          <div className="breadcrumb">
-            {currentFolderId === null ? (
-              <span className="breadcrumb-current">ルート</span>
-            ) : (
+        <div className="folder-browser" onContextMenu={handleAreaContextMenu}>
+          {breadcrumb.length > 0 && (
+            <div className="breadcrumb">
               <button onClick={() => setCurrentFolderId(null)}>ルート</button>
-            )}
-            {breadcrumb.map((f, i) => (
-              <span key={f.id} className="breadcrumb-item">
-                <span className="breadcrumb-sep">/</span>
-                {i === breadcrumb.length - 1 ? (
-                  <span className="breadcrumb-current">{f.name}</span>
-                ) : (
-                  <button onClick={() => setCurrentFolderId(f.id)}>{f.name}</button>
-                )}
-              </span>
-            ))}
-            <button
-              className="new-folder-btn"
-              onClick={() => {
-                setCreatingFolder((v) => !v)
-                setNewFolderName('')
-              }}
-            >
-              + 新規フォルダ
-            </button>
-          </div>
+              {breadcrumb.map((f, i) => (
+                <span key={f.id} className="breadcrumb-item">
+                  <span className="breadcrumb-sep">/</span>
+                  {i === breadcrumb.length - 1 ? (
+                    <span className="breadcrumb-current">{f.name}</span>
+                  ) : (
+                    <button onClick={() => setCurrentFolderId(f.id)}>{f.name}</button>
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
 
           {creatingFolder && (
-            <div className="row inline-form">
+            <div className="row inline-form" onContextMenu={(e) => e.stopPropagation()}>
               <input
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
@@ -263,7 +270,7 @@ export default function ClipboardPanel(): React.JSX.Element {
           {subfolders.length > 0 && (
             <ul className="folder-cards">
               {subfolders.map((f) => (
-                <li key={f.id} className="folder-card">
+                <li key={f.id} className="folder-card" onContextMenu={(e) => handleFolderContextMenu(e, f)}>
                   {renamingFolderId === f.id ? (
                     <div className="row inline-form">
                       <input
@@ -286,31 +293,17 @@ export default function ClipboardPanel(): React.JSX.Element {
                       <button onClick={() => setDeletingFolderId(null)}>キャンセル</button>
                     </div>
                   ) : (
-                    <>
-                      <button className="folder-card-name" onClick={() => setCurrentFolderId(f.id)}>
-                        📁 {f.name}
-                      </button>
-                      <div className="folder-card-actions">
-                        <button onClick={() => startRenameFolder(f)}>名前変更</button>
-                        <button className="danger" onClick={() => setDeletingFolderId(f.id)}>
-                          削除
-                        </button>
-                      </div>
-                    </>
+                    <button className="folder-card-name" onClick={() => setCurrentFolderId(f.id)}>
+                      📁 {f.name}
+                    </button>
                   )}
                 </li>
               ))}
             </ul>
           )}
 
-          <div className="row clipboard-toolbar">
-            <button className="primary" onClick={() => setCreating((v) => !v)}>
-              {creating ? 'キャンセル' : '+ 新規作成'}
-            </button>
-          </div>
-
           {creating && (
-            <div className="panel clip-edit-form">
+            <div className="panel clip-edit-form" onContextMenu={(e) => e.stopPropagation()}>
               <div className="field">
                 <label>ラベル(任意)</label>
                 <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="例: 挨拶文" />
@@ -319,15 +312,18 @@ export default function ClipboardPanel(): React.JSX.Element {
                 <label>本文</label>
                 <textarea value={newText} onChange={(e) => setNewText(e.target.value)} rows={4} />
               </div>
-              <button className="primary" onClick={handleCreateTemplate} disabled={!newText.trim()}>
-                保存
-              </button>
+              <div className="row">
+                <button className="primary" onClick={handleCreateTemplate} disabled={!newText.trim()}>
+                  保存
+                </button>
+                <button onClick={() => setCreating(false)}>キャンセル</button>
+              </div>
             </div>
           )}
 
           {visibleTemplates.length === 0 && !creating && subfolders.length === 0 ? (
             <div className="panel">
-              <p>定型文はまだありません。「新規作成」、または履歴を右クリックして登録できます。</p>
+              <p>定型文はまだありません。右クリックして「新規定型文を作成」、または履歴を右クリックして登録できます。</p>
             </div>
           ) : (
             <ul className="clip-list">
@@ -349,87 +345,30 @@ export default function ClipboardPanel(): React.JSX.Element {
                       <button onClick={() => setEditingId(null)}>キャンセル</button>
                     </div>
                   </li>
+                ) : deletingTemplateId === t.id ? (
+                  <li key={t.id} className="row inline-form">
+                    <span className="hint">削除しますか?</span>
+                    <button className="danger" onClick={() => handleDeleteTemplate(t.id)}>
+                      削除する
+                    </button>
+                    <button onClick={() => setDeletingTemplateId(null)}>キャンセル</button>
+                  </li>
                 ) : (
                   <li
                     key={t.id}
                     className={`clip-item${copiedId === t.id ? ' clip-item--copied' : ''}`}
                     onClick={() => handleCopy(t.id, t.text)}
+                    onContextMenu={(e) => handleTemplateContextMenu(e, t)}
                   >
                     {t.label && <div className="clip-item-label">{t.label}</div>}
                     <div className="clip-item-text">{truncate(t.text)}</div>
-                    {deletingTemplateId === t.id ? (
-                      <div className="clip-item-meta">
-                        <span>削除しますか?</span>
-                        <button
-                          className="danger"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDeleteTemplate(t.id)
-                          }}
-                        >
-                          削除する
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setDeletingTemplateId(null)
-                          }}
-                        >
-                          キャンセル
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="clip-item-meta">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            startEdit(t)
-                          }}
-                        >
-                          編集
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setMovingTemplateId(movingTemplateId === t.id ? null : t.id)
-                          }}
-                        >
-                          移動
-                        </button>
-                        <button
-                          className="danger"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setDeletingTemplateId(t.id)
-                          }}
-                        >
-                          削除
-                        </button>
-                      </div>
-                    )}
-                    {movingTemplateId === t.id && (
-                      <div className="move-picker" onClick={(e) => e.stopPropagation()}>
-                        <select
-                          defaultValue={t.folderId ?? ''}
-                          onChange={(e) => handleMoveTemplate(t.id, e.target.value || null)}
-                        >
-                          <option value="">ルート</option>
-                          {flatFolders.map(({ folder, depth }) => (
-                            <option key={folder.id} value={folder.id}>
-                              {'　'.repeat(depth)}
-                              {folder.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
                     {copiedId === t.id && <span className="clip-copied-badge">コピーしました</span>}
                   </li>
                 )
               )}
             </ul>
           )}
-        </>
+        </div>
       )}
     </div>
   )

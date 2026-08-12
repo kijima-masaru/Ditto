@@ -5,6 +5,7 @@ import {
   type ClipboardHistoryEntry,
   type ClipboardTemplate,
   type ClipboardTemplateFolder,
+  type ContextMenuItem,
   type RecordedStep,
   type RecordingFrameBounds,
   type PlaybackProgress,
@@ -97,7 +98,10 @@ const api = {
     const listener = (): void => cb()
     ipcRenderer.on(IPC.clipboardDataChanged, listener)
     return () => ipcRenderer.removeListener(IPC.clipboardDataChanged, listener)
-  }
+  },
+
+  showContextMenu: (items: ContextMenuItem[]): Promise<string | null> =>
+    ipcRenderer.invoke(IPC.showContextMenu, items)
 }
 
 contextBridge.exposeInMainWorld('api', api)

@@ -1,5 +1,14 @@
-import { ipcMain, dialog, desktopCapturer, shell, clipboard, Menu, type BrowserWindow } from 'electron'
-import { IPC, type TestCase, type TestTarget } from '../shared/types'
+import {
+  ipcMain,
+  dialog,
+  desktopCapturer,
+  shell,
+  clipboard,
+  Menu,
+  type BrowserWindow,
+  type MenuItemConstructorOptions
+} from 'electron'
+import { IPC, type ContextMenuItem, type TestCase, type TestTarget } from '../shared/types'
 import * as store from './store'
 import { TargetManager } from './targetManager'
 import * as recordingFrame from './recordingFrame'
@@ -181,5 +190,34 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
       }
     ])
     if (w) menu.popup({ window: w })
+  })
+
+  ipcMain.handle(IPC.showContextMenu, async (_e, items: ContextMenuItem[]) => {
+    const w = getWindow()
+    return new Promise<string | null>((resolve) => {
+      let resolved = false
+      const build = (list: ContextMenuItem[]): MenuItemConstructorOptions[] =>
+        list.map((item) => {
+          if (item.type === 'separator') return { type: 'separator' }
+          if (item.submenu) {
+            return { label: item.label, enabled: item.enabled !== false, submenu: build(item.submenu) }
+          }
+          return {
+            label: item.label,
+            enabled: item.enabled !== false,
+            click: () => {
+              resolved = true
+              resolve(item.id)
+            }
+          }
+        })
+      const menu = Menu.buildFromTemplate(build(items))
+      menu.popup({
+        window: w ?? undefined,
+        callback: () => {
+          if (!resolved) resolve(null)
+        }
+      })
+    })
   })
 }

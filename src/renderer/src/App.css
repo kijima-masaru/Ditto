@@ -270,56 +270,26 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   background: #fdecea;
 }
 
-.test-cards {
+.test-name-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 
-.test-card {
+.test-name-item {
   background: white;
-  border-radius: 10px;
-  padding: 12px;
+  border-radius: 8px;
+  padding: 10px 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  font-size: 13px;
+  cursor: default;
 }
 
-.test-card-title {
-  font-weight: 700;
-  font-size: 14px;
-}
-
-.test-card-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.test-card-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 11px;
-  color: #829ab1;
-}
-
-.test-card-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
-}
-
-.test-card-actions button {
-  flex: 1;
-  min-width: 64px;
-  font-size: 12px;
-  padding: 7px 8px;
+.test-name-item:hover {
+  background: #f7faff;
 }
 
 .badge {
@@ -649,16 +619,6 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   font-weight: 600;
 }
 
-.clipboard-toolbar {
-  margin-bottom: 10px;
-  justify-content: space-between;
-}
-
-.clipboard-toolbar .hint {
-  flex: 1;
-  min-width: 0;
-}
-
 .clip-list {
   list-style: none;
   margin: 0;
@@ -701,20 +661,6 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   color: #1a1a1a;
   word-break: break-all;
   white-space: pre-wrap;
-}
-
-.clip-item-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 11px;
-  color: #829ab1;
-}
-
-.clip-item-meta button {
-  font-size: 11px;
-  padding: 3px 8px;
 }
 
 .clip-copied-badge {

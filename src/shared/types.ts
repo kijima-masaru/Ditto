@@ -111,6 +111,18 @@ export interface ClipboardTemplateFolder {
   parentId: string | null
 }
 
+/**
+ * 汎用のネイティブ右クリックメニュー記述。rendererが内容を組み立て、mainがElectronの
+ * Menu.popup()で表示する。選択された項目のidを返し、何も選ばれなければnullを返す。
+ */
+export interface ContextMenuItem {
+  id: string
+  label?: string
+  type?: 'separator'
+  enabled?: boolean
+  submenu?: ContextMenuItem[]
+}
+
 export type StepStatus = 'pending' | 'running' | 'ok' | 'fail' | 'skipped'
 
 export interface PlaybackProgress {
@@ -199,5 +211,8 @@ export const IPC = {
   listClipboardTemplateFolders: 'clipboard:list-template-folders',
   createClipboardTemplateFolder: 'clipboard:create-template-folder',
   renameClipboardTemplateFolder: 'clipboard:rename-template-folder',
-  deleteClipboardTemplateFolder: 'clipboard:delete-template-folder'
+  deleteClipboardTemplateFolder: 'clipboard:delete-template-folder',
+
+  // 汎用の右クリックメニュー(テスト一覧・定型文のフォルダ操作/移動サブメニュー等に使う)
+  showContextMenu: 'context-menu:show'
 } as const
