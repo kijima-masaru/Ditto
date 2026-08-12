@@ -85,7 +85,7 @@ export default function Playback({ testCase, onDone }: Props): React.JSX.Element
         </ol>
 
         <button className="primary" onClick={onDone}>
-          自動テストに戻る
+          テストに戻る
         </button>
       </div>
     </div>

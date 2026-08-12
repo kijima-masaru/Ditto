@@ -68,15 +68,17 @@ export default function App(): React.JSX.Element {
         <nav>
           <button
             className={view.name === 'clipboard' ? 'active' : ''}
+            onMouseEnter={() => setView({ name: 'clipboard' })}
             onClick={() => setView({ name: 'clipboard' })}
           >
             クリップボード
           </button>
           <button
             className={view.name === 'test-list' ? 'active' : ''}
+            onMouseEnter={() => setView({ name: 'test-list' })}
             onClick={() => setView({ name: 'test-list' })}
           >
-            自動テスト
+            テスト
           </button>
         </nav>
         <button
