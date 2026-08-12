@@ -25,6 +25,7 @@ function buildMoveSubmenu(flatFolders: { folder: ClipboardTemplateFolder; depth:
 
 export default function ClipboardPanel(): React.JSX.Element {
   const [subTab, setSubTab] = useState<SubTab>('history')
+  const [historyQuery, setHistoryQuery] = useState('')
   const [history, setHistory] = useState<ClipboardHistoryEntry[]>([])
   const [templates, setTemplates] = useState<ClipboardTemplate[]>([])
   const [templateFolders, setTemplateFolders] = useState<ClipboardTemplateFolder[]>([])
@@ -137,6 +138,11 @@ export default function ClipboardPanel(): React.JSX.Element {
     reload()
   }
 
+  const trimmedHistoryQuery = historyQuery.trim().toLowerCase()
+  const filteredHistory = trimmedHistoryQuery
+    ? history.filter((h) => h.text.toLowerCase().includes(trimmedHistoryQuery))
+    : history
+
   const subfolders = templateFolders.filter((f) => f.parentId === currentFolderId)
   const visibleTemplates = templates.filter((t) => (t.folderId ?? null) === currentFolderId)
   const breadcrumb = folderBreadcrumb(templateFolders, currentFolderId)
@@ -222,13 +228,32 @@ export default function ClipboardPanel(): React.JSX.Element {
         <>
           <p className="hint">左クリックでコピー、右クリックで定型文登録などの操作ができます。</p>
 
+          {history.length > 0 && (
+            <div className="history-search">
+              <input
+                value={historyQuery}
+                onChange={(e) => setHistoryQuery(e.target.value)}
+                placeholder="履歴を検索"
+              />
+              {historyQuery && (
+                <button className="history-search-clear" onClick={() => setHistoryQuery('')} title="検索をクリア">
+                  ×
+                </button>
+              )}
+            </div>
+          )}
+
           {history.length === 0 ? (
             <div className="panel">
               <p>クリップボード履歴はまだありません。テキストをコピーすると自動的に記録されます。</p>
             </div>
+          ) : filteredHistory.length === 0 ? (
+            <div className="panel">
+              <p>「{historyQuery}」に一致する履歴が見つかりません。</p>
+            </div>
           ) : (
             <ul className="clip-list">
-              {history.map((h) => (
+              {filteredHistory.map((h) => (
                 <li
                   key={h.id}
                   className={`clip-item${copiedId === h.id ? ' clip-item--copied' : ''}`}
