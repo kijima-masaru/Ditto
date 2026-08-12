@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { ContextMenuItem, TestCase, TestFolder } from '../../../shared/types'
 import { flattenFolders, folderBreadcrumb } from '../folderTree'
 import { useHoverIntent } from '../hooks/useHoverIntent'
+import { useDragReorder } from '../hooks/useDragReorder'
 
 interface Props {
   onRun: (testCase: TestCase) => void
@@ -14,6 +15,16 @@ function buildMoveSubmenu(flatFolders: { folder: TestFolder; depth: number }[]):
     items.push({ id: `move:${folder.id}`, label: `${'　'.repeat(depth)}${folder.name}` })
   }
   return items
+}
+
+/** idの並び順を1つ上/下の要素と入れ替えた新しい配列を返す。端で動かせない場合はnull */
+function swapOrder(ids: string[], id: string, direction: 'up' | 'down'): string[] | null {
+  const index = ids.indexOf(id)
+  const targetIndex = direction === 'up' ? index - 1 : index + 1
+  if (index === -1 || targetIndex < 0 || targetIndex >= ids.length) return null
+  const next = [...ids]
+  ;[next[index], next[targetIndex]] = [next[targetIndex], next[index]]
+  return next
 }
 
 export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Element {
@@ -96,9 +107,23 @@ export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Elem
     reload()
   }
 
+  const handleReorderFolders = async (orderedIds: string[]): Promise<void> => {
+    await window.api.reorderFolders(orderedIds)
+    reload()
+  }
+
+  const handleReorderTests = async (orderedIds: string[]): Promise<void> => {
+    await window.api.reorderTests(orderedIds)
+    reload()
+  }
+
   const flatFolders = flattenFolders(folders)
   const breadcrumb = folderBreadcrumb(folders, currentFolderId)
   const currentFolder = folders.find((f) => f.id === currentFolderId) ?? null
+  const subfolders = folders.filter((f) => f.parentId === currentFolderId)
+  const visibleTests = tests.filter((t) => (t.folderId ?? null) === currentFolderId)
+  const folderDrag = useDragReorder(subfolders, (f) => f.id, handleReorderFolders)
+  const testDrag = useDragReorder(visibleTests, (t) => t.id, handleReorderTests)
 
   const handleAreaContextMenu = async (e: React.MouseEvent): Promise<void> => {
     e.preventDefault()
@@ -124,21 +149,34 @@ export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Elem
   const handleFolderContextMenu = async (e: React.MouseEvent, f: TestFolder): Promise<void> => {
     e.preventDefault()
     e.stopPropagation()
+    const ids = subfolders.map((sf) => sf.id)
+    const index = ids.indexOf(f.id)
     const result = await window.api.showContextMenu([
       { id: 'rename', label: '名前変更' },
+      { id: 'move-up', label: '上に移動', enabled: index > 0 },
+      { id: 'move-down', label: '下に移動', enabled: index < ids.length - 1 },
+      { id: 'sep', type: 'separator' },
       { id: 'delete', label: '削除' }
     ])
     if (result === 'rename') startRenameFolder(f)
     else if (result === 'delete') setDeletingFolderId(f.id)
+    else if (result === 'move-up' || result === 'move-down') {
+      const next = swapOrder(ids, f.id, result === 'move-up' ? 'up' : 'down')
+      if (next) handleReorderFolders(next)
+    }
   }
 
   const handleTestContextMenu = async (e: React.MouseEvent, t: TestCase): Promise<void> => {
     e.preventDefault()
     e.stopPropagation()
+    const ids = visibleTests.map((vt) => vt.id)
+    const index = ids.indexOf(t.id)
     const result = await window.api.showContextMenu([
       { id: 'run', label: '実行' },
       { id: 'rename', label: '名前変更' },
       { id: 'move', label: '移動', submenu: buildMoveSubmenu(flatFolders) },
+      { id: 'move-up', label: '上に移動', enabled: index > 0 },
+      { id: 'move-down', label: '下に移動', enabled: index < ids.length - 1 },
       { id: 'sep', type: 'separator' },
       { id: 'delete', label: '削除' }
     ])
@@ -148,13 +186,13 @@ export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Elem
     else if (result?.startsWith('move:')) {
       const dest = result.slice('move:'.length)
       handleMoveTest(t.id, dest === 'root' ? null : dest)
+    } else if (result === 'move-up' || result === 'move-down') {
+      const next = swapOrder(ids, t.id, result === 'move-up' ? 'up' : 'down')
+      if (next) handleReorderTests(next)
     }
   }
 
   if (loading) return <div className="panel">読み込み中...</div>
-
-  const subfolders = folders.filter((f) => f.parentId === currentFolderId)
-  const visibleTests = tests.filter((t) => (t.folderId ?? null) === currentFolderId)
 
   return (
     <div className="folder-browser" onContextMenu={handleAreaContextMenu}>
@@ -207,13 +245,25 @@ export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Elem
         <>
           {subfolders.length > 0 && (
             <ul className="folder-cards">
-              {subfolders.map((f) => (
+              {subfolders.map((f) => {
+                const isEditingFolder = renamingFolderId === f.id || deletingFolderId === f.id
+                const drag = isEditingFolder ? null : folderDrag.getHandlers(f)
+                return (
                 <li
                   key={f.id}
-                  className="folder-card"
+                  className={`folder-card${drag ? ` ${drag.className}` : ''}`}
                   onContextMenu={(e) => handleFolderContextMenu(e, f)}
                   onMouseEnter={() => folderPreview.scheduleShow(f.id)}
                   onMouseLeave={folderPreview.scheduleHide}
+                  {...(drag
+                    ? {
+                        draggable: drag.draggable,
+                        onDragStart: drag.onDragStart,
+                        onDragOver: drag.onDragOver,
+                        onDrop: drag.onDrop,
+                        onDragEnd: drag.onDragEnd
+                      }
+                    : {})}
                 >
                   {renamingFolderId === f.id ? (
                     <div className="row inline-form">
@@ -280,14 +330,30 @@ export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Elem
                     </div>
                   )}
                 </li>
-              ))}
+                )
+              })}
             </ul>
           )}
 
           {visibleTests.length > 0 && (
             <ul className="test-name-list">
-              {visibleTests.map((t) => (
-                <li key={t.id}>
+              {visibleTests.map((t) => {
+                const isEditingTest = renamingTestId === t.id || deletingTestId === t.id
+                const drag = isEditingTest ? null : testDrag.getHandlers(t)
+                return (
+                <li
+                  key={t.id}
+                  className={drag?.className}
+                  {...(drag
+                    ? {
+                        draggable: drag.draggable,
+                        onDragStart: drag.onDragStart,
+                        onDragOver: drag.onDragOver,
+                        onDrop: drag.onDrop,
+                        onDragEnd: drag.onDragEnd
+                      }
+                    : {})}
+                >
                   {renamingTestId === t.id ? (
                     <div className="row inline-form">
                       <input
@@ -315,7 +381,8 @@ export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Elem
                     </div>
                   )}
                 </li>
-              ))}
+                )
+              })}
             </ul>
           )}
         </>

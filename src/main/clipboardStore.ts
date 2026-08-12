@@ -48,8 +48,23 @@ export async function clearHistory(): Promise<void> {
   await fs.writeFile(historyFilePath(), JSON.stringify([], null, 2), 'utf-8')
 }
 
+async function readTemplates(): Promise<ClipboardTemplate[]> {
+  const templates = await readJson<ClipboardTemplate[]>(templatesFilePath(), [])
+  // orderが未設定の既存データ(旧バージョン)は配列の並びのまま採番する
+  let needsBackfill = false
+  templates.forEach((t, i) => {
+    if (typeof t.order !== 'number') {
+      t.order = i
+      needsBackfill = true
+    }
+  })
+  if (needsBackfill) await fs.writeFile(templatesFilePath(), JSON.stringify(templates, null, 2), 'utf-8')
+  return templates
+}
+
 export async function listTemplates(): Promise<ClipboardTemplate[]> {
-  return readJson<ClipboardTemplate[]>(templatesFilePath(), [])
+  const templates = await readTemplates()
+  return templates.sort((a, b) => a.order - b.order)
 }
 
 export async function createTemplate(
@@ -57,16 +72,28 @@ export async function createTemplate(
   label?: string,
   folderId: string | null = null
 ): Promise<ClipboardTemplate> {
-  const templates = await listTemplates()
+  const templates = await readTemplates()
+  const order = templates.length === 0 ? 0 : Math.max(...templates.map((t) => t.order)) + 1
   const template: ClipboardTemplate = {
     id: randomUUID(),
     text,
     label,
     createdAt: new Date().toISOString(),
-    folderId
+    folderId,
+    order
   }
-  await fs.writeFile(templatesFilePath(), JSON.stringify([template, ...templates], null, 2), 'utf-8')
+  await fs.writeFile(templatesFilePath(), JSON.stringify([...templates, template], null, 2), 'utf-8')
   return template
+}
+
+/** 指定した順序(同じフォルダ内でのドラッグ&ドロップ結果)通りにorderを振り直す */
+export async function reorderTemplates(orderedIds: string[]): Promise<void> {
+  const templates = await readTemplates()
+  orderedIds.forEach((id, index) => {
+    const template = templates.find((t) => t.id === id)
+    if (template) template.order = index
+  })
+  await fs.writeFile(templatesFilePath(), JSON.stringify(templates, null, 2), 'utf-8')
 }
 
 export async function updateTemplate(id: string, text: string, label?: string): Promise<void> {
@@ -91,24 +118,50 @@ export async function moveTemplate(id: string, folderId: string | null): Promise
   await fs.writeFile(templatesFilePath(), JSON.stringify(templates, null, 2), 'utf-8')
 }
 
+async function readTemplateFolders(): Promise<ClipboardTemplateFolder[]> {
+  const folders = await readJson<ClipboardTemplateFolder[]>(templateFoldersFilePath(), [])
+  // orderが未設定の既存データ(旧バージョン)は配列の並びのまま採番する
+  let needsBackfill = false
+  folders.forEach((f, i) => {
+    if (typeof f.order !== 'number') {
+      f.order = i
+      needsBackfill = true
+    }
+  })
+  if (needsBackfill) await fs.writeFile(templateFoldersFilePath(), JSON.stringify(folders, null, 2), 'utf-8')
+  return folders
+}
+
 export async function listTemplateFolders(): Promise<ClipboardTemplateFolder[]> {
-  return readJson<ClipboardTemplateFolder[]>(templateFoldersFilePath(), [])
+  const folders = await readTemplateFolders()
+  return folders.sort((a, b) => a.order - b.order)
 }
 
 export async function createTemplateFolder(
   name: string,
   parentId: string | null
 ): Promise<ClipboardTemplateFolder> {
-  const folders = await listTemplateFolders()
-  const folder: ClipboardTemplateFolder = { id: randomUUID(), name, parentId }
+  const folders = await readTemplateFolders()
+  const order = folders.length === 0 ? 0 : Math.max(...folders.map((f) => f.order)) + 1
+  const folder: ClipboardTemplateFolder = { id: randomUUID(), name, parentId, order }
   await fs.writeFile(templateFoldersFilePath(), JSON.stringify([...folders, folder], null, 2), 'utf-8')
   return folder
 }
 
 export async function renameTemplateFolder(id: string, name: string): Promise<void> {
-  const folders = await listTemplateFolders()
+  const folders = await readTemplateFolders()
   const folder = folders.find((f) => f.id === id)
   if (folder) folder.name = name
+  await fs.writeFile(templateFoldersFilePath(), JSON.stringify(folders, null, 2), 'utf-8')
+}
+
+/** 指定した順序(同じ階層内でのドラッグ&ドロップ結果)通りにorderを振り直す */
+export async function reorderTemplateFolders(orderedIds: string[]): Promise<void> {
+  const folders = await readTemplateFolders()
+  orderedIds.forEach((id, index) => {
+    const folder = folders.find((f) => f.id === id)
+    if (folder) folder.order = index
+  })
   await fs.writeFile(templateFoldersFilePath(), JSON.stringify(folders, null, 2), 'utf-8')
 }
 

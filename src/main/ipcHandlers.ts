@@ -41,6 +41,8 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.moveTest, async (_e, id: string, folderId: string | null) => store.moveTest(id, folderId))
 
+  ipcMain.handle(IPC.reorderTests, async (_e, orderedIds: string[]) => store.reorderTests(orderedIds))
+
   ipcMain.handle(IPC.listFolders, async () => store.listFolders())
 
   ipcMain.handle(IPC.createFolder, async (_e, name: string, parentId: string | null) =>
@@ -50,6 +52,8 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   ipcMain.handle(IPC.renameFolder, async (_e, id: string, name: string) => store.renameFolder(id, name))
 
   ipcMain.handle(IPC.deleteFolder, async (_e, id: string) => store.deleteFolder(id))
+
+  ipcMain.handle(IPC.reorderFolders, async (_e, orderedIds: string[]) => store.reorderFolders(orderedIds))
 
   ipcMain.handle(IPC.pickExecutable, async () => {
     const w = getWindow()
@@ -159,10 +163,18 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     clipboardStore.moveTemplate(id, folderId)
   )
 
+  ipcMain.handle(IPC.reorderClipboardTemplates, async (_e, orderedIds: string[]) =>
+    clipboardStore.reorderTemplates(orderedIds)
+  )
+
   ipcMain.handle(IPC.listClipboardTemplateFolders, async () => clipboardStore.listTemplateFolders())
 
   ipcMain.handle(IPC.createClipboardTemplateFolder, async (_e, name: string, parentId: string | null) =>
     clipboardStore.createTemplateFolder(name, parentId)
+  )
+
+  ipcMain.handle(IPC.reorderClipboardTemplateFolders, async (_e, orderedIds: string[]) =>
+    clipboardStore.reorderTemplateFolders(orderedIds)
   )
 
   ipcMain.handle(IPC.renameClipboardTemplateFolder, async (_e, id: string, name: string) =>

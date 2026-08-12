@@ -711,6 +711,19 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   color: var(--accent);
 }
 
+/* ドラッグ&ドロップでの並び替え中の見た目(フォルダカード・テスト/定型文リストで共通使用) */
+.drag-item-dragging {
+  opacity: 0.4;
+}
+
+.drag-item-over-before {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.drag-item-over-after {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
 .folder-card-name {
   flex: 1;
   text-align: left;

@@ -69,6 +69,8 @@ export interface TestCase {
   lastRunAt?: string
   /** 所属フォルダ(TestFolder.id)。未設定/nullはルート直下 */
   folderId?: string | null
+  /** 同じフォルダ内での並び順(昇順)。ドラッグ&ドロップで並び替えた結果を保持する */
+  order: number
 }
 
 /** テスト一覧を整理するための階層フォルダ */
@@ -77,6 +79,8 @@ export interface TestFolder {
   name: string
   /** 親フォルダのid。nullはルート直下 */
   parentId: string | null
+  /** 同じ階層内での並び順(昇順)。ドラッグ&ドロップで並び替えた結果を保持する */
+  order: number
 }
 
 /** 画面録画用の枠(画面上に表示する赤枠)の位置・サイズ。OSのスクリーン座標(DIP)基準 */
@@ -112,6 +116,8 @@ export interface ClipboardTemplate {
   createdAt: string
   /** 所属フォルダ(ClipboardTemplateFolder.id)。未設定/nullはルート直下 */
   folderId?: string | null
+  /** 同じフォルダ内での並び順(昇順)。ドラッグ&ドロップで並び替えた結果を保持する */
+  order: number
 }
 
 /** 定型文を整理するための階層フォルダ */
@@ -120,6 +126,8 @@ export interface ClipboardTemplateFolder {
   name: string
   /** 親フォルダのid。nullはルート直下 */
   parentId: string | null
+  /** 同じ階層内での並び順(昇順)。ドラッグ&ドロップで並び替えた結果を保持する */
+  order: number
 }
 
 /**
@@ -195,11 +203,13 @@ export const IPC = {
   deleteTest: 'tests:delete',
   renameTest: 'tests:rename',
   moveTest: 'tests:move',
+  reorderTests: 'tests:reorder',
 
   listFolders: 'folders:list',
   createFolder: 'folders:create',
   renameFolder: 'folders:rename',
   deleteFolder: 'folders:delete',
+  reorderFolders: 'folders:reorder',
 
   pickExecutable: 'dialog:pickExecutable',
 
@@ -237,6 +247,7 @@ export const IPC = {
   updateClipboardTemplate: 'clipboard:update-template',
   deleteClipboardTemplate: 'clipboard:delete-template',
   moveClipboardTemplate: 'clipboard:move-template',
+  reorderClipboardTemplates: 'clipboard:reorder-templates',
   copyToClipboard: 'clipboard:copy',
   showClipboardHistoryMenu: 'clipboard:show-history-menu',
   clipboardDataChanged: 'clipboard:data-changed', // main -> renderer push
@@ -245,6 +256,7 @@ export const IPC = {
   createClipboardTemplateFolder: 'clipboard:create-template-folder',
   renameClipboardTemplateFolder: 'clipboard:rename-template-folder',
   deleteClipboardTemplateFolder: 'clipboard:delete-template-folder',
+  reorderClipboardTemplateFolders: 'clipboard:reorder-template-folders',
 
   // 汎用の右クリックメニュー(テスト一覧・定型文のフォルダ操作/移動サブメニュー等に使う)
   showContextMenu: 'context-menu:show',

@@ -21,12 +21,23 @@ function foldersFilePath(): string {
 }
 
 async function readFolders(): Promise<TestFolder[]> {
+  let folders: TestFolder[]
   try {
     const raw = await fs.readFile(foldersFilePath(), 'utf-8')
-    return JSON.parse(raw) as TestFolder[]
+    folders = JSON.parse(raw) as TestFolder[]
   } catch {
     return []
   }
+  // orderが未設定の既存データ(旧バージョン)は配列の並びのまま採番する
+  let needsBackfill = false
+  folders.forEach((f, i) => {
+    if (typeof f.order !== 'number') {
+      f.order = i
+      needsBackfill = true
+    }
+  })
+  if (needsBackfill) await writeFolders(folders)
+  return folders
 }
 
 async function writeFolders(folders: TestFolder[]): Promise<void> {
@@ -43,10 +54,24 @@ export async function listTests(): Promise<TestCase[]> {
       return JSON.parse(raw) as TestCase
     })
   )
-  return tests.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+  // orderが未設定の既存データ(旧バージョン)は更新日時の降順を維持したまま並び順として採番する
+  let needsBackfill = false
+  tests.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+  tests.forEach((t, i) => {
+    if (typeof t.order !== 'number') {
+      t.order = i
+      needsBackfill = true
+    }
+  })
+  if (needsBackfill) {
+    await Promise.all(tests.map((t) => fs.writeFile(filePathFor(t.id), JSON.stringify(t, null, 2), 'utf-8')))
+  }
+  return tests.sort((a, b) => a.order - b.order)
 }
 
-export async function saveTest(input: Omit<TestCase, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }): Promise<TestCase> {
+export async function saveTest(
+  input: Omit<TestCase, 'id' | 'createdAt' | 'updatedAt' | 'order'> & { id?: string }
+): Promise<TestCase> {
   await ensureDir()
   const now = new Date().toISOString()
   let existing: TestCase | null = null
@@ -58,6 +83,7 @@ export async function saveTest(input: Omit<TestCase, 'id' | 'createdAt' | 'updat
       existing = null
     }
   }
+  const order = existing?.order ?? (await nextOrder())
   const testCase: TestCase = {
     id: existing?.id ?? input.id ?? randomUUID(),
     name: input.name,
@@ -65,10 +91,34 @@ export async function saveTest(input: Omit<TestCase, 'id' | 'createdAt' | 'updat
     steps: input.steps,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
-    folderId: input.folderId ?? existing?.folderId ?? null
+    folderId: input.folderId ?? existing?.folderId ?? null,
+    order
   }
   await fs.writeFile(filePathFor(testCase.id), JSON.stringify(testCase, null, 2), 'utf-8')
   return testCase
+}
+
+async function nextOrder(): Promise<number> {
+  const tests = await listTests()
+  return tests.length === 0 ? 0 : Math.max(...tests.map((t) => t.order)) + 1
+}
+
+/** 指定した順序(同じフォルダ内でのドラッグ&ドロップ結果)通りにorderを振り直す */
+export async function reorderTests(orderedIds: string[]): Promise<void> {
+  await Promise.all(
+    orderedIds.map(async (id, index) => {
+      try {
+        const raw = await fs.readFile(filePathFor(id), 'utf-8')
+        const testCase = JSON.parse(raw) as TestCase
+        if (testCase.order !== index) {
+          testCase.order = index
+          await fs.writeFile(filePathFor(id), JSON.stringify(testCase, null, 2), 'utf-8')
+        }
+      } catch {
+        // 既に削除されたテストなどは無視する
+      }
+    })
+  )
 }
 
 export async function deleteTest(id: string): Promise<void> {
@@ -106,12 +156,14 @@ export async function moveTest(id: string, folderId: string | null): Promise<Tes
 }
 
 export async function listFolders(): Promise<TestFolder[]> {
-  return readFolders()
+  const folders = await readFolders()
+  return folders.sort((a, b) => a.order - b.order)
 }
 
 export async function createFolder(name: string, parentId: string | null): Promise<TestFolder> {
   const folders = await readFolders()
-  const folder: TestFolder = { id: randomUUID(), name, parentId }
+  const order = folders.length === 0 ? 0 : Math.max(...folders.map((f) => f.order)) + 1
+  const folder: TestFolder = { id: randomUUID(), name, parentId, order }
   folders.push(folder)
   await writeFolders(folders)
   return folder
@@ -121,6 +173,16 @@ export async function renameFolder(id: string, name: string): Promise<void> {
   const folders = await readFolders()
   const folder = folders.find((f) => f.id === id)
   if (folder) folder.name = name
+  await writeFolders(folders)
+}
+
+/** 指定した順序(同じ階層内でのドラッグ&ドロップ結果)通りにorderを振り直す */
+export async function reorderFolders(orderedIds: string[]): Promise<void> {
+  const folders = await readFolders()
+  orderedIds.forEach((id, index) => {
+    const folder = folders.find((f) => f.id === id)
+    if (folder) folder.order = index
+  })
   await writeFolders(folders)
 }
 

@@ -7,6 +7,7 @@ import type {
 } from '../../../shared/types'
 import { flattenFolders, folderBreadcrumb } from '../folderTree'
 import { useHoverIntent } from '../hooks/useHoverIntent'
+import { useDragReorder } from '../hooks/useDragReorder'
 
 type SubTab = 'history' | 'templates'
 
@@ -21,6 +22,16 @@ function buildMoveSubmenu(flatFolders: { folder: ClipboardTemplateFolder; depth:
     items.push({ id: `move:${folder.id}`, label: `${'　'.repeat(depth)}${folder.name}` })
   }
   return items
+}
+
+/** idの並び順を1つ上/下の要素と入れ替えた新しい配列を返す。端で動かせない場合はnull */
+function swapOrder(ids: string[], id: string, direction: 'up' | 'down'): string[] | null {
+  const index = ids.indexOf(id)
+  const targetIndex = direction === 'up' ? index - 1 : index + 1
+  if (index === -1 || targetIndex < 0 || targetIndex >= ids.length) return null
+  const next = [...ids]
+  ;[next[index], next[targetIndex]] = [next[targetIndex], next[index]]
+  return next
 }
 
 export default function ClipboardPanel(): React.JSX.Element {
@@ -138,6 +149,16 @@ export default function ClipboardPanel(): React.JSX.Element {
     reload()
   }
 
+  const handleReorderFolders = async (orderedIds: string[]): Promise<void> => {
+    await window.api.reorderClipboardTemplateFolders(orderedIds)
+    reload()
+  }
+
+  const handleReorderTemplates = async (orderedIds: string[]): Promise<void> => {
+    await window.api.reorderClipboardTemplates(orderedIds)
+    reload()
+  }
+
   const trimmedHistoryQuery = historyQuery.trim().toLowerCase()
   const filteredHistory = trimmedHistoryQuery
     ? history.filter((h) => h.text.toLowerCase().includes(trimmedHistoryQuery))
@@ -148,6 +169,8 @@ export default function ClipboardPanel(): React.JSX.Element {
   const breadcrumb = folderBreadcrumb(templateFolders, currentFolderId)
   const flatFolders = flattenFolders(templateFolders)
   const currentFolder = templateFolders.find((f) => f.id === currentFolderId) ?? null
+  const folderDrag = useDragReorder(subfolders, (f) => f.id, handleReorderFolders)
+  const templateDrag = useDragReorder(visibleTemplates, (t) => t.id, handleReorderTemplates)
 
   const handleAreaContextMenu = async (e: React.MouseEvent): Promise<void> => {
     e.preventDefault()
@@ -180,20 +203,33 @@ export default function ClipboardPanel(): React.JSX.Element {
   const handleFolderContextMenu = async (e: React.MouseEvent, f: ClipboardTemplateFolder): Promise<void> => {
     e.preventDefault()
     e.stopPropagation()
+    const ids = subfolders.map((sf) => sf.id)
+    const index = ids.indexOf(f.id)
     const result = await window.api.showContextMenu([
       { id: 'rename', label: '名前変更' },
+      { id: 'move-up', label: '上に移動', enabled: index > 0 },
+      { id: 'move-down', label: '下に移動', enabled: index < ids.length - 1 },
+      { id: 'sep', type: 'separator' },
       { id: 'delete', label: '削除' }
     ])
     if (result === 'rename') startRenameFolder(f)
     else if (result === 'delete') setDeletingFolderId(f.id)
+    else if (result === 'move-up' || result === 'move-down') {
+      const next = swapOrder(ids, f.id, result === 'move-up' ? 'up' : 'down')
+      if (next) handleReorderFolders(next)
+    }
   }
 
   const handleTemplateContextMenu = async (e: React.MouseEvent, t: ClipboardTemplate): Promise<void> => {
     e.preventDefault()
     e.stopPropagation()
+    const ids = visibleTemplates.map((vt) => vt.id)
+    const index = ids.indexOf(t.id)
     const result = await window.api.showContextMenu([
       { id: 'edit', label: '編集' },
       { id: 'move', label: '移動', submenu: buildMoveSubmenu(flatFolders) },
+      { id: 'move-up', label: '上に移動', enabled: index > 0 },
+      { id: 'move-down', label: '下に移動', enabled: index < ids.length - 1 },
       { id: 'sep', type: 'separator' },
       { id: 'delete', label: '削除' }
     ])
@@ -202,6 +238,9 @@ export default function ClipboardPanel(): React.JSX.Element {
     else if (result?.startsWith('move:')) {
       const dest = result.slice('move:'.length)
       handleMoveTemplate(t.id, dest === 'root' ? null : dest)
+    } else if (result === 'move-up' || result === 'move-down') {
+      const next = swapOrder(ids, t.id, result === 'move-up' ? 'up' : 'down')
+      if (next) handleReorderTemplates(next)
     }
   }
 
@@ -300,13 +339,25 @@ export default function ClipboardPanel(): React.JSX.Element {
 
           {subfolders.length > 0 && (
             <ul className="folder-cards">
-              {subfolders.map((f) => (
+              {subfolders.map((f) => {
+                const isEditingFolder = renamingFolderId === f.id || deletingFolderId === f.id
+                const drag = isEditingFolder ? null : folderDrag.getHandlers(f)
+                return (
                 <li
                   key={f.id}
-                  className="folder-card"
+                  className={`folder-card${drag ? ` ${drag.className}` : ''}`}
                   onContextMenu={(e) => handleFolderContextMenu(e, f)}
                   onMouseEnter={() => folderPreview.scheduleShow(f.id)}
                   onMouseLeave={folderPreview.scheduleHide}
+                  {...(drag
+                    ? {
+                        draggable: drag.draggable,
+                        onDragStart: drag.onDragStart,
+                        onDragOver: drag.onDragOver,
+                        onDrop: drag.onDrop,
+                        onDragEnd: drag.onDragEnd
+                      }
+                    : {})}
                 >
                   {renamingFolderId === f.id ? (
                     <div className="row inline-form">
@@ -376,7 +427,8 @@ export default function ClipboardPanel(): React.JSX.Element {
                     </div>
                   )}
                 </li>
-              ))}
+                )
+              })}
             </ul>
           )}
 
@@ -406,8 +458,10 @@ export default function ClipboardPanel(): React.JSX.Element {
             </div>
           ) : (
             <ul className="clip-list">
-              {visibleTemplates.map((t) =>
-                editingId === t.id ? (
+              {visibleTemplates.map((t) => {
+                const isEditingTemplate = editingId === t.id || deletingTemplateId === t.id
+                const drag = isEditingTemplate ? null : templateDrag.getHandlers(t)
+                return editingId === t.id ? (
                   <li key={t.id} className="panel clip-edit-form">
                     <div className="field">
                       <label>ラベル(任意)</label>
@@ -435,16 +489,25 @@ export default function ClipboardPanel(): React.JSX.Element {
                 ) : (
                   <li
                     key={t.id}
-                    className={`clip-item${copiedId === t.id ? ' clip-item--copied' : ''}`}
+                    className={`clip-item${copiedId === t.id ? ' clip-item--copied' : ''}${drag ? ` ${drag.className}` : ''}`}
                     onClick={() => handleCopy(t.id, t.text)}
                     onContextMenu={(e) => handleTemplateContextMenu(e, t)}
+                    {...(drag
+                      ? {
+                          draggable: drag.draggable,
+                          onDragStart: drag.onDragStart,
+                          onDragOver: drag.onDragOver,
+                          onDrop: drag.onDrop,
+                          onDragEnd: drag.onDragEnd
+                        }
+                      : {})}
                   >
                     {t.label && <div className="clip-item-label">{t.label}</div>}
                     <div className="clip-item-text">{truncate(t.text)}</div>
                     {copiedId === t.id && <span className="clip-copied-badge">コピーしました</span>}
                   </li>
                 )
-              )}
+              })}
             </ul>
           )}
         </div>

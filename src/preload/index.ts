@@ -21,18 +21,20 @@ import {
 
 const api = {
   listTests: (): Promise<TestCase[]> => ipcRenderer.invoke(IPC.listTests),
-  saveTest: (testCase: Omit<TestCase, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }): Promise<TestCase> =>
+  saveTest: (testCase: Omit<TestCase, 'id' | 'createdAt' | 'updatedAt' | 'order'> & { id?: string }): Promise<TestCase> =>
     ipcRenderer.invoke(IPC.saveTest, testCase),
   deleteTest: (id: string): Promise<void> => ipcRenderer.invoke(IPC.deleteTest, id),
   renameTest: (id: string, name: string): Promise<TestCase> => ipcRenderer.invoke(IPC.renameTest, id, name),
   moveTest: (id: string, folderId: string | null): Promise<TestCase> =>
     ipcRenderer.invoke(IPC.moveTest, id, folderId),
+  reorderTests: (orderedIds: string[]): Promise<void> => ipcRenderer.invoke(IPC.reorderTests, orderedIds),
 
   listFolders: (): Promise<TestFolder[]> => ipcRenderer.invoke(IPC.listFolders),
   createFolder: (name: string, parentId: string | null): Promise<TestFolder> =>
     ipcRenderer.invoke(IPC.createFolder, name, parentId),
   renameFolder: (id: string, name: string): Promise<void> => ipcRenderer.invoke(IPC.renameFolder, id, name),
   deleteFolder: (id: string): Promise<void> => ipcRenderer.invoke(IPC.deleteFolder, id),
+  reorderFolders: (orderedIds: string[]): Promise<void> => ipcRenderer.invoke(IPC.reorderFolders, orderedIds),
 
   pickExecutable: (): Promise<string | null> => ipcRenderer.invoke(IPC.pickExecutable),
 
@@ -85,6 +87,8 @@ const api = {
   deleteClipboardTemplate: (id: string): Promise<void> => ipcRenderer.invoke(IPC.deleteClipboardTemplate, id),
   moveClipboardTemplate: (id: string, folderId: string | null): Promise<void> =>
     ipcRenderer.invoke(IPC.moveClipboardTemplate, id, folderId),
+  reorderClipboardTemplates: (orderedIds: string[]): Promise<void> =>
+    ipcRenderer.invoke(IPC.reorderClipboardTemplates, orderedIds),
 
   listClipboardTemplateFolders: (): Promise<ClipboardTemplateFolder[]> =>
     ipcRenderer.invoke(IPC.listClipboardTemplateFolders),
@@ -92,6 +96,8 @@ const api = {
     ipcRenderer.invoke(IPC.createClipboardTemplateFolder, name, parentId),
   renameClipboardTemplateFolder: (id: string, name: string): Promise<void> =>
     ipcRenderer.invoke(IPC.renameClipboardTemplateFolder, id, name),
+  reorderClipboardTemplateFolders: (orderedIds: string[]): Promise<void> =>
+    ipcRenderer.invoke(IPC.reorderClipboardTemplateFolders, orderedIds),
   deleteClipboardTemplateFolder: (id: string): Promise<void> =>
     ipcRenderer.invoke(IPC.deleteClipboardTemplateFolder, id),
 
