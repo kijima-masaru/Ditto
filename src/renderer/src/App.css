@@ -664,19 +664,22 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   flex-wrap: wrap;
 }
 
-/* フォルダにカーソルを乗せた時に中身を先読み表示するフライアウト(「別窓」風のプレビュー) */
+/* フォルダにカーソルを乗せた時に中身を先読み表示するフライアウト(「別窓」風のプレビュー)。
+   カード行は幅いっぱいに広がるため外側に出す場所が無く、カード右側に重ねて表示する
+   (カードの右端を基準に固定幅で開く。ウィンドウ幅に関わらず必ず画面内に収まる) */
 .folder-preview-flyout {
   position: absolute;
-  top: 100%;
-  left: 4px;
-  right: 4px;
-  margin-top: 6px;
+  top: -1px;
+  right: -1px;
+  width: 72%;
+  min-width: 180px;
+  max-width: 260px;
   z-index: 30;
   background: var(--panel-bg);
   border: 1px solid var(--border-strong);
   border-radius: 8px;
   box-shadow: 0 10px 28px var(--shadow);
-  max-height: 240px;
+  max-height: 280px;
   overflow-y: auto;
   padding: 6px;
   display: flex;
