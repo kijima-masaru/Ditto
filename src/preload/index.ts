@@ -7,14 +7,16 @@ import {
   type ClipboardTemplate,
   type ClipboardTemplateFolder,
   type ContextMenuItem,
-  type HotkeyModifier,
+  type HotkeyCombo,
   type RecordedStep,
   type RecordingFrameBounds,
   type PlaybackProgress,
   type PlaybackResult,
+  type TargetHistoryEntry,
   type TestCase,
   type TestFolder,
-  type TestTarget
+  type TestTarget,
+  type ThemeMode
 } from '../shared/types'
 
 const api = {
@@ -106,8 +108,37 @@ const api = {
     ipcRenderer.invoke(IPC.showContextMenu, items),
 
   getSettings: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.getSettings),
-  setHotkeyModifier: (modifier: HotkeyModifier): Promise<AppSettings> =>
-    ipcRenderer.invoke(IPC.setHotkeyModifier, modifier)
+  setHotkey: (hotkey: HotkeyCombo): Promise<AppSettings> => ipcRenderer.invoke(IPC.setHotkey, hotkey),
+  setTheme: (theme: ThemeMode): Promise<AppSettings> => ipcRenderer.invoke(IPC.setTheme, theme),
+  startHotkeyCapture: (): Promise<void> => ipcRenderer.invoke(IPC.startHotkeyCapture),
+  cancelHotkeyCapture: (): Promise<void> => ipcRenderer.invoke(IPC.cancelHotkeyCapture),
+  onHotkeyCapturePreview: (cb: (label: string) => void): (() => void) => {
+    const listener = (_e: unknown, label: string): void => cb(label)
+    ipcRenderer.on(IPC.hotkeyCapturePreview, listener)
+    return () => ipcRenderer.removeListener(IPC.hotkeyCapturePreview, listener)
+  },
+  onHotkeyCaptureResult: (cb: (combo: HotkeyCombo) => void): (() => void) => {
+    const listener = (_e: unknown, combo: HotkeyCombo): void => cb(combo)
+    ipcRenderer.on(IPC.hotkeyCaptureResult, listener)
+    return () => ipcRenderer.removeListener(IPC.hotkeyCaptureResult, listener)
+  },
+
+  listTargetHistory: (): Promise<TargetHistoryEntry[]> => ipcRenderer.invoke(IPC.listTargetHistory),
+  recordTargetHistory: (entry: {
+    kind: TargetHistoryEntry['kind']
+    label: string
+    url?: string
+    exePath?: string
+    exeArgs?: string
+  }): Promise<TargetHistoryEntry> => ipcRenderer.invoke(IPC.recordTargetHistory, entry),
+
+  setRecordingFrameFooterState: (state: 'idle' | 'recording' | 'paused'): Promise<void> =>
+    ipcRenderer.invoke(IPC.setRecordingFrameFooterState, state),
+  onRecordingFrameFooterAction: (cb: (action: 'start' | 'pause' | 'resume' | 'stop') => void): (() => void) => {
+    const listener = (_e: unknown, action: 'start' | 'pause' | 'resume' | 'stop'): void => cb(action)
+    ipcRenderer.on(IPC.recordingFrameFooterAction, listener)
+    return () => ipcRenderer.removeListener(IPC.recordingFrameFooterAction, listener)
+  }
 }
 
 contextBridge.exposeInMainWorld('api', api)

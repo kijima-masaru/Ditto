@@ -91,7 +91,7 @@ app.whenReady().then(async () => {
     app.quit()
   })
   const settings = await settingsStore.getSettings()
-  setupGlobalHotkey(settings.hotkeyModifier, showMainWindow)
+  setupGlobalHotkey(settings.hotkey, showMainWindow)
 
   // ウィンドウが閉じられていてもクリップボード履歴を記録し続けるため、常時監視する
   startClipboardWatcher((entry) => {

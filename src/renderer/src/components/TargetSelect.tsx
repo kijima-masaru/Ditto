@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import type { TargetKind, TestTarget } from '../../../shared/types'
+import { useEffect, useState } from 'react'
+import type { TargetHistoryEntry, TargetKind, TestTarget } from '../../../shared/types'
 
 interface Props {
   onStart: (targets: TestTarget[]) => void
@@ -12,6 +12,11 @@ export default function TargetSelect({ onStart }: Props): React.JSX.Element {
   const [url, setUrl] = useState('https://')
   const [exePath, setExePath] = useState('')
   const [exeArgs, setExeArgs] = useState('')
+  const [history, setHistory] = useState<TargetHistoryEntry[]>([])
+
+  useEffect(() => {
+    window.api.listTargetHistory().then(setHistory)
+  }, [])
 
   const pickExe = async (): Promise<void> => {
     const picked = await window.api.pickExecutable()
@@ -21,9 +26,20 @@ export default function TargetSelect({ onStart }: Props): React.JSX.Element {
     }
   }
 
+  const applyHistoryEntry = (entry: TargetHistoryEntry): void => {
+    setKind(entry.kind)
+    setLabel(entry.label)
+    if (entry.kind === 'web') {
+      setUrl(entry.url ?? 'https://')
+    } else {
+      setExePath(entry.exePath ?? '')
+      setExeArgs(entry.exeArgs ?? '')
+    }
+  }
+
   const canAdd = kind === 'web' ? url.trim().length > 8 : exePath.trim().length > 0
 
-  const addTarget = (): void => {
+  const addTarget = async (): Promise<void> => {
     const newTarget: TestTarget =
       kind === 'web'
         ? { id: crypto.randomUUID(), kind: 'web', label: label.trim() || url.trim(), url: url.trim() }
@@ -35,6 +51,16 @@ export default function TargetSelect({ onStart }: Props): React.JSX.Element {
             exeArgs: exeArgs.trim() || undefined
           }
     setTargets((prev) => [...prev, newTarget])
+
+    const recorded = await window.api.recordTargetHistory({
+      kind: newTarget.kind,
+      label: newTarget.label,
+      url: newTarget.url,
+      exePath: newTarget.exePath,
+      exeArgs: newTarget.exeArgs
+    })
+    setHistory((prev) => [recorded, ...prev.filter((h) => h.id !== recorded.id)])
+
     setLabel('')
     setUrl('https://')
     setExePath('')
@@ -44,6 +70,8 @@ export default function TargetSelect({ onStart }: Props): React.JSX.Element {
   const removeTarget = (id: string): void => {
     setTargets((prev) => prev.filter((t) => t.id !== id))
   }
+
+  const historyForKind = history.filter((h) => h.kind === kind)
 
   return (
     <div className="panel">
@@ -55,6 +83,22 @@ export default function TargetSelect({ onStart }: Props): React.JSX.Element {
           デスクトップアプリ
         </button>
       </div>
+
+      {historyForKind.length > 0 && (
+        <div className="field">
+          <label>履歴から選択</label>
+          <ul className="target-history-list">
+            {historyForKind.map((h) => (
+              <li key={h.id}>
+                <button className="target-history-item" onClick={() => applyHistoryEntry(h)}>
+                  <div className="target-history-item-label">{h.label}</div>
+                  <div className="target-history-item-detail">{h.kind === 'web' ? h.url : h.exePath}</div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="field">
         <label>アプリ・画面名(任意)</label>

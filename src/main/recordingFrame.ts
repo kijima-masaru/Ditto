@@ -1,22 +1,28 @@
 import { app, BrowserWindow, ipcMain, screen } from 'electron'
 import fs from 'fs'
 import path from 'path'
-import type { CaptureInfo, RecordingFrameBounds } from '../shared/types'
+import { IPC, type CaptureInfo, type RecordingFrameBounds } from '../shared/types'
 
 /**
  * 画面上に表示する録画範囲の枠。
  * ウィンドウ自体は枠の外側にPAD分だけ大きく、透明な余白部分にリサイズ用ハンドルを置く。
- * 録画としてキャプチャする実際の範囲(bounds)は、この余白の内側(枠線に一切かからない部分)になる。
+ * 下部にはさらにFOOTER_HEIGHT分の操作フッター(開始/一時停止/再開/停止)を持つ。
+ * 録画としてキャプチャする実際の範囲(bounds)は、この余白・フッターの内側(枠線に一切かからない部分)になる。
  */
 const PAD = 14
+const FOOTER_HEIGHT = 34
 const MIN_W = 160
 const MIN_H = 120
 const DEFAULT_BOUNDS: RecordingFrameBounds = { x: 120, y: 120, width: 480, height: 320 }
 
+export type FooterState = 'idle' | 'recording' | 'paused'
+
 let win: BrowserWindow | null = null
 let bounds: RecordingFrameBounds = loadBounds()
-/** trueの間はドラッグ移動・リサイズが可能。録画中はfalseにしてクリックを対象アプリへ完全に通過させる */
+/** trueの間はドラッグ移動・リサイズ・フッター操作が常に可能。falseの間は録画中とみなし、
+ *  フッター以外はクリックスルーにして対象アプリを操作できるようにする */
 let interactive = true
+let footerState: FooterState = 'idle'
 let resizeStart: { corner: string; screenX: number; screenY: number; bounds: RecordingFrameBounds } | null = null
 let saveTimer: NodeJS.Timeout | null = null
 
@@ -58,7 +64,7 @@ function outerRect(): { x: number; y: number; width: number; height: number } {
     x: Math.round(bounds.x - PAD),
     y: Math.round(bounds.y - PAD),
     width: Math.round(bounds.width + PAD * 2),
-    height: Math.round(bounds.height + PAD * 2)
+    height: Math.round(bounds.height + PAD * 2 + FOOTER_HEIGHT)
   }
 }
 
@@ -94,16 +100,24 @@ function computeResizedBounds(
 function buildHtml(): string {
   return `<!doctype html>
 <html><head><meta charset="utf-8"><style>
-  html, body { margin:0; padding:0; background:transparent; overflow:hidden; }
+  html, body { margin:0; padding:0; background:transparent; overflow:hidden; user-select:none; }
   * { box-sizing: border-box; }
-  .frame { position:absolute; left:${PAD}px; top:${PAD}px; right:${PAD}px; bottom:${PAD}px; outline:3px solid #ff4d4f; outline-offset:0; pointer-events:none; }
-  .drag { position:absolute; left:${PAD}px; top:${PAD}px; right:${PAD}px; bottom:${PAD}px; -webkit-app-region:drag; }
+  .frame { position:absolute; left:${PAD}px; top:${PAD}px; right:${PAD}px; bottom:${PAD + FOOTER_HEIGHT}px; outline:3px solid #ff4d4f; outline-offset:0; pointer-events:none; }
+  .drag { position:absolute; left:${PAD}px; top:${PAD}px; right:${PAD}px; bottom:${PAD + FOOTER_HEIGHT}px; -webkit-app-region:drag; }
   .handle { position:absolute; width:16px; height:16px; background:#ff4d4f; border-radius:3px; -webkit-app-region:no-drag; transition:opacity .15s; }
   .handle.locked { opacity:0.25; pointer-events:none; }
   .nw { left:0; top:0; cursor:nwse-resize; }
   .ne { right:0; top:0; cursor:nesw-resize; }
-  .sw { left:0; bottom:0; cursor:nesw-resize; }
-  .se { right:0; bottom:0; cursor:nwse-resize; }
+  .sw { left:0; bottom:${FOOTER_HEIGHT}px; cursor:nesw-resize; }
+  .se { right:0; bottom:${FOOTER_HEIGHT}px; cursor:nwse-resize; }
+  .footer { position:absolute; left:${PAD}px; right:${PAD}px; bottom:0; height:${FOOTER_HEIGHT}px; background:rgba(31,41,51,0.94); border-radius:0 0 6px 6px; display:flex; align-items:center; justify-content:center; gap:6px; -webkit-app-region:no-drag; }
+  .footer-btn { display:none; font-size:11px; padding:5px 10px; border-radius:4px; border:none; cursor:pointer; background:#2f80ed; color:white; font-family:'Segoe UI',sans-serif; }
+  .footer-btn.danger { background:#e0453f; }
+  .footer[data-state="idle"] #btn-start { display:inline-block; }
+  .footer[data-state="recording"] #btn-pause,
+  .footer[data-state="recording"] #btn-stop { display:inline-block; }
+  .footer[data-state="paused"] #btn-resume,
+  .footer[data-state="paused"] #btn-stop { display:inline-block; }
 </style></head>
 <body>
   <div class="drag"></div>
@@ -112,6 +126,12 @@ function buildHtml(): string {
   <div class="handle ne" id="ne"></div>
   <div class="handle sw" id="sw"></div>
   <div class="handle se" id="se"></div>
+  <div class="footer" id="footer" data-state="idle">
+    <button class="footer-btn" id="btn-start">● 録画開始</button>
+    <button class="footer-btn" id="btn-pause">⏸ 一時停止</button>
+    <button class="footer-btn" id="btn-resume">▶ 再開</button>
+    <button class="footer-btn danger" id="btn-stop">■ 停止</button>
+  </div>
   <script>
     const { ipcRenderer } = require('electron')
     function startResize(corner, e) {
@@ -131,9 +151,31 @@ function buildHtml(): string {
     ;['nw', 'ne', 'sw', 'se'].forEach((c) => {
       document.getElementById(c).addEventListener('mousedown', (e) => startResize(c, e))
     })
+
+    let locked = false
     ipcRenderer.on('set-interactive', (_e, v) => {
+      locked = !v
       document.querySelectorAll('.handle').forEach((h) => h.classList.toggle('locked', !v))
     })
+    ipcRenderer.on('set-footer-state', (_e, state) => {
+      document.getElementById('footer').dataset.state = state
+    })
+
+    // 録画中(locked)はフッター以外クリックスルーにするため、フッター上をホバーしている間だけ
+    // 一時的にクリックを受け取れるようにする(Electronの「クリックスルー中も一部だけ操作可能にする」定番手法)
+    let overFooter = false
+    document.addEventListener('mousemove', (e) => {
+      const now = !!e.target.closest('.footer')
+      if (now !== overFooter) {
+        overFooter = now
+        if (locked) ipcRenderer.send('recording-frame:set-passthrough', overFooter)
+      }
+    })
+
+    document.getElementById('btn-start').addEventListener('click', () => ipcRenderer.send('recording-frame:footer-action', 'start'))
+    document.getElementById('btn-pause').addEventListener('click', () => ipcRenderer.send('recording-frame:footer-action', 'pause'))
+    document.getElementById('btn-resume').addEventListener('click', () => ipcRenderer.send('recording-frame:footer-action', 'resume'))
+    document.getElementById('btn-stop').addEventListener('click', () => ipcRenderer.send('recording-frame:footer-action', 'stop'))
   </script>
 </body></html>`
 }
@@ -158,6 +200,9 @@ function createWindow(): BrowserWindow {
   })
   w.setAlwaysOnTop(true, 'screen-saver')
   w.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(buildHtml())}`)
+  w.webContents.once('did-finish-load', () => {
+    w.webContents.send('set-footer-state', footerState)
+  })
   w.on('move', () => {
     if (!w.isDestroyed()) {
       const b = w.getBounds()
@@ -188,14 +233,30 @@ function onResizeEnd(): void {
   scheduleSave()
 }
 
+function onSetPassthrough(_e: unknown, wantInteractive: boolean): void {
+  // 録画中(locked)の間だけ、フッターホバー時に一時的にクリックを受け取れるようにする
+  if (interactive || !win) return
+  win.setIgnoreMouseEvents(!wantInteractive, { forward: true })
+}
+
 ipcMain.on('recording-frame:resize-begin', onResizeBegin)
 ipcMain.on('recording-frame:resize-move', onResizeMove)
 ipcMain.on('recording-frame:resize-end', onResizeEnd)
+ipcMain.on('recording-frame:set-passthrough', onSetPassthrough)
+ipcMain.on(IPC.recordingFrameFooterAction, (_e, action: 'start' | 'pause' | 'resume' | 'stop') => {
+  footerActionListeners.forEach((listener) => listener(action))
+})
+
+const footerActionListeners: Array<(action: 'start' | 'pause' | 'resume' | 'stop') => void> = []
+export function onFooterAction(listener: (action: 'start' | 'pause' | 'resume' | 'stop') => void): void {
+  footerActionListeners.push(listener)
+}
 
 export function show(): void {
   if (!win) win = createWindow()
   win.setBounds(outerRect())
   win.showInactive()
+  win.webContents.send('set-footer-state', footerState)
   setInteractive(interactive)
 }
 
@@ -230,8 +291,18 @@ export function setInteractive(v: boolean): void {
   }
 }
 
+export function setFooterState(state: FooterState): void {
+  footerState = state
+  win?.webContents.send('set-footer-state', state)
+}
+
 export function getCaptureInfo(): CaptureInfo {
-  const rect = { x: Math.round(bounds.x), y: Math.round(bounds.y), width: Math.round(bounds.width), height: Math.round(bounds.height) }
+  const rect = {
+    x: Math.round(bounds.x),
+    y: Math.round(bounds.y),
+    width: Math.round(bounds.width),
+    height: Math.round(bounds.height)
+  }
   const display = screen.getDisplayMatching(rect)
   return {
     bounds: { ...bounds },

@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react'
-import type { TestCase, TestTarget } from '../../shared/types'
+import { useCallback, useEffect, useState } from 'react'
+import type { TestCase, TestTarget, ThemeMode } from '../../shared/types'
 import TargetSelect from './components/TargetSelect'
 import Recording from './components/Recording'
 import TestList from './components/TestList'
@@ -26,7 +26,31 @@ function formatElapsed(ms: number): string {
 export default function App(): React.JSX.Element {
   const [view, setView] = useState<View>({ name: 'clipboard' })
   const [refreshKey, setRefreshKey] = useState(0)
+  const [theme, setTheme] = useState<ThemeMode>('light')
   const recorder = useScreenRecording()
+
+  useEffect(() => {
+    window.api.getSettings().then((s) => setTheme(s.theme))
+  }, [])
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
+
+  // 録画枠(オーバーレイウィンドウ)のフッターボタンは、実際のキャプチャ処理を持つ
+  // このウィンドウのuseScreenRecordingに操作を中継する形で動く(テスト機能とは独立)
+  useEffect(() => {
+    return window.api.onRecordingFrameFooterAction((action) => {
+      if (action === 'start') recorder.start('画面録画')
+      else if (action === 'pause') recorder.pause()
+      else if (action === 'resume') recorder.resume()
+      else if (action === 'stop') recorder.stop()
+    })
+  }, [recorder.start, recorder.pause, recorder.resume, recorder.stop])
+
+  useEffect(() => {
+    window.api.setRecordingFrameFooterState(recorder.recordingState)
+  }, [recorder.recordingState])
 
   const goHome = useCallback(() => {
     setRefreshKey((k) => k + 1)
@@ -52,9 +76,16 @@ export default function App(): React.JSX.Element {
             className={view.name === 'test-list' ? 'active' : ''}
             onClick={() => setView({ name: 'test-list' })}
           >
-            テスト一覧
+            自動テスト
           </button>
         </nav>
+        <button
+          className={`record-icon-btn${recorder.frameVisible ? ' active' : ''}`}
+          onClick={recorder.toggleFrame}
+          title="録画枠を表示/非表示"
+        >
+          ●
+        </button>
         <button
           className={`settings-icon-btn${view.name === 'settings' ? ' active' : ''}`}
           onClick={() => setView({ name: 'settings' })}
@@ -111,11 +142,11 @@ export default function App(): React.JSX.Element {
           />
         )}
 
-        {view.name === 'playback' && <Playback testCase={view.testCase} onDone={goHome} recorder={recorder} />}
+        {view.name === 'playback' && <Playback testCase={view.testCase} onDone={goHome} />}
 
         {view.name === 'clipboard' && <ClipboardPanel />}
 
-        {view.name === 'settings' && <SettingsPanel />}
+        {view.name === 'settings' && <SettingsPanel theme={theme} onThemeChange={setTheme} />}
       </main>
     </div>
   )

@@ -26,6 +26,17 @@ export interface TestTarget {
   exeArgs?: string
 }
 
+/** テスト作成時に選択したアプリ・URLの履歴(再選択用) */
+export interface TargetHistoryEntry {
+  id: string
+  kind: TargetKind
+  label: string
+  url?: string
+  exePath?: string
+  exeArgs?: string
+  lastUsedAt: string
+}
+
 export type StepType = 'click' | 'dblclick' | 'keypress'
 
 export interface RecordedStep {
@@ -123,11 +134,26 @@ export interface ContextMenuItem {
   submenu?: ContextMenuItem[]
 }
 
-/** ウィンドウ表示ホットキーとして素早く2回押すキー */
-export type HotkeyModifier = 'Ctrl' | 'Shift' | 'Alt'
+/**
+ * ウィンドウ表示ホットキー。keycodeがnullの場合は修飾キー(ctrl/shift/alt/metaのいずれか1つ)
+ * 単体を素早く2回押すことで発火し、keycodeがある場合は修飾キーを押しながらそのキーを
+ * 1回押すことで即座に発火する(通常のショートカットキーと同じ)。
+ */
+export interface HotkeyCombo {
+  ctrl: boolean
+  shift: boolean
+  alt: boolean
+  meta: boolean
+  keycode: number | null
+  /** 表示用ラベル(例: "Ctrl+Alt+D", "Ctrl 2回") */
+  label: string
+}
+
+export type ThemeMode = 'light' | 'dark'
 
 export interface AppSettings {
-  hotkeyModifier: HotkeyModifier
+  hotkey: HotkeyCombo
+  theme: ThemeMode
 }
 
 export type StepStatus = 'pending' | 'running' | 'ok' | 'fail' | 'skipped'
@@ -223,7 +249,20 @@ export const IPC = {
   // 汎用の右クリックメニュー(テスト一覧・定型文のフォルダ操作/移動サブメニュー等に使う)
   showContextMenu: 'context-menu:show',
 
-  // アプリ設定(ホットキー等)
+  // アプリ設定(ホットキー・テーマ等)
   getSettings: 'settings:get',
-  setHotkeyModifier: 'settings:set-hotkey-modifier'
+  setHotkey: 'settings:set-hotkey',
+  setTheme: 'settings:set-theme',
+  startHotkeyCapture: 'hotkey-capture:start',
+  cancelHotkeyCapture: 'hotkey-capture:cancel',
+  hotkeyCapturePreview: 'hotkey-capture:preview', // main -> renderer push
+  hotkeyCaptureResult: 'hotkey-capture:result', // main -> renderer push
+
+  // テスト作成時に選択したアプリ・URLの履歴
+  listTargetHistory: 'target-history:list',
+  recordTargetHistory: 'target-history:record',
+
+  // 録画枠のフッターボタン(枠のオーバーレイウィンドウ)とメインウィンドウの録画状態を橋渡しする
+  recordingFrameFooterAction: 'recording-frame:footer-action', // overlay -> main -> メインウィンドウ
+  setRecordingFrameFooterState: 'recording-frame:set-footer-state' // メインウィンドウ -> main -> overlay
 } as const

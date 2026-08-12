@@ -8,14 +8,22 @@ import {
   type BrowserWindow,
   type MenuItemConstructorOptions
 } from 'electron'
-import { IPC, type ContextMenuItem, type HotkeyModifier, type TestCase, type TestTarget } from '../shared/types'
+import {
+  IPC,
+  type ContextMenuItem,
+  type HotkeyCombo,
+  type ThemeMode,
+  type TestCase,
+  type TestTarget
+} from '../shared/types'
 import * as store from './store'
 import { TargetManager } from './targetManager'
 import * as recordingFrame from './recordingFrame'
 import * as screenCapture from './screenCapture'
 import * as clipboardStore from './clipboardStore'
 import * as settingsStore from './settingsStore'
-import { setHotkeyModifier } from './hotkey'
+import * as targetHistoryStore from './targetHistoryStore'
+import { setHotkeyCombo, startHotkeyCapture, cancelHotkeyCapture } from './hotkey'
 
 export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
   const manager = new TargetManager()
@@ -225,9 +233,37 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.getSettings, async () => settingsStore.getSettings())
 
-  ipcMain.handle(IPC.setHotkeyModifier, async (_e, modifier: HotkeyModifier) => {
-    const settings = await settingsStore.setHotkeyModifier(modifier)
-    setHotkeyModifier(modifier)
+  ipcMain.handle(IPC.setHotkey, async (_e, hotkey: HotkeyCombo) => {
+    const settings = await settingsStore.setHotkey(hotkey)
+    setHotkeyCombo(hotkey)
     return settings
+  })
+
+  ipcMain.handle(IPC.setTheme, async (_e, theme: ThemeMode) => settingsStore.setTheme(theme))
+
+  ipcMain.handle(IPC.startHotkeyCapture, async () => {
+    const w = getWindow()
+    startHotkeyCapture(
+      (label) => w?.webContents.send(IPC.hotkeyCapturePreview, label),
+      (combo) => w?.webContents.send(IPC.hotkeyCaptureResult, combo)
+    )
+  })
+
+  ipcMain.handle(IPC.cancelHotkeyCapture, async () => {
+    cancelHotkeyCapture()
+  })
+
+  ipcMain.handle(IPC.listTargetHistory, async () => targetHistoryStore.listHistory())
+
+  ipcMain.handle(IPC.recordTargetHistory, async (_e, entry: targetHistoryStore.RecordTargetHistoryInput) =>
+    targetHistoryStore.recordEntry(entry)
+  )
+
+  ipcMain.handle(IPC.setRecordingFrameFooterState, async (_e, state: 'idle' | 'recording' | 'paused') => {
+    recordingFrame.setFooterState(state)
+  })
+
+  recordingFrame.onFooterAction((action) => {
+    getWindow()?.webContents.send(IPC.recordingFrameFooterAction, action)
   })
 }
