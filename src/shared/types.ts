@@ -56,6 +56,16 @@ export interface TestCase {
   updatedAt: string
   /** 最後に実行(再生)した日時。一度も実行していなければ未設定 */
   lastRunAt?: string
+  /** 所属フォルダ(TestFolder.id)。未設定/nullはルート直下 */
+  folderId?: string | null
+}
+
+/** テスト一覧を整理するための階層フォルダ */
+export interface TestFolder {
+  id: string
+  name: string
+  /** 親フォルダのid。nullはルート直下 */
+  parentId: string | null
 }
 
 /** 画面録画用の枠(画面上に表示する赤枠)の位置・サイズ。OSのスクリーン座標(DIP)基準 */
@@ -74,6 +84,21 @@ export interface CaptureInfo {
   /** HiDPI環境でのスケール係数。キャプチャした映像は物理ピクセル基準になるため座標変換に使う */
   scaleFactor: number
   displayBounds: { x: number; y: number; width: number; height: number }
+}
+
+/** クリップボード履歴の1件(PC上でコピーされたテキストを自動記録) */
+export interface ClipboardHistoryEntry {
+  id: string
+  text: string
+  copiedAt: string
+}
+
+/** ユーザーが登録した定型文 */
+export interface ClipboardTemplate {
+  id: string
+  text: string
+  label?: string
+  createdAt: string
 }
 
 export type StepStatus = 'pending' | 'running' | 'ok' | 'fail' | 'skipped'
@@ -114,6 +139,12 @@ export const IPC = {
   saveTest: 'tests:save',
   deleteTest: 'tests:delete',
   renameTest: 'tests:rename',
+  moveTest: 'tests:move',
+
+  listFolders: 'folders:list',
+  createFolder: 'folders:create',
+  renameFolder: 'folders:rename',
+  deleteFolder: 'folders:delete',
 
   pickExecutable: 'dialog:pickExecutable',
 
@@ -140,5 +171,17 @@ export const IPC = {
   screenRecordingStart: 'screen-recording:start',
   screenRecordingAppendChunk: 'screen-recording:append-chunk',
   screenRecordingFinish: 'screen-recording:finish',
-  screenRecordingOpenFolder: 'screen-recording:open-folder'
+  screenRecordingOpenFolder: 'screen-recording:open-folder',
+
+  // クリップボード管理(履歴はバックグラウンドで自動記録、定型文はユーザーが登録)
+  listClipboardHistory: 'clipboard:list-history',
+  deleteClipboardHistoryEntry: 'clipboard:delete-history-entry',
+  clearClipboardHistory: 'clipboard:clear-history',
+  listClipboardTemplates: 'clipboard:list-templates',
+  createClipboardTemplate: 'clipboard:create-template',
+  updateClipboardTemplate: 'clipboard:update-template',
+  deleteClipboardTemplate: 'clipboard:delete-template',
+  copyToClipboard: 'clipboard:copy',
+  showClipboardHistoryMenu: 'clipboard:show-history-menu',
+  clipboardDataChanged: 'clipboard:data-changed' // main -> renderer push
 } as const

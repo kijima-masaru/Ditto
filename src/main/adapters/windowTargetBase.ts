@@ -92,16 +92,25 @@ export async function pressKey(name: string): Promise<void> {
 }
 
 // uiohookのstart/stopはプロセス内で1回のみ行う(複数アダプタが同時にstart/stopを呼んでも安全にする)
+// グローバルホットキー(hotkey.ts)も同じフックを共有して常時起動しておく
 let hookStarted = false
-function ensureGlobalHookStarted(): void {
+let keepAlive = false
+export function ensureGlobalHookStarted(): void {
   if (!hookStarted) {
     uIOhook.start()
     hookStarted = true
   }
 }
 
+/** グローバルホットキーなど、アプリ起動中ずっとフックが必要な機能がある場合に呼ぶ。
+ *  以後 stopGlobalHook() は無効化され、アプリ終了までフックが維持される */
+export function keepGlobalHookAlive(): void {
+  keepAlive = true
+}
+
 /** 全対象の記録が終わったタイミングでTargetManagerから呼ばれる */
 export function stopGlobalHook(): void {
+  if (keepAlive) return
   if (hookStarted) {
     uIOhook.stop()
     hookStarted = false

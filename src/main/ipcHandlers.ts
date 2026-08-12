@@ -1,9 +1,10 @@
-import { ipcMain, dialog, desktopCapturer, shell, type BrowserWindow } from 'electron'
+import { ipcMain, dialog, desktopCapturer, shell, clipboard, Menu, type BrowserWindow } from 'electron'
 import { IPC, type TestCase, type TestTarget } from '../shared/types'
 import * as store from './store'
 import { TargetManager } from './targetManager'
 import * as recordingFrame from './recordingFrame'
 import * as screenCapture from './screenCapture'
+import * as clipboardStore from './clipboardStore'
 
 export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
   const manager = new TargetManager()
@@ -17,6 +18,18 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   ipcMain.handle(IPC.deleteTest, async (_e, id: string) => store.deleteTest(id))
 
   ipcMain.handle(IPC.renameTest, async (_e, id: string, name: string) => store.renameTest(id, name))
+
+  ipcMain.handle(IPC.moveTest, async (_e, id: string, folderId: string | null) => store.moveTest(id, folderId))
+
+  ipcMain.handle(IPC.listFolders, async () => store.listFolders())
+
+  ipcMain.handle(IPC.createFolder, async (_e, name: string, parentId: string | null) =>
+    store.createFolder(name, parentId)
+  )
+
+  ipcMain.handle(IPC.renameFolder, async (_e, id: string, name: string) => store.renameFolder(id, name))
+
+  ipcMain.handle(IPC.deleteFolder, async (_e, id: string) => store.deleteFolder(id))
 
   ipcMain.handle(IPC.pickExecutable, async () => {
     const w = getWindow()
@@ -102,5 +115,53 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.screenRecordingOpenFolder, async (_e, filePath: string) => {
     shell.showItemInFolder(filePath)
+  })
+
+  ipcMain.handle(IPC.listClipboardHistory, async () => clipboardStore.listHistory())
+
+  ipcMain.handle(IPC.deleteClipboardHistoryEntry, async (_e, id: string) => clipboardStore.deleteHistoryEntry(id))
+
+  ipcMain.handle(IPC.clearClipboardHistory, async () => clipboardStore.clearHistory())
+
+  ipcMain.handle(IPC.listClipboardTemplates, async () => clipboardStore.listTemplates())
+
+  ipcMain.handle(IPC.createClipboardTemplate, async (_e, text: string, label?: string) =>
+    clipboardStore.createTemplate(text, label)
+  )
+
+  ipcMain.handle(IPC.updateClipboardTemplate, async (_e, id: string, text: string, label?: string) =>
+    clipboardStore.updateTemplate(id, text, label)
+  )
+
+  ipcMain.handle(IPC.deleteClipboardTemplate, async (_e, id: string) => clipboardStore.deleteTemplate(id))
+
+  ipcMain.handle(IPC.copyToClipboard, async (_e, text: string) => {
+    clipboard.writeText(text)
+  })
+
+  ipcMain.handle(IPC.showClipboardHistoryMenu, async (_e, entryId: string, text: string) => {
+    const w = getWindow()
+    const menu = Menu.buildFromTemplate([
+      {
+        label: '定型文に登録',
+        click: async () => {
+          await clipboardStore.createTemplate(text)
+          w?.webContents.send(IPC.clipboardDataChanged)
+        }
+      },
+      {
+        label: 'コピー',
+        click: () => clipboard.writeText(text)
+      },
+      { type: 'separator' },
+      {
+        label: '履歴から削除',
+        click: async () => {
+          await clipboardStore.deleteHistoryEntry(entryId)
+          w?.webContents.send(IPC.clipboardDataChanged)
+        }
+      }
+    ])
+    if (w) menu.popup({ window: w })
   })
 }

@@ -4,6 +4,7 @@ import TargetSelect from './components/TargetSelect'
 import Recording from './components/Recording'
 import TestList from './components/TestList'
 import Playback from './components/Playback'
+import ClipboardPanel from './components/ClipboardPanel'
 import { useScreenRecording } from './hooks/useScreenRecording'
 
 type View =
@@ -11,6 +12,7 @@ type View =
   | { name: 'recording'; targets: TestTarget[] }
   | { name: 'test-list' }
   | { name: 'playback'; testCase: TestCase }
+  | { name: 'clipboard' }
 
 function formatElapsed(ms: number): string {
   const total = Math.floor(ms / 1000)
@@ -49,6 +51,12 @@ export default function App(): React.JSX.Element {
             onClick={() => setView({ name: 'target-select' })}
           >
             新規録画
+          </button>
+          <button
+            className={view.name === 'clipboard' ? 'active' : ''}
+            onClick={() => setView({ name: 'clipboard' })}
+          >
+            クリップボード
           </button>
         </nav>
       </header>
@@ -97,6 +105,8 @@ export default function App(): React.JSX.Element {
         )}
 
         {view.name === 'playback' && <Playback testCase={view.testCase} onDone={goHome} recorder={recorder} />}
+
+        {view.name === 'clipboard' && <ClipboardPanel />}
       </main>
     </div>
   )

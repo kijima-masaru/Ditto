@@ -2,11 +2,14 @@ import { contextBridge, ipcRenderer } from 'electron'
 import {
   IPC,
   type CaptureInfo,
+  type ClipboardHistoryEntry,
+  type ClipboardTemplate,
   type RecordedStep,
   type RecordingFrameBounds,
   type PlaybackProgress,
   type PlaybackResult,
   type TestCase,
+  type TestFolder,
   type TestTarget
 } from '../shared/types'
 
@@ -16,6 +19,14 @@ const api = {
     ipcRenderer.invoke(IPC.saveTest, testCase),
   deleteTest: (id: string): Promise<void> => ipcRenderer.invoke(IPC.deleteTest, id),
   renameTest: (id: string, name: string): Promise<TestCase> => ipcRenderer.invoke(IPC.renameTest, id, name),
+  moveTest: (id: string, folderId: string | null): Promise<TestCase> =>
+    ipcRenderer.invoke(IPC.moveTest, id, folderId),
+
+  listFolders: (): Promise<TestFolder[]> => ipcRenderer.invoke(IPC.listFolders),
+  createFolder: (name: string, parentId: string | null): Promise<TestFolder> =>
+    ipcRenderer.invoke(IPC.createFolder, name, parentId),
+  renameFolder: (id: string, name: string): Promise<void> => ipcRenderer.invoke(IPC.renameFolder, id, name),
+  deleteFolder: (id: string): Promise<void> => ipcRenderer.invoke(IPC.deleteFolder, id),
 
   pickExecutable: (): Promise<string | null> => ipcRenderer.invoke(IPC.pickExecutable),
 
@@ -54,7 +65,26 @@ const api = {
     ipcRenderer.invoke(IPC.screenRecordingAppendChunk, chunk),
   finishScreenRecordingSession: (): Promise<string | null> => ipcRenderer.invoke(IPC.screenRecordingFinish),
   openRecordingFolder: (filePath: string): Promise<void> =>
-    ipcRenderer.invoke(IPC.screenRecordingOpenFolder, filePath)
+    ipcRenderer.invoke(IPC.screenRecordingOpenFolder, filePath),
+
+  listClipboardHistory: (): Promise<ClipboardHistoryEntry[]> => ipcRenderer.invoke(IPC.listClipboardHistory),
+  deleteClipboardHistoryEntry: (id: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.deleteClipboardHistoryEntry, id),
+  clearClipboardHistory: (): Promise<void> => ipcRenderer.invoke(IPC.clearClipboardHistory),
+  listClipboardTemplates: (): Promise<ClipboardTemplate[]> => ipcRenderer.invoke(IPC.listClipboardTemplates),
+  createClipboardTemplate: (text: string, label?: string): Promise<ClipboardTemplate> =>
+    ipcRenderer.invoke(IPC.createClipboardTemplate, text, label),
+  updateClipboardTemplate: (id: string, text: string, label?: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.updateClipboardTemplate, id, text, label),
+  deleteClipboardTemplate: (id: string): Promise<void> => ipcRenderer.invoke(IPC.deleteClipboardTemplate, id),
+  copyToClipboard: (text: string): Promise<void> => ipcRenderer.invoke(IPC.copyToClipboard, text),
+  showClipboardHistoryMenu: (entryId: string, text: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.showClipboardHistoryMenu, entryId, text),
+  onClipboardDataChanged: (cb: () => void): (() => void) => {
+    const listener = (): void => cb()
+    ipcRenderer.on(IPC.clipboardDataChanged, listener)
+    return () => ipcRenderer.removeListener(IPC.clipboardDataChanged, listener)
+  }
 }
 
 contextBridge.exposeInMainWorld('api', api)

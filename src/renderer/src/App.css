@@ -36,10 +36,10 @@ body {
   background: rgba(255, 255, 255, 0.08);
   color: #cbd2d9;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  padding: 7px 8px;
+  padding: 7px 4px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .app-header nav button.active,
@@ -120,12 +120,15 @@ body {
   color: #52606d;
 }
 
-.field input {
+.field input,
+.field textarea {
   padding: 8px 10px;
   border: 1px solid #d9dde3;
   border-radius: 6px;
   font-size: 13px;
   width: 100%;
+  font-family: inherit;
+  resize: vertical;
 }
 
 .row {
@@ -521,4 +524,227 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 
 .recording-frame-size input {
   width: 70px;
+}
+
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+
+.breadcrumb button {
+  padding: 3px 6px;
+  font-size: 12px;
+  border: none;
+  background: transparent;
+  color: #2f80ed;
+  text-decoration: underline;
+}
+
+.breadcrumb button:hover {
+  background: transparent;
+  border: none;
+  color: #1c5e9e;
+}
+
+.breadcrumb-current {
+  font-weight: 700;
+  color: #334e68;
+  padding: 3px 2px;
+}
+
+.breadcrumb-sep {
+  color: #aab4bf;
+}
+
+.breadcrumb .new-folder-btn {
+  margin-left: auto;
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+.folder-cards {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.folder-card {
+  background: #f8fafc;
+  border: 1px solid #e1e6ea;
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.folder-card-name {
+  flex: 1;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 2px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334e68;
+}
+
+.folder-card-name:hover {
+  background: transparent;
+  border: none;
+  color: #2f80ed;
+}
+
+.folder-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.folder-card-actions button {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+.move-picker {
+  margin-top: 4px;
+}
+
+.move-picker select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #d9dde3;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.clipboard-subtabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.clipboard-subtabs button {
+  flex: 1;
+  padding: 7px;
+  border: 1.5px solid #aab4bf;
+  background: #ffffff;
+  color: #334e68;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.clipboard-subtabs button.active {
+  border-color: #2f80ed;
+  background: #eaf2fe;
+  color: #2f80ed;
+  font-weight: 600;
+}
+
+.clipboard-toolbar {
+  margin-bottom: 10px;
+  justify-content: space-between;
+}
+
+.clipboard-toolbar .hint {
+  flex: 1;
+  min-width: 0;
+}
+
+.clip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.clip-item {
+  position: relative;
+  background: white;
+  border: 1px solid #eceff1;
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.clip-item:hover {
+  border-color: #aac4e8;
+  background: #f7faff;
+}
+
+.clip-item--copied {
+  border-color: #2f80ed;
+  background: #eaf2fe;
+}
+
+.clip-item-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #2f80ed;
+}
+
+.clip-item-text {
+  font-size: 13px;
+  color: #1a1a1a;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.clip-item-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: #829ab1;
+}
+
+.clip-item-meta button {
+  font-size: 11px;
+  padding: 3px 8px;
+}
+
+.clip-copied-badge {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: #2f80ed;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.clip-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.inline-form {
+  background: #f8fafc;
+  border: 1px solid #dbe3ea;
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 10px;
+}
+
+.inline-form input {
+  flex: 1;
+  min-width: 100px;
 }

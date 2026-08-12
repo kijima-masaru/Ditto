@@ -1,5 +1,5 @@
 appId: com.flatline.autotesttool
-productName: 自動テストツール
+productName: Ditto
 directories:
   buildResources: build
 # ネイティブ依存(active-win/uiohook-napi/koffi/@nut-tree-fork)はいずれもElectronの

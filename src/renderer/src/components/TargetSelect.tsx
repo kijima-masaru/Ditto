@@ -47,8 +47,6 @@ export default function TargetSelect({ onStart }: Props): React.JSX.Element {
 
   return (
     <div className="panel">
-      <h2>テスト対象を追加</h2>
-
       <div className="target-type-toggle">
         <button className={kind === 'web' ? 'active' : ''} onClick={() => setKind('web')}>
           WEBアプリ
@@ -59,7 +57,7 @@ export default function TargetSelect({ onStart }: Props): React.JSX.Element {
       </div>
 
       <div className="field">
-        <label>表示名(任意)</label>
+        <label>アプリ・画面名(任意)</label>
         <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="例: 管理画面 / メモ帳" />
       </div>
 
@@ -102,14 +100,19 @@ export default function TargetSelect({ onStart }: Props): React.JSX.Element {
         </div>
       )}
 
+      <p className="hint">※ 複数の対象を登録すると、録画中にタブで切り替えながら操作を記録できます。</p>
       <p className="hint">
-        ※ 複数の対象を登録すると、録画中にタブで切り替えながら操作を記録できます。WEBアプリ・デスクトップ
-        アプリのどちらも、タブを選択するとそのウィンドウが最前面に表示され、他のタブに切り替えると自動的に
-        最小化されます。WEBアプリはこのアプリに埋め込まず、あなたの既定ブラウザで開くため、ログインなどの
-        操作もいつも通りご自身のブラウザ(保存済みパスワードやセッション)で行えます。記録・再生は画面座標
-        ベースのため、ウィンドウのサイズ・表示スケールが記録時と大きく異なると再生に失敗する場合があります。
-        ログイン操作など記録に残したくない部分は、録画画面の「一時停止」で記録を止められます。
+        ※WEBアプリ・デスクトップ アプリのどちらも、タブを選択するとそのウィンドウが最前面に表示され、他のタブに切り替えると自動的に
+        最小化されます。
       </p>
+      <p className="hint">
+        ※WEBアプリはこのアプリに埋め込まず、あなたの既定ブラウザで開くため、ログインなどの
+        操作もいつも通りご自身のブラウザ(保存済みパスワードやセッション)で行えます。
+      </p>
+      <p className="hint">
+        ※記録・再生は画面座標 ベースのため、ウィンドウのサイズ・表示スケールが記録時と大きく異なると再生に失敗する場合があります。
+      </p>
+      <p className="hint">※ログイン操作など記録に残したくない部分は、録画画面の「一時停止」で記録を止められます。</p>
 
       <button className="primary" disabled={targets.length === 0} onClick={() => onStart(targets)}>
         録画を開始 ({targets.length}件の対象)
