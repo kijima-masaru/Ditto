@@ -180,8 +180,8 @@ function buildHtml(): string {
   .titlebar-btn:hover { background:rgba(255,255,255,0.14); }
   #btn-close:hover { background:#e0453f; color:#fff; }
 
-  .handle { position:absolute; width:14px; height:14px; background:#ff4d4f; border-radius:3px; z-index:2; transition:opacity .15s; }
-  .handle.locked { opacity:0.2; pointer-events:none; }
+  .handle { position:absolute; width:14px; height:14px; background:transparent; z-index:2; }
+  .handle.locked { pointer-events:none; }
   .nw { left:0; top:0; cursor:nwse-resize; }
   .ne { right:0; top:0; cursor:nesw-resize; }
   .sw { left:0; bottom:0; cursor:nesw-resize; }
@@ -193,7 +193,7 @@ function buildHtml(): string {
   .size-fields input:disabled { color:#6b6f78; cursor:not-allowed; }
   .toolbar-actions { display:flex; align-items:center; gap:6px; }
   .toolbar-actions button { display:none; border:none; cursor:pointer; color:#fff; align-items:center; justify-content:center; }
-  .rec-btn { width:30px; height:30px; border-radius:50%; background:#ff4d4f; border:2px solid #fff; font-size:13px; }
+  .rec-btn { width:22px; height:22px; border-radius:50%; background:#ff4d4f; border:2px solid #fff; }
   .tool-btn { width:26px; height:26px; border-radius:50%; background:#3a3f4b; font-size:11px; }
   .tool-btn.stop { background:#e0453f; }
   .toolbar-actions[data-state="idle"] #btn-start { display:flex; }
@@ -224,7 +224,7 @@ function buildHtml(): string {
       <span>px</span>
     </div>
     <div class="toolbar-actions" id="actions" data-state="idle">
-      <button class="rec-btn" id="btn-start" title="録画開始">●</button>
+      <button class="rec-btn" id="btn-start" title="録画開始"></button>
       <button class="tool-btn" id="btn-pause" title="一時停止">⏸</button>
       <button class="tool-btn" id="btn-resume" title="再開">▶</button>
       <button class="tool-btn stop" id="btn-stop" title="停止">■</button>
