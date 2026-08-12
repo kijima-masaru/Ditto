@@ -1,7 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import {
   IPC,
+  type CaptureInfo,
   type RecordedStep,
+  type RecordingFrameBounds,
   type PlaybackProgress,
   type PlaybackResult,
   type TestCase,
@@ -35,7 +37,24 @@ const api = {
     const listener = (_e: unknown, progress: PlaybackProgress): void => cb(progress)
     ipcRenderer.on(IPC.playbackProgress, listener)
     return () => ipcRenderer.removeListener(IPC.playbackProgress, listener)
-  }
+  },
+
+  showRecordingFrame: (): Promise<void> => ipcRenderer.invoke(IPC.recordingFrameShow),
+  hideRecordingFrame: (): Promise<void> => ipcRenderer.invoke(IPC.recordingFrameHide),
+  isRecordingFrameVisible: (): Promise<boolean> => ipcRenderer.invoke(IPC.recordingFrameIsVisible),
+  getRecordingFrameBounds: (): Promise<RecordingFrameBounds> => ipcRenderer.invoke(IPC.recordingFrameGetBounds),
+  setRecordingFrameSize: (width: number, height: number): Promise<RecordingFrameBounds> =>
+    ipcRenderer.invoke(IPC.recordingFrameSetSize, width, height),
+  getRecordingFrameCaptureInfo: (): Promise<CaptureInfo> => ipcRenderer.invoke(IPC.recordingFrameGetCaptureInfo),
+
+  getDesktopSources: (): Promise<{ id: string; displayId: string }[]> => ipcRenderer.invoke(IPC.getDesktopSources),
+  startScreenRecordingSession: (testName: string): Promise<string> =>
+    ipcRenderer.invoke(IPC.screenRecordingStart, testName),
+  appendScreenRecordingChunk: (chunk: Uint8Array): Promise<void> =>
+    ipcRenderer.invoke(IPC.screenRecordingAppendChunk, chunk),
+  finishScreenRecordingSession: (): Promise<string | null> => ipcRenderer.invoke(IPC.screenRecordingFinish),
+  openRecordingFolder: (filePath: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.screenRecordingOpenFolder, filePath)
 }
 
 contextBridge.exposeInMainWorld('api', api)

@@ -421,3 +421,104 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 .field--inline input {
   min-width: 120px;
 }
+
+.offscreen-media {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.recording-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #2b1210;
+  color: #ffd7d3;
+  font-size: 11px;
+}
+
+.recording-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff4d4f;
+  animation: recording-pulse 1.2s infinite;
+}
+
+@keyframes recording-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.recording-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.recording-bar-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+}
+
+.recording-bar-actions button {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+.recording-saved {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #eafaf1;
+  color: #1c5e3d;
+  font-size: 11px;
+}
+
+.recording-saved button {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+.recording-error {
+  margin: 0;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recording-error button {
+  font-size: 11px;
+  padding: 3px 8px;
+}
+
+.recording-frame-panel {
+  background: #fff8f0;
+  border: 1px solid #f3d9b1;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.recording-frame-panel > button {
+  align-self: flex-start;
+}
+
+.recording-frame-size input {
+  width: 70px;
+}

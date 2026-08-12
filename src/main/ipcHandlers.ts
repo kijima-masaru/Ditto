@@ -1,7 +1,9 @@
-import { ipcMain, dialog, type BrowserWindow } from 'electron'
+import { ipcMain, dialog, desktopCapturer, shell, type BrowserWindow } from 'electron'
 import { IPC, type TestCase, type TestTarget } from '../shared/types'
 import * as store from './store'
 import { TargetManager } from './targetManager'
+import * as recordingFrame from './recordingFrame'
+import * as screenCapture from './screenCapture'
 
 export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
   const manager = new TargetManager()
@@ -56,5 +58,49 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.playbackAbort, async () => {
     manager.abort()
+  })
+
+  ipcMain.handle(IPC.recordingFrameShow, async () => {
+    recordingFrame.show()
+  })
+
+  ipcMain.handle(IPC.recordingFrameHide, async () => {
+    recordingFrame.hide()
+  })
+
+  ipcMain.handle(IPC.recordingFrameIsVisible, async () => recordingFrame.isVisible())
+
+  ipcMain.handle(IPC.recordingFrameGetBounds, async () => recordingFrame.getBounds())
+
+  ipcMain.handle(IPC.recordingFrameSetSize, async (_e, width: number, height: number) =>
+    recordingFrame.setSize(width, height)
+  )
+
+  ipcMain.handle(IPC.recordingFrameGetCaptureInfo, async () => recordingFrame.getCaptureInfo())
+
+  ipcMain.handle(IPC.getDesktopSources, async () => {
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: { width: 0, height: 0 }
+    })
+    return sources.map((s) => ({ id: s.id, displayId: s.display_id }))
+  })
+
+  ipcMain.handle(IPC.screenRecordingStart, async (_e, testName: string) => {
+    recordingFrame.setInteractive(false)
+    return screenCapture.startRecording(testName)
+  })
+
+  ipcMain.handle(IPC.screenRecordingAppendChunk, async (_e, chunk: Uint8Array) => {
+    screenCapture.appendChunk(chunk)
+  })
+
+  ipcMain.handle(IPC.screenRecordingFinish, async () => {
+    recordingFrame.setInteractive(true)
+    return screenCapture.finishRecording()
+  })
+
+  ipcMain.handle(IPC.screenRecordingOpenFolder, async (_e, filePath: string) => {
+    shell.showItemInFolder(filePath)
   })
 }

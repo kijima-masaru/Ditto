@@ -58,6 +58,24 @@ export interface TestCase {
   lastRunAt?: string
 }
 
+/** 画面録画用の枠(画面上に表示する赤枠)の位置・サイズ。OSのスクリーン座標(DIP)基準 */
+export interface RecordingFrameBounds {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/** 録画枠の位置情報から、実際の画面キャプチャに必要な情報を導出したもの */
+export interface CaptureInfo {
+  bounds: RecordingFrameBounds
+  /** desktopCapturerのソースと突き合わせるための対象ディスプレイID */
+  displayId: string
+  /** HiDPI環境でのスケール係数。キャプチャした映像は物理ピクセル基準になるため座標変換に使う */
+  scaleFactor: number
+  displayBounds: { x: number; y: number; width: number; height: number }
+}
+
 export type StepStatus = 'pending' | 'running' | 'ok' | 'fail' | 'skipped'
 
 export interface PlaybackProgress {
@@ -107,5 +125,20 @@ export const IPC = {
 
   playbackRun: 'playback:run',
   playbackAbort: 'playback:abort',
-  playbackProgress: 'playback:progress' // main -> renderer push
+  playbackProgress: 'playback:progress', // main -> renderer push
+
+  // 画面上に表示する録画範囲の枠(オーバーレイウィンドウ)
+  recordingFrameShow: 'recording-frame:show',
+  recordingFrameHide: 'recording-frame:hide',
+  recordingFrameIsVisible: 'recording-frame:is-visible',
+  recordingFrameGetBounds: 'recording-frame:get-bounds',
+  recordingFrameSetSize: 'recording-frame:set-size',
+  recordingFrameGetCaptureInfo: 'recording-frame:get-capture-info',
+
+  // 枠内の画面録画(実際のキャプチャ・エンコードはrenderer側、ファイル書き出しはmain側)
+  getDesktopSources: 'screen-recording:get-sources',
+  screenRecordingStart: 'screen-recording:start',
+  screenRecordingAppendChunk: 'screen-recording:append-chunk',
+  screenRecordingFinish: 'screen-recording:finish',
+  screenRecordingOpenFolder: 'screen-recording:open-folder'
 } as const

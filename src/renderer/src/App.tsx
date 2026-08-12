@@ -4,6 +4,7 @@ import TargetSelect from './components/TargetSelect'
 import Recording from './components/Recording'
 import TestList from './components/TestList'
 import Playback from './components/Playback'
+import { useScreenRecording } from './hooks/useScreenRecording'
 
 type View =
   | { name: 'target-select' }
@@ -11,9 +12,17 @@ type View =
   | { name: 'test-list' }
   | { name: 'playback'; testCase: TestCase }
 
+function formatElapsed(ms: number): string {
+  const total = Math.floor(ms / 1000)
+  const m = String(Math.floor(total / 60)).padStart(2, '0')
+  const s = String(total % 60).padStart(2, '0')
+  return `${m}:${s}`
+}
+
 export default function App(): React.JSX.Element {
   const [view, setView] = useState<View>({ name: 'test-list' })
   const [refreshKey, setRefreshKey] = useState(0)
+  const recorder = useScreenRecording()
 
   const goHome = useCallback(() => {
     setRefreshKey((k) => k + 1)
@@ -24,6 +33,9 @@ export default function App(): React.JSX.Element {
 
   return (
     <div className="app">
+      <video ref={recorder.videoRef} className="offscreen-media" muted playsInline />
+      <canvas ref={recorder.canvasRef} className="offscreen-media" />
+
       <header className="app-header">
         <nav>
           <button
@@ -41,6 +53,38 @@ export default function App(): React.JSX.Element {
         </nav>
       </header>
 
+      {recorder.recordingState !== 'idle' && (
+        <div className="recording-bar">
+          <span className="recording-dot" />
+          <span>{recorder.recordingState === 'paused' ? '一時停止中' : '画面録画中'}</span>
+          <span className="recording-time">{formatElapsed(recorder.elapsedMs)}</span>
+          <div className="recording-bar-actions">
+            {recorder.recordingState === 'recording' && <button onClick={recorder.pause}>一時停止</button>}
+            {recorder.recordingState === 'paused' && <button onClick={recorder.resume}>再開</button>}
+            <button className="danger" onClick={recorder.stop}>
+              録画停止
+            </button>
+          </div>
+        </div>
+      )}
+
+      {recorder.savedPath && recorder.recordingState === 'idle' && (
+        <div className="recording-saved">
+          <span>保存しました: {recorder.savedPath.split(/[\\/]/).pop()}</span>
+          <button onClick={() => window.api.openRecordingFolder(recorder.savedPath as string)}>
+            フォルダを開く
+          </button>
+          <button onClick={recorder.dismissSaved}>閉じる</button>
+        </div>
+      )}
+
+      {recorder.errorMessage && (
+        <div className="error recording-error">
+          録画エラー: {recorder.errorMessage}
+          <button onClick={recorder.dismissSaved}>閉じる</button>
+        </div>
+      )}
+
       <main className={`app-main${isWorkspace ? ' app-main--workspace' : ''}`}>
         {view.name === 'target-select' && (
           <TargetSelect onStart={(targets) => setView({ name: 'recording', targets })} />
@@ -52,7 +96,7 @@ export default function App(): React.JSX.Element {
           <TestList key={refreshKey} onRun={(testCase) => setView({ name: 'playback', testCase })} />
         )}
 
-        {view.name === 'playback' && <Playback testCase={view.testCase} onDone={goHome} />}
+        {view.name === 'playback' && <Playback testCase={view.testCase} onDone={goHome} recorder={recorder} />}
       </main>
     </div>
   )

@@ -3,6 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerIpcHandlers } from './ipcHandlers'
 import { setupAutoUpdater, checkForUpdates } from './autoUpdater'
+import * as recordingFrame from './recordingFrame'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -61,4 +62,8 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('before-quit', () => {
+  recordingFrame.destroy()
 })
