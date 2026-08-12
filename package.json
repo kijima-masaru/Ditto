@@ -1,6 +1,6 @@
 {
   "name": "auto-test-tool",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "PC画面上のWEB/デスクトップアプリ操作を記録し自動再生するテスト自動化ツール",
   "main": "./out/main/index.js",
   "author": "kijima-masaru",
