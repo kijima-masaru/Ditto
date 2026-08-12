@@ -29,8 +29,7 @@ const api = {
     return () => ipcRenderer.removeListener(IPC.recordingStep, listener)
   },
 
-  runPlayback: (testCase: TestCase, speed: number): Promise<PlaybackResult> =>
-    ipcRenderer.invoke(IPC.playbackRun, testCase, speed),
+  runPlayback: (testCase: TestCase): Promise<PlaybackResult> => ipcRenderer.invoke(IPC.playbackRun, testCase),
   abortPlayback: (): Promise<void> => ipcRenderer.invoke(IPC.playbackAbort),
   onPlaybackProgress: (cb: (progress: PlaybackProgress) => void): (() => void) => {
     const listener = (_e: unknown, progress: PlaybackProgress): void => cb(progress)

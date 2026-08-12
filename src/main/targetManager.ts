@@ -9,7 +9,18 @@ import type {
 } from '../shared/types'
 import { createBrowserAdapter } from './adapters/browserTargetAdapter'
 import { createDesktopAdapter } from './adapters/desktopTargetAdapter'
-import { stopGlobalHook } from './adapters/windowTargetBase'
+import { sleep, stopGlobalHook } from './adapters/windowTargetBase'
+
+/** abortされたら即座に抜けられるよう、短い間隔に分けて待機する */
+async function interruptibleSleep(ms: number, isAborted: () => boolean): Promise<void> {
+  const chunk = 200
+  let remaining = ms
+  while (remaining > 0 && !isAborted()) {
+    const wait = Math.min(chunk, remaining)
+    await sleep(wait)
+    remaining -= wait
+  }
+}
 
 function createAdapter(target: TestTarget): TargetAdapter {
   return target.kind === 'web' ? createBrowserAdapter(target) : createDesktopAdapter(target)
@@ -100,7 +111,6 @@ export class TargetManager {
 
   async runPlayback(
     testCase: TestCase,
-    speed: number,
     onProgress: (progress: PlaybackProgress) => void
   ): Promise<PlaybackResult> {
     await this.disposeAll()
@@ -137,6 +147,17 @@ export class TargetManager {
       }
 
       const step = testCase.steps[i]
+
+      // 記録時に実際に空いていた時間だけ待ってから次の操作を行い、間隔を再現する
+      if (step.delayMs > 0) {
+        await interruptibleSleep(step.delayMs, () => this.aborted)
+      }
+      if (this.aborted) {
+        push({ stepIndex: i, status: 'skipped', message: '中断されました' })
+        success = false
+        break
+      }
+
       if (step.targetId !== this.activeTargetId) {
         await this.setActiveTarget(step.targetId)
       }
@@ -145,7 +166,7 @@ export class TargetManager {
       try {
         const adapter = this.adapters.get(step.targetId)
         if (!adapter) throw new Error('対象が見つかりません')
-        await adapter.execStep(step, speed)
+        await adapter.execStep(step)
         push({ stepIndex: i, status: 'ok', targetId: step.targetId })
       } catch (err) {
         success = false

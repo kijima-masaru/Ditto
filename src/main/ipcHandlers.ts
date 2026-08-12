@@ -45,9 +45,9 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.recordingStop, async () => manager.stopRecording())
 
-  ipcMain.handle(IPC.playbackRun, async (_e, testCase: TestCase, speed: number) => {
+  ipcMain.handle(IPC.playbackRun, async (_e, testCase: TestCase) => {
     const w = getWindow()
-    return manager.runPlayback(testCase, speed, (progress) => {
+    return manager.runPlayback(testCase, (progress) => {
       w?.webContents.send(IPC.playbackProgress, progress)
     })
   })

@@ -26,7 +26,7 @@ export interface TestTarget {
   exeArgs?: string
 }
 
-export type StepType = 'click' | 'dblclick' | 'keypress' | 'wait'
+export type StepType = 'click' | 'dblclick' | 'keypress'
 
 export interface RecordedStep {
   id: string
@@ -34,7 +34,7 @@ export interface RecordedStep {
   targetId: string
   type: StepType
   timestamp: number
-  /** 前ステップからの待機時間(ms)。再生時のタイミング再現に使用 */
+  /** 前ステップからの実際の経過時間(ms)。再生時にそのまま同じ間隔を空けて再現する */
   delayMs: number
 
   /** 対象ウィンドウ左上を基準とした相対座標 */
@@ -82,8 +82,8 @@ export interface TargetAdapter {
   startRecording(onStep: (step: Omit<RecordedStep, 'id' | 'targetId' | 'timestamp' | 'delayMs'>) => void): Promise<void>
   /** 記録を停止する */
   stopRecording(): Promise<void>
-  /** 1ステップを再生する。speedは再生速度倍率(1=等速、2=2倍速など) */
-  execStep(step: RecordedStep, speed: number): Promise<void>
+  /** 1ステップの操作(クリック/キー入力)を再生する。ステップ間の待機はTargetManager側で行う */
+  execStep(step: RecordedStep): Promise<void>
   /** 対象を破棄する(デスクトップ: プロセス終了。web: ユーザーのブラウザなので何もしない) */
   dispose(): Promise<void>
 }

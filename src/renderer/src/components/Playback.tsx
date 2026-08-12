@@ -7,11 +7,8 @@ interface Props {
   onDone: () => void
 }
 
-const SPEED_OPTIONS = [0.25, 0.5, 1, 1.5, 2, 4]
-
 export default function Playback({ testCase, onDone }: Props): React.JSX.Element {
   const [phase, setPhase] = useState<'idle' | 'running' | 'done'>('idle')
-  const [speed, setSpeed] = useState(1)
   const [progress, setProgress] = useState<PlaybackProgress[]>([])
   const [activeTargetId, setActiveTargetId] = useState<string>(testCase.targets[0]?.id ?? '')
   const [success, setSuccess] = useState<boolean | null>(null)
@@ -32,7 +29,7 @@ export default function Playback({ testCase, onDone }: Props): React.JSX.Element
     })
 
     try {
-      const result = await window.api.runPlayback(testCase, speed)
+      const result = await window.api.runPlayback(testCase)
       setSuccess(result.success)
     } catch (e) {
       setError((e as Error).message)
@@ -51,21 +48,11 @@ export default function Playback({ testCase, onDone }: Props): React.JSX.Element
         <TargetTabs targets={testCase.targets} activeId={activeTargetId} onSelect={() => {}} disabled />
         <div className="row">
           {(phase === 'idle' || phase === 'done') && (
-            <>
-              <label>速度</label>
-              <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>
-                {SPEED_OPTIONS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}x
-                  </option>
-                ))}
-              </select>
-              <button className="primary" onClick={handleStart}>
-                {phase === 'done' ? 'もう一度実行' : '再生を開始'}
-              </button>
-            </>
+            <button className="primary" onClick={handleStart}>
+              {phase === 'done' ? 'もう一度実行' : '再生を開始'}
+            </button>
           )}
-          {phase === 'running' && <span className="status-line">実行中... ({speed}x)</span>}
+          {phase === 'running' && <span className="status-line">実行中...</span>}
           {phase === 'done' && (
             <span className="status-line">
               {success ? '完了しました' : `失敗しました${error ? ` (${error})` : ''}`}
@@ -75,7 +62,10 @@ export default function Playback({ testCase, onDone }: Props): React.JSX.Element
       </div>
 
       <div className="notice-panel">
-        <p>アクティブなタブの対象がOS上で最前面に表示され、そのウィンドウに対して操作を再生します。</p>
+        <p>
+          アクティブなタブの対象がOS上で最前面に表示され、そのウィンドウに対して操作を再生します。
+          各操作の間隔は記録時に実際に空いていた時間をそのまま再現します。
+        </p>
       </div>
 
       <div className="workspace-footer">

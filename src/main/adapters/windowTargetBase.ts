@@ -168,7 +168,7 @@ export abstract class WindowTargetAdapterBase implements TargetAdapter {
     this.onStepCb = null
   }
 
-  async execStep(step: RecordedStep, speed: number): Promise<void> {
+  async execStep(step: RecordedStep): Promise<void> {
     if (this.windowId === null) throw new Error('対象ウィンドウがありません')
     switch (step.type) {
       case 'click':
@@ -184,10 +184,6 @@ export abstract class WindowTargetAdapterBase implements TargetAdapter {
       case 'keypress': {
         if (!step.key) throw new Error('キー情報がありません')
         await pressKey(step.key)
-        return
-      }
-      case 'wait': {
-        await sleep(Math.min(step.delayMs, 3000) / speed)
         return
       }
       default:
