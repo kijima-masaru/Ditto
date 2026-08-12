@@ -807,8 +807,9 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 .clip-item-text {
   font-size: 13px;
   color: var(--text);
-  word-break: break-all;
-  white-space: pre-wrap;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .clip-copied-badge {
