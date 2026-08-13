@@ -245,7 +245,7 @@ export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Elem
         <>
           {subfolders.length > 0 && (
             <ul className="folder-cards">
-              {subfolders.map((f) => {
+              {folderDrag.orderedItems.map((f) => {
                 const isEditingFolder = renamingFolderId === f.id || deletingFolderId === f.id
                 const drag = isEditingFolder ? null : folderDrag.getHandlers(f)
                 return (
@@ -338,7 +338,7 @@ export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Elem
 
           {visibleTests.length > 0 && (
             <ul className="test-name-list">
-              {visibleTests.map((t) => {
+              {testDrag.orderedItems.map((t) => {
                 const isEditingTest = renamingTestId === t.id || deletingTestId === t.id
                 const drag = isEditingTest ? null : testDrag.getHandlers(t)
                 return (

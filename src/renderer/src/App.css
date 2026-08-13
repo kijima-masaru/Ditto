@@ -711,17 +711,11 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   color: var(--accent);
 }
 
-/* ドラッグ&ドロップでの並び替え中の見た目(フォルダカード・テスト/定型文リストで共通使用) */
+/* ドラッグ中のカードの見た目(フォルダカード・テスト/定型文リストで共通使用)。
+   並び替え自体はドラッグ中に配列の順序を入れ替えて即座に反映するので、
+   ここでは掴んでいるカード自身を少し薄くするだけでよい */
 .drag-item-dragging {
   opacity: 0.4;
-}
-
-.drag-item-over-before {
-  box-shadow: inset 0 2px 0 var(--accent);
-}
-
-.drag-item-over-after {
-  box-shadow: inset 0 -2px 0 var(--accent);
 }
 
 .folder-card-name {

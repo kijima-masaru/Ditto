@@ -339,7 +339,7 @@ export default function ClipboardPanel(): React.JSX.Element {
 
           {subfolders.length > 0 && (
             <ul className="folder-cards">
-              {subfolders.map((f) => {
+              {folderDrag.orderedItems.map((f) => {
                 const isEditingFolder = renamingFolderId === f.id || deletingFolderId === f.id
                 const drag = isEditingFolder ? null : folderDrag.getHandlers(f)
                 return (
@@ -459,7 +459,7 @@ export default function ClipboardPanel(): React.JSX.Element {
             </div>
           ) : (
             <ul className="clip-list">
-              {visibleTemplates.map((t) => {
+              {templateDrag.orderedItems.map((t) => {
                 const isEditingTemplate = editingId === t.id || deletingTemplateId === t.id
                 const drag = isEditingTemplate ? null : templateDrag.getHandlers(t)
                 return editingId === t.id ? (
