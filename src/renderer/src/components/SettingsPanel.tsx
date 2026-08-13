@@ -6,6 +6,29 @@ interface Props {
   onThemeChange: (theme: ThemeMode) => void
 }
 
+const LOG_LEVELS = ['all', 'error', 'warn', 'info', 'verbose', 'debug', 'silly'] as const
+
+const LOG_ENTRY_START = /^\[[\d-]+ [\d:.]+\] \[(\w+)\]/
+
+/**
+ * ログの各行は "[日時] [レベル] メッセージ" で始まるが、スタックトレースやオブジェクトの
+ * ダンプ等で複数行にまたがることがある。レベルで絞り込む際は、レベル行から次のレベル行の
+ * 直前までを1エントリとしてまとめて表示・非表示を判定する(そうしないと継続行だけ表示されて
+ * 意味が分からなくなる)
+ */
+function filterLogByLevel(text: string, level: string): string {
+  if (level === 'all') return text
+  const lines = text.split('\n')
+  const kept: string[] = []
+  let currentLevel: string | null = null
+  for (const line of lines) {
+    const match = LOG_ENTRY_START.exec(line)
+    if (match) currentLevel = match[1]
+    if (currentLevel === level) kept.push(line)
+  }
+  return kept.join('\n')
+}
+
 function updateStatusLabel(status: UpdateStatus | null): string {
   if (!status) return ''
   switch (status.state) {
@@ -35,6 +58,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const [showLog, setShowLog] = useState(false)
   const [logText, setLogText] = useState('')
   const [logLoading, setLogLoading] = useState(false)
+  const [logLevelFilter, setLogLevelFilter] = useState<(typeof LOG_LEVELS)[number]>('all')
   const logBodyRef = useRef<HTMLPreElement>(null)
 
   const [appVersion, setAppVersion] = useState('')
@@ -152,6 +176,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
       <div className="field">
         <label>デバッグログ</label>
         <p className="hint">Dittoの動作記録です。不具合が起きた時や、突然終了してしまった時の原因調査に使えます。</p>
+        <p className="hint">直近3日分を保存し、それより古いログは自動的に削除されます。</p>
         <div className="row">
           <button onClick={openLog}>確認する</button>
         </div>
@@ -161,7 +186,13 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
         <div className="debug-log-overlay" onClick={() => setShowLog(false)}>
           <div className="debug-log-modal" onClick={(e) => e.stopPropagation()}>
             <div className="debug-log-modal-header">
-              <span>デバッグログ</span>
+              <select value={logLevelFilter} onChange={(e) => setLogLevelFilter(e.target.value as (typeof LOG_LEVELS)[number])}>
+                {LOG_LEVELS.map((lv) => (
+                  <option key={lv} value={lv}>
+                    {lv === 'all' ? 'すべてのレベル' : lv}
+                  </option>
+                ))}
+              </select>
               <div className="row">
                 <button onClick={loadLog} disabled={logLoading}>
                   更新
@@ -171,7 +202,11 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
               </div>
             </div>
             <pre className="debug-log-modal-body" ref={logBodyRef}>
-              {logLoading ? '読み込み中...' : logText.trim() ? logText : 'ログはまだありません。'}
+              {logLoading
+                ? '読み込み中...'
+                : !logText.trim()
+                  ? 'ログはまだありません。'
+                  : filterLogByLevel(logText, logLevelFilter).trim() || '選択したレベルのログはありません。'}
             </pre>
           </div>
         </div>

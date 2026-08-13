@@ -11,10 +11,26 @@ import { startClipboardWatcher } from './clipboardWatcher'
 import * as settingsStore from './settingsStore'
 import { initPreviewWindows } from './previewWindow'
 import log from './logger'
+import { pruneOldLogs } from './debugLog'
 
 // 表示名は"Ditto"だが、内部的な名前(userDataの保存先フォルダ名等に影響)は
 // 旧アプリ名のまま固定し、既存インストールのテストデータ・設定を引き継ぐ
 app.setName('auto-test-tool')
+
+// 複数プロセスが同時に起動していると、ホットキーのグローバルフックがプロセスごとに
+// 別々に登録され、それぞれが起動時点の設定を保持し続けてしまう(設定画面でホットキーを
+// 変更しても、古いまま残っているプロセスは古いホットキーに反応し続ける等の不整合が起きる)。
+// ログイン時自動起動とユーザーの手動起動が重なるケース等もあるため、単一インスタンスに強制する
+if (!app.requestSingleInstanceLock()) {
+  // app.quit()だけでは非同期でしか終了せず、その間にready イベントが発火して
+  // whenReady()以下の初期化(トレイ・ホットキー登録等)がそのまま実行されてしまうため、
+  // ここで即座にプロセスを終了させる
+  app.quit()
+  process.exit(0)
+}
+app.on('second-instance', () => {
+  showMainWindow()
+})
 
 let mainWindow: BrowserWindow | null = null
 // トレイに常駐させるため、ウィンドウを閉じても既定ではアプリを終了しない。
@@ -85,6 +101,7 @@ function createWindow(): void {
 app.whenReady().then(async () => {
   log.info(`[main] app ready. version=${app.getVersion()}`)
   electronApp.setAppUserModelId('com.flatline.autotesttool')
+  pruneOldLogs()
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)

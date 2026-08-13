@@ -17,7 +17,7 @@ function sanitizeFileName(name: string): string {
 }
 
 export async function startRecording(testName: string): Promise<string> {
-  const dir = path.join(app.getPath('videos'), 'auto-test-tool')
+  const dir = path.join(app.getPath('videos'), 'Ditto')
   await mkdir(dir, { recursive: true })
   const stamp = new Date().toISOString().replace(/[:.]/g, '-')
   const filePath = path.join(dir, `${sanitizeFileName(testName)}-${stamp}.webm`)

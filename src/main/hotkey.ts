@@ -66,6 +66,10 @@ export function formatComboLabel(combo: Omit<HotkeyCombo, 'label'>): string {
 let currentCombo: HotkeyCombo | null = null
 let lastPressAt = 0
 let onTriggerCb: (() => void) | null = null
+// OSのキーリピート(長押し中に連続して届くkeydown)を、素早い2回押しと誤検知しないための
+// 押下中キー集合。keydownで追加・keyupで削除し、「すでに押されているキー」からのkeydownは
+// リピートとみなして無視する(離して押し直した場合のみ新しい1回の押下として扱う)
+const heldKeycodes = new Set<number>()
 
 function matchesModifiers(e: UiohookKeyboardEvent, combo: HotkeyCombo): boolean {
   return e.ctrlKey === combo.ctrl && e.shiftKey === combo.shift && e.altKey === combo.alt && e.metaKey === combo.meta
@@ -79,8 +83,15 @@ function watchedKeycodesForModifierOnly(combo: HotkeyCombo): number[] {
   return []
 }
 
+function handleTriggerKeyup(e: UiohookKeyboardEvent): void {
+  heldKeycodes.delete(e.keycode)
+}
+
 function handleTriggerKeydown(e: UiohookKeyboardEvent): void {
   if (!currentCombo) return
+  const isRepeat = heldKeycodes.has(e.keycode)
+  heldKeycodes.add(e.keycode)
+  if (isRepeat) return
   if (currentCombo.keycode === null) {
     const watched = watchedKeycodesForModifierOnly(currentCombo)
     if (watched.includes(e.keycode)) {
@@ -108,6 +119,7 @@ export function setupGlobalHotkey(initialCombo: HotkeyCombo, onTrigger: () => vo
   ensureGlobalHookStarted()
   keepGlobalHookAlive()
   uIOhook.on('keydown', handleTriggerKeydown)
+  uIOhook.on('keyup', handleTriggerKeyup)
 }
 
 /** 設定画面での変更を即座に反映する */
