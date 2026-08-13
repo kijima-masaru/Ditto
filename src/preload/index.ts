@@ -10,6 +10,7 @@ import {
   type HotkeyCombo,
   type RecordedStep,
   type RecordingFrameBounds,
+  type RecordingFrameFooterAction,
   type PlaybackProgress,
   type PlaybackResult,
   type TargetHistoryEntry,
@@ -77,6 +78,7 @@ const api = {
   finishScreenRecordingSession: (): Promise<string | null> => ipcRenderer.invoke(IPC.screenRecordingFinish),
   openRecordingFolder: (filePath: string): Promise<void> =>
     ipcRenderer.invoke(IPC.screenRecordingOpenFolder, filePath),
+  saveScreenshot: (bytes: Uint8Array): Promise<string> => ipcRenderer.invoke(IPC.screenshotSave, bytes),
 
   listClipboardHistory: (): Promise<ClipboardHistoryEntry[]> => ipcRenderer.invoke(IPC.listClipboardHistory),
   deleteClipboardHistoryEntry: (id: string): Promise<void> =>
@@ -157,8 +159,8 @@ const api = {
 
   setRecordingFrameFooterState: (state: 'idle' | 'recording' | 'paused'): Promise<void> =>
     ipcRenderer.invoke(IPC.setRecordingFrameFooterState, state),
-  onRecordingFrameFooterAction: (cb: (action: 'start' | 'pause' | 'resume' | 'stop') => void): (() => void) => {
-    const listener = (_e: unknown, action: 'start' | 'pause' | 'resume' | 'stop'): void => cb(action)
+  onRecordingFrameFooterAction: (cb: (action: RecordingFrameFooterAction) => void): (() => void) => {
+    const listener = (_e: unknown, action: RecordingFrameFooterAction): void => cb(action)
     ipcRenderer.on(IPC.recordingFrameFooterAction, listener)
     return () => ipcRenderer.removeListener(IPC.recordingFrameFooterAction, listener)
   },

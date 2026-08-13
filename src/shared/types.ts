@@ -101,6 +101,9 @@ export interface CaptureInfo {
   displayBounds: { x: number; y: number; width: number; height: number }
 }
 
+/** 録画枠フッターのボタン操作。'screenshot'は静止画1枚を撮影する(録画状態には遷移しない) */
+export type RecordingFrameFooterAction = 'start' | 'pause' | 'resume' | 'stop' | 'screenshot'
+
 /** クリップボード履歴の1件(PC上でコピーされたテキストを自動記録) */
 export interface ClipboardHistoryEntry {
   id: string
@@ -261,6 +264,9 @@ export const IPC = {
   screenRecordingAppendChunk: 'screen-recording:append-chunk',
   screenRecordingFinish: 'screen-recording:finish',
   screenRecordingOpenFolder: 'screen-recording:open-folder',
+
+  // 枠内のスクリーンショット撮影(静止画1枚をキャプチャし、確認・注釈編集後に保存する)
+  screenshotSave: 'screenshot:save',
 
   // クリップボード管理(履歴はバックグラウンドで自動記録、定型文はユーザーが登録)
   listClipboardHistory: 'clipboard:list-history',

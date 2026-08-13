@@ -145,6 +145,8 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     shell.showItemInFolder(filePath)
   })
 
+  ipcMain.handle(IPC.screenshotSave, async (_e, bytes: Uint8Array) => screenCapture.saveScreenshot(bytes))
+
   ipcMain.handle(IPC.listClipboardHistory, async () => clipboardStore.listHistory())
 
   ipcMain.handle(IPC.deleteClipboardHistoryEntry, async (_e, id: string) => clipboardStore.deleteHistoryEntry(id))

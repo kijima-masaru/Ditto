@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, screen } from 'electron'
 import fs from 'fs'
 import path from 'path'
-import { IPC, type CaptureInfo, type RecordingFrameBounds } from '../shared/types'
+import { IPC, type CaptureInfo, type RecordingFrameBounds, type RecordingFrameFooterAction } from '../shared/types'
 
 /**
  * 画面上に表示する録画範囲の枠。
@@ -191,16 +191,29 @@ function buildHtml(): string {
   .size-fields { display:flex; align-items:center; gap:4px; color:#aeb2ba; font-size:11px; }
   .size-fields input { width:52px; background:#262a33; color:#e8e8ea; border:1px solid #454b57; border-radius:4px; padding:4px 5px; font-size:11px; }
   .size-fields input:disabled { color:#6b6f78; cursor:not-allowed; }
+  .mode-toggle { display:flex; gap:2px; padding:2px; background:#20232b; border-radius:14px; }
+  .mode-toggle button { border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .mode-btn { width:26px; height:22px; border-radius:12px; background:transparent; color:#aeb2ba; font-size:12px; }
+  .mode-btn.active { background:#3a3f4b; color:#fff; }
+  .mode-toggle[data-locked="true"] .mode-btn { pointer-events:none; opacity:0.4; }
+
   .toolbar-actions { display:flex; align-items:center; gap:6px; }
   .toolbar-actions button { display:none; border:none; cursor:pointer; color:#fff; align-items:center; justify-content:center; }
   .rec-btn { width:22px; height:22px; border-radius:50%; background:#ff4d4f; border:2px solid #fff; }
   .tool-btn { width:26px; height:26px; border-radius:50%; background:#3a3f4b; font-size:11px; }
   .tool-btn.stop { background:#e0453f; }
+  .capture-btn { width:26px; height:26px; border-radius:50%; background:#ff4d4f; font-size:12px; }
   .toolbar-actions[data-state="idle"] #btn-start { display:flex; }
   .toolbar-actions[data-state="recording"] #btn-pause,
   .toolbar-actions[data-state="recording"] #btn-stop { display:flex; }
   .toolbar-actions[data-state="paused"] #btn-resume,
   .toolbar-actions[data-state="paused"] #btn-stop { display:flex; }
+  .toolbar-actions[data-state="idle"][data-mode="photo"] #btn-capture { display:flex; }
+  .toolbar-actions[data-mode="photo"] #btn-start,
+  .toolbar-actions[data-mode="photo"] #btn-pause,
+  .toolbar-actions[data-mode="photo"] #btn-resume,
+  .toolbar-actions[data-mode="photo"] #btn-stop { display:none; }
+  .toolbar-actions[data-mode="video"] #btn-capture { display:none; }
 </style></head>
 <body>
   <div class="titlebar">
@@ -223,11 +236,16 @@ function buildHtml(): string {
       <input type="number" id="h-input" min="${MIN_H}" />
       <span>px</span>
     </div>
-    <div class="toolbar-actions" id="actions" data-state="idle">
+    <div class="mode-toggle" id="mode-toggle" data-locked="false">
+      <button class="mode-btn active" id="mode-video" title="画面録画">🎥</button>
+      <button class="mode-btn" id="mode-photo" title="スクリーンショット">📷</button>
+    </div>
+    <div class="toolbar-actions" id="actions" data-state="idle" data-mode="video">
       <button class="rec-btn" id="btn-start" title="録画開始"></button>
       <button class="tool-btn" id="btn-pause" title="一時停止">⏸</button>
       <button class="tool-btn" id="btn-resume" title="再開">▶</button>
       <button class="tool-btn stop" id="btn-stop" title="停止">■</button>
+      <button class="capture-btn" id="btn-capture" title="撮影">📷</button>
     </div>
   </div>
   <script>
@@ -287,14 +305,28 @@ function buildHtml(): string {
       wInput.disabled = v
       hInput.disabled = v
     })
+    const modeToggle = document.getElementById('mode-toggle')
+    const modeVideoBtn = document.getElementById('mode-video')
+    const modePhotoBtn = document.getElementById('mode-photo')
+    function setMode(mode) {
+      document.getElementById('actions').dataset.mode = mode
+      modeVideoBtn.classList.toggle('active', mode === 'video')
+      modePhotoBtn.classList.toggle('active', mode === 'photo')
+    }
+    modeVideoBtn.addEventListener('click', () => setMode('video'))
+    modePhotoBtn.addEventListener('click', () => setMode('photo'))
+
     ipcRenderer.on('set-footer-state', (_e, state) => {
       document.getElementById('actions').dataset.state = state
+      // 動画録画/一時停止中はモード切替できないようにする(静止画には録画中の概念が無いため対象外)
+      modeToggle.dataset.locked = state !== 'idle' ? 'true' : 'false'
     })
 
     document.getElementById('btn-start').addEventListener('click', () => ipcRenderer.send('recording-frame:footer-action', 'start'))
     document.getElementById('btn-pause').addEventListener('click', () => ipcRenderer.send('recording-frame:footer-action', 'pause'))
     document.getElementById('btn-resume').addEventListener('click', () => ipcRenderer.send('recording-frame:footer-action', 'resume'))
     document.getElementById('btn-stop').addEventListener('click', () => ipcRenderer.send('recording-frame:footer-action', 'stop'))
+    document.getElementById('btn-capture').addEventListener('click', () => ipcRenderer.send('recording-frame:footer-action', 'screenshot'))
   </script>
 </body></html>`
 }
@@ -369,12 +401,12 @@ ipcMain.on('recording-frame:resize-begin', onResizeBegin)
 ipcMain.on('recording-frame:resize-move', onResizeMove)
 ipcMain.on('recording-frame:resize-end', onResizeEnd)
 ipcMain.on('recording-frame:chrome-action', onChromeAction)
-ipcMain.on(IPC.recordingFrameFooterAction, (_e, action: 'start' | 'pause' | 'resume' | 'stop') => {
+ipcMain.on(IPC.recordingFrameFooterAction, (_e, action: RecordingFrameFooterAction) => {
   footerActionListeners.forEach((listener) => listener(action))
 })
 
-const footerActionListeners: Array<(action: 'start' | 'pause' | 'resume' | 'stop') => void> = []
-export function onFooterAction(listener: (action: 'start' | 'pause' | 'resume' | 'stop') => void): void {
+const footerActionListeners: Array<(action: RecordingFrameFooterAction) => void> = []
+export function onFooterAction(listener: (action: RecordingFrameFooterAction) => void): void {
   footerActionListeners.push(listener)
 }
 

@@ -7,7 +7,9 @@ import Playback from './components/Playback'
 import ClipboardPanel from './components/ClipboardPanel'
 import SettingsPanel from './components/SettingsPanel'
 import PreviewWindowRoot from './components/PreviewWindowRoot'
+import ScreenshotEditor from './components/ScreenshotEditor'
 import { useScreenRecording } from './hooks/useScreenRecording'
+import { useScreenshot } from './hooks/useScreenshot'
 
 // ネストしたフォルダプレビュー用の別ウィンドウは、同じrenderer bundleを
 // ?preview=1付きで読み込んで判別する(previewWindow.ts参照)
@@ -46,6 +48,8 @@ function MainApp(): React.JSX.Element {
   const [topPageFolderId, setTopPageFolderId] = useState<string | null>(null)
   const [topPageNonce, setTopPageNonce] = useState(0)
   const recorder = useScreenRecording()
+  const screenshot = useScreenshot()
+  const [screenshotSavedPath, setScreenshotSavedPath] = useState<string | null>(null)
 
   useEffect(() => {
     window.api.getSettings().then((s) => setTheme(s.theme))
@@ -72,8 +76,9 @@ function MainApp(): React.JSX.Element {
       else if (action === 'pause') recorder.pause()
       else if (action === 'resume') recorder.resume()
       else if (action === 'stop') recorder.stop()
+      else if (action === 'screenshot') screenshot.capture()
     })
-  }, [recorder.start, recorder.pause, recorder.resume, recorder.stop])
+  }, [recorder.start, recorder.pause, recorder.resume, recorder.stop, screenshot.capture])
 
   useEffect(() => {
     window.api.setRecordingFrameFooterState(recorder.recordingState)
@@ -90,6 +95,8 @@ function MainApp(): React.JSX.Element {
     <div className="app">
       <video ref={recorder.videoRef} className="offscreen-media" muted playsInline />
       <canvas ref={recorder.canvasRef} className="offscreen-media" />
+      <video ref={screenshot.videoRef} className="offscreen-media" muted playsInline />
+      <canvas ref={screenshot.canvasRef} className="offscreen-media" />
 
       <header className="app-header">
         <nav>
@@ -146,6 +153,32 @@ function MainApp(): React.JSX.Element {
           録画エラー: {recorder.errorMessage}
           <button onClick={recorder.dismissSaved}>閉じる</button>
         </div>
+      )}
+
+      {screenshotSavedPath && (
+        <div className="recording-saved">
+          <span>スクリーンショットを保存しました: {screenshotSavedPath.split(/[\\/]/).pop()}</span>
+          <button onClick={() => window.api.openRecordingFolder(screenshotSavedPath)}>フォルダを開く</button>
+          <button onClick={() => setScreenshotSavedPath(null)}>閉じる</button>
+        </div>
+      )}
+
+      {screenshot.errorMessage && (
+        <div className="error recording-error">
+          スクリーンショットエラー: {screenshot.errorMessage}
+          <button onClick={screenshot.dismiss}>閉じる</button>
+        </div>
+      )}
+
+      {screenshot.imageDataUrl && (
+        <ScreenshotEditor
+          imageDataUrl={screenshot.imageDataUrl}
+          onCancel={screenshot.dismiss}
+          onSaved={(path) => {
+            setScreenshotSavedPath(path)
+            screenshot.dismiss()
+          }}
+        />
       )}
 
       <main className={`app-main${isWorkspace ? ' app-main--workspace' : ''}`}>

@@ -1,6 +1,6 @@
 import { app } from 'electron'
 import { createWriteStream, type WriteStream } from 'fs'
-import { mkdir } from 'fs/promises'
+import { mkdir, writeFile } from 'fs/promises'
 import path from 'path'
 
 /**
@@ -37,5 +37,15 @@ export async function finishRecording(): Promise<string | null> {
   writeStream = null
   currentFilePath = null
   await new Promise<void>((resolve) => stream.end(resolve))
+  return filePath
+}
+
+/** 録画枠のスクリーンショット(注釈編集済みのPNG)を保存する。動画とは別にPictures配下に保存する */
+export async function saveScreenshot(bytes: Uint8Array): Promise<string> {
+  const dir = path.join(app.getPath('pictures'), 'Ditto')
+  await mkdir(dir, { recursive: true })
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+  const filePath = path.join(dir, `screenshot-${stamp}.png`)
+  await writeFile(filePath, bytes)
   return filePath
 }
