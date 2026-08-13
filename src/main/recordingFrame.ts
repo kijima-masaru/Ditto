@@ -206,7 +206,7 @@ function buildHtml(): string {
   .rec-btn { width:22px; height:22px; border-radius:50%; background:#ff4d4f; border:2px solid #fff; }
   .tool-btn { width:26px; height:26px; border-radius:50%; background:#3a3f4b; font-size:11px; }
   .tool-btn.stop { background:#e0453f; }
-  .capture-btn { width:26px; height:26px; border-radius:50%; background:#ff4d4f; font-size:12px; }
+  .capture-btn { width:22px; height:22px; border-radius:50%; background:#ff4d4f; border:2px solid #fff; }
   .toolbar-actions[data-state="idle"] #btn-start { display:flex; }
   .toolbar-actions[data-state="recording"] #btn-pause,
   .toolbar-actions[data-state="recording"] #btn-stop { display:flex; }
@@ -252,7 +252,7 @@ function buildHtml(): string {
       <button class="tool-btn" id="btn-pause" title="一時停止">⏸</button>
       <button class="tool-btn" id="btn-resume" title="再開">▶</button>
       <button class="tool-btn stop" id="btn-stop" title="停止">■</button>
-      <button class="capture-btn" id="btn-capture" title="撮影">📷</button>
+      <button class="capture-btn" id="btn-capture" title="撮影"></button>
     </div>
   </div>
   <script>

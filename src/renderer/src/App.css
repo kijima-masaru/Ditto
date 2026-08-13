@@ -1208,75 +1208,225 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   background: var(--panel-bg);
 }
 
-.screenshot-editor-insert-group {
+/* アイコン主体のツールバー(色・書式などの設定項目はすべて文字表記ではなくアイコンで表示する) */
+.se-icon-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 2px;
+  flex-wrap: wrap;
 }
 
-.screenshot-editor-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding-left: 14px;
+.se-icon-group--divider {
+  padding-left: 12px;
   border-left: 1px solid var(--border);
 }
 
-.screenshot-editor-group-label {
-  font-size: 11px;
-  color: var(--text-muted);
+.se-sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.se-icon-btn {
+  position: relative;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1.5px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.se-icon-btn:hover {
+  background: var(--hover-bg);
+}
+
+.se-icon-btn.active {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.se-icon-btn--danger {
+  color: var(--danger);
+}
+
+.se-icon-btn--danger:hover {
+  background: var(--danger-bg);
+}
+
+.se-glyph {
+  font-size: 14px;
+  font-family: 'Segoe UI', sans-serif;
+  line-height: 1;
+}
+
+.se-text-btn {
+  flex-shrink: 0;
+  height: 30px;
+  padding: 0 10px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--btn-bg);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
   white-space: nowrap;
 }
 
-.screenshot-editor-colors {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.se-text-btn:hover {
+  background: var(--btn-bg-hover);
 }
 
-.screenshot-editor-color {
-  width: 20px;
-  height: 20px;
+.se-dropdown {
+  position: relative;
+}
+
+.se-dropdown-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+}
+
+.se-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 201;
+  min-width: 220px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px var(--shadow);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.se-dropdown-item {
+  text-align: left;
+  padding: 7px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.se-dropdown-item:hover {
+  background: var(--hover-bg);
+}
+
+.se-dropdown-item.checked {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* 色ピッカー(シンプル/カスタム/パレット/透明) */
+.se-color-picker {
+  position: relative;
+}
+
+.se-color-indicator {
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  bottom: 4px;
+  height: 3px;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.se-color-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 201;
+  width: 232px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px var(--shadow);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.se-color-section-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.se-color-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.se-color-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.se-color-grid .se-color-row {
+  gap: 3px;
+}
+
+.se-color-swatch {
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  border: 2px solid transparent;
+  border: 1.5px solid rgba(0, 0, 0, 0.12);
   padding: 0;
   cursor: pointer;
 }
 
-.screenshot-editor-color.active {
-  border-color: var(--accent);
+.se-color-swatch.active {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
-.screenshot-editor-color--none {
-  background: linear-gradient(45deg, transparent 46%, #ff3b30 48%, #ff3b30 52%, transparent 54%), #fff;
+.se-color-swatch--action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--btn-bg);
+  color: var(--text-secondary);
+  font-size: 12px;
   border-color: var(--border-strong);
 }
 
-.screenshot-editor-color--none.active {
-  border-color: var(--accent);
+.se-color-native-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
-.screenshot-editor-font-size {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.screenshot-editor-line-style {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.screenshot-editor-line-style button {
+.se-color-none-btn {
+  height: 30px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--btn-bg);
+  color: var(--text-secondary);
   font-size: 12px;
-  padding: 5px 10px;
+  cursor: pointer;
 }
 
-.screenshot-editor-line-style button.active {
-  border-color: var(--accent);
-  background: var(--accent-bg);
-  color: var(--accent);
+.se-color-none-btn:hover {
+  background: var(--btn-bg-hover);
 }
 
 .screenshot-editor-canvas-area {
@@ -1293,6 +1443,10 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   position: relative;
   display: inline-block;
   line-height: 0;
+}
+
+.screenshot-editor-image-wrap.drawing {
+  cursor: crosshair;
 }
 
 .screenshot-editor-image {
@@ -1351,11 +1505,35 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 
 .screenshot-editor-footer {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
   padding: 12px 16px;
   border-top: 1px solid var(--border);
   background: var(--panel-bg);
+}
+
+.screenshot-editor-filename {
+  flex: 1;
+  max-width: 320px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--panel-bg);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.screenshot-editor-filename-ext {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-right: auto;
+}
+
+.screenshot-editor-footer-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .target-history-list {

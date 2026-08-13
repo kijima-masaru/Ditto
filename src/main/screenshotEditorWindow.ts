@@ -16,6 +16,7 @@ export function open(dataUrl: string): void {
     if (!win.isMaximized()) win.maximize()
     win.show()
     win.focus()
+    win.moveTop()
     return
   }
 
@@ -29,7 +30,12 @@ export function open(dataUrl: string): void {
     }
   })
   win.maximize()
-  win.once('ready-to-show', () => win?.show())
+  // 録画枠(常に最前面'screen-saver'レベル)より手前に出したいため、同じレベルで最前面固定にする
+  win.setAlwaysOnTop(true, 'screen-saver')
+  win.once('ready-to-show', () => {
+    win?.show()
+    win?.moveTop()
+  })
   win.webContents.once('did-finish-load', () => {
     win?.webContents.send(IPC.screenshotEditorImage, dataUrl)
   })

@@ -78,7 +78,8 @@ const api = {
   finishScreenRecordingSession: (): Promise<string | null> => ipcRenderer.invoke(IPC.screenRecordingFinish),
   openRecordingFolder: (filePath: string): Promise<void> =>
     ipcRenderer.invoke(IPC.screenRecordingOpenFolder, filePath),
-  saveScreenshot: (bytes: Uint8Array): Promise<string> => ipcRenderer.invoke(IPC.screenshotSave, bytes),
+  saveScreenshot: (bytes: Uint8Array, fileName?: string): Promise<string> =>
+    ipcRenderer.invoke(IPC.screenshotSave, bytes, fileName),
 
   listClipboardHistory: (): Promise<ClipboardHistoryEntry[]> => ipcRenderer.invoke(IPC.listClipboardHistory),
   deleteClipboardHistoryEntry: (id: string): Promise<void> =>
