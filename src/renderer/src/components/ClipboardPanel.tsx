@@ -8,6 +8,7 @@ import type {
 import { flattenFolders, folderBreadcrumb } from '../folderTree'
 import { useHoverIntent } from '../hooks/useHoverIntent'
 import { useDragReorder } from '../hooks/useDragReorder'
+import FolderPreviewFlyout from './FolderPreviewFlyout'
 
 type SubTab = 'history' | 'templates'
 
@@ -393,38 +394,25 @@ export default function ClipboardPanel(): React.JSX.Element {
                       onMouseEnter={folderPreview.cancelHide}
                       onMouseLeave={folderPreview.scheduleHide}
                     >
-                      {(() => {
-                        const previewSubfolders = templateFolders.filter((sf) => sf.parentId === f.id)
-                        const previewTemplates = templates.filter((t) => (t.folderId ?? null) === f.id)
-                        if (previewSubfolders.length === 0 && previewTemplates.length === 0) {
-                          return <p className="hint folder-preview-empty">このフォルダは空です。</p>
-                        }
-                        return (
-                          <>
-                            {previewSubfolders.map((sf) => (
-                              <button
-                                key={sf.id}
-                                className="folder-preview-item folder-preview-folder"
-                                onClick={() => setCurrentFolderId(sf.id)}
-                              >
-                                📁 {sf.name}
-                              </button>
-                            ))}
-                            {previewTemplates.map((t) => (
-                              <div
-                                key={t.id}
-                                className={`folder-preview-item clip-item${copiedId === t.id ? ' clip-item--copied' : ''}`}
-                                onClick={() => handleCopy(t.id, t.text)}
-                                onContextMenu={(e) => handleTemplateContextMenu(e, t)}
-                              >
-                                {t.label && <div className="clip-item-label">{t.label}</div>}
-                                <div className="clip-item-text">{truncate(t.text)}</div>
-                                {copiedId === t.id && <span className="clip-copied-badge">コピーしました</span>}
-                              </div>
-                            ))}
-                          </>
-                        )
-                      })()}
+                      <FolderPreviewFlyout
+                        folders={templateFolders}
+                        items={templates}
+                        folderId={f.id}
+                        getItemFolderId={(t) => t.folderId ?? null}
+                        onNavigate={setCurrentFolderId}
+                        renderItem={(t) => (
+                          <div
+                            key={t.id}
+                            className={`folder-preview-item clip-item${copiedId === t.id ? ' clip-item--copied' : ''}`}
+                            onClick={() => handleCopy(t.id, t.text)}
+                            onContextMenu={(e) => handleTemplateContextMenu(e, t)}
+                          >
+                            {t.label && <div className="clip-item-label">{t.label}</div>}
+                            <div className="clip-item-text">{truncate(t.text)}</div>
+                            {copiedId === t.id && <span className="clip-copied-badge">コピーしました</span>}
+                          </div>
+                        )}
+                      />
                     </div>
                   )}
                 </li>

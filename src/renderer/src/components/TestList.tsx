@@ -3,6 +3,7 @@ import type { ContextMenuItem, TestCase, TestFolder } from '../../../shared/type
 import { flattenFolders, folderBreadcrumb } from '../folderTree'
 import { useHoverIntent } from '../hooks/useHoverIntent'
 import { useDragReorder } from '../hooks/useDragReorder'
+import FolderPreviewFlyout from './FolderPreviewFlyout'
 
 interface Props {
   onRun: (testCase: TestCase) => void
@@ -299,35 +300,22 @@ export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Elem
                       onMouseEnter={folderPreview.cancelHide}
                       onMouseLeave={folderPreview.scheduleHide}
                     >
-                      {(() => {
-                        const previewSubfolders = folders.filter((sf) => sf.parentId === f.id)
-                        const previewTests = tests.filter((t) => (t.folderId ?? null) === f.id)
-                        if (previewSubfolders.length === 0 && previewTests.length === 0) {
-                          return <p className="hint folder-preview-empty">このフォルダは空です。</p>
-                        }
-                        return (
-                          <>
-                            {previewSubfolders.map((sf) => (
-                              <button
-                                key={sf.id}
-                                className="folder-preview-item folder-preview-folder"
-                                onClick={() => setCurrentFolderId(sf.id)}
-                              >
-                                📁 {sf.name}
-                              </button>
-                            ))}
-                            {previewTests.map((t) => (
-                              <div
-                                key={t.id}
-                                className="folder-preview-item test-name-item"
-                                onContextMenu={(e) => handleTestContextMenu(e, t)}
-                              >
-                                {t.name}
-                              </div>
-                            ))}
-                          </>
-                        )
-                      })()}
+                      <FolderPreviewFlyout
+                        folders={folders}
+                        items={tests}
+                        folderId={f.id}
+                        getItemFolderId={(t) => t.folderId ?? null}
+                        onNavigate={setCurrentFolderId}
+                        renderItem={(t) => (
+                          <div
+                            key={t.id}
+                            className="folder-preview-item test-name-item"
+                            onContextMenu={(e) => handleTestContextMenu(e, t)}
+                          >
+                            {t.name}
+                          </div>
+                        )}
+                      />
                     </div>
                   )}
                 </li>

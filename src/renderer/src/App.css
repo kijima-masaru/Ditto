@@ -687,6 +687,18 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   gap: 6px;
 }
 
+/* ネストしたフォルダプレビュー。トリガーとなる行の右側に連鎖して開く(サブメニュー風) */
+.folder-preview-row {
+  position: relative;
+}
+
+.folder-preview-flyout--nested {
+  top: -1px;
+  right: auto;
+  left: 100%;
+  margin-left: 6px;
+}
+
 .folder-preview-empty {
   margin: 4px;
 }
