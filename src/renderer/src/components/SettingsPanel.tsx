@@ -191,6 +191,9 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
       {showLog && (
         <div className="debug-log-overlay" onClick={() => setShowLog(false)}>
           <div className="debug-log-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="debug-log-close-btn" onClick={() => setShowLog(false)} title="閉じる">
+              ×
+            </button>
             <div className="debug-log-modal-header">
               <select value={logLevelFilter} onChange={(e) => setLogLevelFilter(e.target.value as (typeof LOG_LEVELS)[number])}>
                 {LOG_LEVELS.map((lv) => (
@@ -207,9 +210,6 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
               </button>
               <button className="debug-log-icon-btn" onClick={copyLog} title="ログをコピー">
                 📋
-              </button>
-              <button className="debug-log-icon-btn" onClick={() => setShowLog(false)} title="閉じる">
-                ×
               </button>
             </div>
             <pre className="debug-log-modal-body" ref={logBodyRef}>
