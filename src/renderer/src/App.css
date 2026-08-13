@@ -1186,18 +1186,6 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   color: var(--text-muted);
 }
 
-.screenshot-editor-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border);
-  font-weight: 700;
-  font-size: 14px;
-  color: var(--text-secondary);
-  background: var(--panel-bg);
-}
-
 .screenshot-editor-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -1231,8 +1219,8 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 .se-icon-btn {
   position: relative;
   flex-shrink: 0;
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1263,7 +1251,7 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 }
 
 .se-glyph {
-  font-size: 14px;
+  font-size: 18px;
   font-family: 'Segoe UI', sans-serif;
   line-height: 1;
 }
@@ -1283,6 +1271,24 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 
 .se-text-btn:hover {
   background: var(--btn-bg-hover);
+}
+
+.se-text-btn--primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.se-text-btn--primary:hover {
+  background: var(--accent);
+  opacity: 0.9;
+}
+
+.se-crop-hint {
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: 0 6px;
+  white-space: nowrap;
 }
 
 .se-dropdown {
@@ -1464,6 +1470,60 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 
 .screenshot-annotation-svg g {
   pointer-events: auto;
+}
+
+.screenshot-crop-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.screenshot-crop-mask {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+.screenshot-crop-rect {
+  position: absolute;
+  border: 2px dashed #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+  pointer-events: all;
+  cursor: move;
+}
+
+.screenshot-crop-handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border: 1.5px solid #333;
+  border-radius: 3px;
+  pointer-events: all;
+}
+
+.screenshot-crop-handle.nw {
+  left: -7px;
+  top: -7px;
+  cursor: nwse-resize;
+}
+
+.screenshot-crop-handle.ne {
+  right: -7px;
+  top: -7px;
+  cursor: nesw-resize;
+}
+
+.screenshot-crop-handle.sw {
+  left: -7px;
+  bottom: -7px;
+  cursor: nesw-resize;
+}
+
+.screenshot-crop-handle.se {
+  right: -7px;
+  bottom: -7px;
+  cursor: nwse-resize;
 }
 
 .screenshot-text-box {

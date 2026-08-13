@@ -11,10 +11,8 @@ export default function ScreenshotEditorWindowRoot(): React.JSX.Element {
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null)
 
   useEffect(() => {
-    // メインウィンドウとは別のBrowserWindowなのでdata-theme属性を独自に引き継ぐ必要がある
-    window.api.getSettings().then((s) => {
-      document.documentElement.setAttribute('data-theme', s.theme)
-    })
+    // Ditto本体のテーマ設定に関わらず、スクリーンショット確認画面は常にダークカラーで表示する
+    document.documentElement.setAttribute('data-theme', 'dark')
   }, [])
 
   useEffect(() => {

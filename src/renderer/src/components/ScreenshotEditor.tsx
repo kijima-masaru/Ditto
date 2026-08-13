@@ -45,8 +45,10 @@ interface LineAnnotation {
   y1Frac: number
   x2Frac: number
   y2Frac: number
-  /** curveのベジェ制御点、またはカギ線の折れ点(pathStyleにより意味が変わる) */
+  /** curveの2次ベジェ制御点 */
   auxFrac: Point
+  /** カギ線の折れ点。フリーハンドの形に応じて複数になることがある */
+  kagiPoints: Point[]
   color: string
 }
 
@@ -59,6 +61,9 @@ interface FreehandAnnotation {
 
 type Annotation = TextAnnotation | ShapeAnnotation | LineAnnotation | FreehandAnnotation
 type AnnotationPatch = Partial<TextAnnotation> & Partial<ShapeAnnotation> & Partial<LineAnnotation> & Partial<FreehandAnnotation>
+
+/** トリミング範囲(画像全体に対する割合)。x,yは左上角 */
+type CropRect = { x: number; y: number; w: number; h: number }
 
 const SIMPLE_COLORS = ['#000000', '#ffffff', '#f1f3f4', '#9aa0a6', '#5f6368', '#20344c', '#8b4a2b', '#e07b1a', '#1a9e8f', '#f4c20d']
 const PALETTE_HUES = [0, 20, 40, 60, 90, 150, 180, 205, 230, 260, 290, 320]
@@ -91,6 +96,7 @@ const DEFAULT_LINE_HALF = 0.12
 const STROKE_WIDTH_PX = 3
 const DRAG_THRESHOLD = 3
 const LINE_HEIGHT_OPTIONS = [1, 1.15, 1.5, 2]
+const MIN_CROP_FRAC = 0.05
 
 function clamp01(v: number): number {
   return Math.min(1, Math.max(0, v))
@@ -126,6 +132,11 @@ function smoothPathD(points: Point[], W: number, H: number): string {
   return d
 }
 
+/** カギ線の折れ点群。未設定(空配列)の場合の既定の折れ点を1つ補う */
+function kagiBendPoints(a: LineAnnotation): Point[] {
+  return a.kagiPoints.length > 0 ? a.kagiPoints : [{ x: a.x2Frac, y: a.y1Frac }]
+}
+
 function linePathD(a: LineAnnotation, W: number, H: number): string {
   const x1 = a.x1Frac * W
   const y1 = a.y1Frac * H
@@ -135,9 +146,29 @@ function linePathD(a: LineAnnotation, W: number, H: number): string {
     return `M ${x1} ${y1} Q ${a.auxFrac.x * W} ${a.auxFrac.y * H} ${x2} ${y2}`
   }
   if (a.pathStyle === 'kagi') {
-    return `M ${x1} ${y1} L ${a.auxFrac.x * W} ${a.auxFrac.y * H} L ${x2} ${y2}`
+    let d = `M ${x1} ${y1}`
+    for (const b of kagiBendPoints(a)) d += ` L ${b.x * W} ${b.y * H}`
+    d += ` L ${x2} ${y2}`
+    return d
   }
   return `M ${x1} ${y1} L ${x2} ${y2}`
+}
+
+/** 矢印の向きを決めるための「先端の1つ手前の点」を始点側・終点側それぞれ求める */
+function lineArrowRefs(a: LineAnnotation, W: number, H: number): { startFrom: Point; endFrom: Point } {
+  const p1: Point = { x: a.x1Frac * W, y: a.y1Frac * H }
+  const p2: Point = { x: a.x2Frac * W, y: a.y2Frac * H }
+  if (a.pathStyle === 'curve') {
+    const aux: Point = { x: a.auxFrac.x * W, y: a.auxFrac.y * H }
+    return { startFrom: aux, endFrom: aux }
+  }
+  if (a.pathStyle === 'kagi') {
+    const bends = kagiBendPoints(a)
+    const first: Point = { x: bends[0].x * W, y: bends[0].y * H }
+    const last: Point = { x: bends[bends.length - 1].x * W, y: bends[bends.length - 1].y * H }
+    return { startFrom: first, endFrom: last }
+  }
+  return { startFrom: p2, endFrom: p1 }
 }
 
 function arrowHeadPoints(tip: Point, from: Point, size: number): string {
@@ -147,6 +178,66 @@ function arrowHeadPoints(tip: Point, from: Point, size: number): string {
   const p2x = tip.x - size * Math.cos(angle + Math.PI / 6)
   const p2y = tip.y - size * Math.sin(angle + Math.PI / 6)
   return `${tip.x},${tip.y} ${p1x},${p1y} ${p2x},${p2y}`
+}
+
+const KAGI_SIMPLIFY_EPSILON = 0.02
+const MAX_KAGI_VERTICES = 6
+
+/** Douglas-Peuckerによるポリライン単純化。フリーハンドの形の骨格を少数の頂点に落とす */
+function douglasPeucker(points: Point[], epsilon: number): Point[] {
+  if (points.length < 3) return points
+  const start = points[0]
+  const end = points[points.length - 1]
+  let maxDist = -1
+  let index = 0
+  for (let i = 1; i < points.length - 1; i++) {
+    const d = distanceToSegment(points[i], start, end)
+    if (d > maxDist) {
+      maxDist = d
+      index = i
+    }
+  }
+  if (maxDist > epsilon) {
+    const left = douglasPeucker(points.slice(0, index + 1), epsilon)
+    const right = douglasPeucker(points.slice(index), epsilon)
+    return [...left.slice(0, -1), ...right]
+  }
+  return [start, end]
+}
+
+/** 頂点数が多すぎる場合は許容誤差を広げながら単純化をやり直す */
+function simplifyForKagi(points: Point[]): Point[] {
+  let eps = KAGI_SIMPLIFY_EPSILON
+  let simplified = douglasPeucker(points, eps)
+  let guard = 0
+  while (simplified.length > MAX_KAGI_VERTICES && guard < 8) {
+    eps *= 1.6
+    simplified = douglasPeucker(points, eps)
+    guard++
+  }
+  return simplified
+}
+
+/**
+ * 単純化した頂点列(始点・終点含む)から、水平・垂直線分のみで構成される
+ * カギ線の折れ点列(始点・終点は含まない)を作る。頂点が3つ以上あれば
+ * 折れ点も複数になり、フリーハンドの形の複雑さに応じた角ができる。
+ */
+function buildOrthogonalBends(vertices: Point[]): Point[] {
+  const bends: Point[] = []
+  const EPS = 0.003
+  for (let i = 0; i < vertices.length - 1; i++) {
+    const a = vertices[i]
+    const b = vertices[i + 1]
+    const dx = Math.abs(b.x - a.x)
+    const dy = Math.abs(b.y - a.y)
+    const corner: Point = dx >= dy ? { x: b.x, y: a.y } : { x: a.x, y: b.y }
+    if (Math.hypot(corner.x - a.x, corner.y - a.y) > EPS && Math.hypot(corner.x - b.x, corner.y - b.y) > EPS) {
+      bends.push(corner)
+    }
+    if (i < vertices.length - 2) bends.push(b)
+  }
+  return bends
 }
 
 interface Props {
@@ -165,13 +256,23 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
   const [drawTool, setDrawTool] = useState<'freehand' | null>(null)
   const [drawingPoints, setDrawingPoints] = useState<Point[] | null>(null)
   const [fileName, setFileName] = useState(() => `screenshot-${new Date().toISOString().replace(/[:.]/g, '-')}`)
+  const [currentImageUrl, setCurrentImageUrl] = useState(imageDataUrl)
+  const [cropMode, setCropMode] = useState(false)
+  const [cropRect, setCropRect] = useState<CropRect | null>(null)
 
   const imgRef = useRef<HTMLImageElement | null>(null)
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const inputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map())
+  const cropDragRef = useRef<{
+    mode: 'move' | 'nw' | 'ne' | 'sw' | 'se'
+    startX: number
+    startY: number
+    start: CropRect
+  } | null>(null)
   const dragRef = useRef<{
     id: string
-    mode: 'move' | 'resize' | 'p1' | 'p2' | 'aux'
+    mode: 'move' | 'resize' | 'p1' | 'p2' | 'aux' | 'bend'
+    bendIndex?: number
     startX: number
     startY: number
     start: Annotation
@@ -287,6 +388,7 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
       x2Frac: x2,
       y2Frac: y,
       auxFrac: { x: (x1 + x2) / 2, y },
+      kagiPoints: [],
       color: SIMPLE_COLORS_DEFAULT
     }
     setAnnotations((prev) => [...prev, next])
@@ -304,6 +406,7 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
     const start = pts[0]
     const end = pts[pts.length - 1]
     let aux: Point
+    let kagiPoints: Point[] = []
     if (target === 'curve') {
       let peak = pts[0]
       let maxDist = -1
@@ -316,12 +419,11 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
       }
       aux = { x: peak.x * 2 - (start.x + end.x) / 2, y: peak.y * 2 - (start.y + end.y) / 2 }
     } else {
-      const bendA: Point = { x: end.x, y: start.y }
-      const bendB: Point = { x: start.x, y: end.y }
-      const mid = pts[Math.floor(pts.length / 2)]
-      const distA = Math.hypot(mid.x - bendA.x, mid.y - bendA.y)
-      const distB = Math.hypot(mid.x - bendB.x, mid.y - bendB.y)
-      aux = distA <= distB ? bendA : bendB
+      // フリーハンドの形を少数の頂点に単純化してから直交な折れ点列に変換する。
+      // 形が複雑なほど折れ点(角)も増える
+      const vertices = simplifyForKagi(pts)
+      kagiPoints = buildOrthogonalBends(vertices)
+      aux = kagiPoints[0] ?? { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 }
     }
     const newLine: LineAnnotation = {
       id: a.id,
@@ -333,6 +435,7 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
       x2Frac: end.x,
       y2Frac: end.y,
       auxFrac: aux,
+      kagiPoints,
       color: a.color
     }
     setAnnotations((prev) => prev.map((x) => (x.id === a.id ? newLine : x)))
@@ -347,6 +450,7 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
   }
 
   const handleWrapPointerDown = (e: React.PointerEvent): void => {
+    if (cropMode) return
     if (drawTool !== 'freehand') return
     const p = pointFromClient(e.clientX, e.clientY)
     if (!p) return
@@ -384,11 +488,16 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
     justFinishedDrawingRef.current = true
   }
 
-  const beginDrag = (e: React.PointerEvent, a: Annotation, mode: 'move' | 'resize' | 'p1' | 'p2' | 'aux'): void => {
+  const beginDrag = (
+    e: React.PointerEvent,
+    a: Annotation,
+    mode: 'move' | 'resize' | 'p1' | 'p2' | 'aux' | 'bend',
+    bendIndex?: number
+  ): void => {
     if (a.kind === 'text' && editingTextId === a.id) return
     if (drawTool) return
     e.stopPropagation()
-    dragRef.current = { id: a.id, mode, startX: e.clientX, startY: e.clientY, start: { ...a }, moved: false }
+    dragRef.current = { id: a.id, mode, bendIndex, startX: e.clientX, startY: e.clientY, start: { ...a }, moved: false }
     window.addEventListener('pointermove', handleWindowPointerMove)
     window.addEventListener('pointerup', handleWindowPointerUp)
   }
@@ -426,8 +535,10 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
       }
     } else if (start.kind === 'line') {
       if (drag.mode === 'move') {
-        const xs = [start.x1Frac, start.x2Frac, start.auxFrac.x]
-        const ys = [start.y1Frac, start.y2Frac, start.auxFrac.y]
+        const kagiXs = start.kagiPoints.map((p) => p.x)
+        const kagiYs = start.kagiPoints.map((p) => p.y)
+        const xs = [start.x1Frac, start.x2Frac, start.auxFrac.x, ...kagiXs]
+        const ys = [start.y1Frac, start.y2Frac, start.auxFrac.y, ...kagiYs]
         const minX = Math.min(...xs)
         const maxX = Math.max(...xs)
         const minY = Math.min(...ys)
@@ -439,7 +550,8 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
           y1Frac: start.y1Frac + clampedDy,
           x2Frac: start.x2Frac + clampedDx,
           y2Frac: start.y2Frac + clampedDy,
-          auxFrac: { x: start.auxFrac.x + clampedDx, y: start.auxFrac.y + clampedDy }
+          auxFrac: { x: start.auxFrac.x + clampedDx, y: start.auxFrac.y + clampedDy },
+          kagiPoints: start.kagiPoints.map((p) => ({ x: p.x + clampedDx, y: p.y + clampedDy }))
         })
       } else if (drag.mode === 'p1') {
         updateAnnotation(drag.id, { x1Frac: clamp01(start.x1Frac + dx), y1Frac: clamp01(start.y1Frac + dy) })
@@ -449,6 +561,11 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
         updateAnnotation(drag.id, {
           auxFrac: { x: clamp01(start.auxFrac.x + dx), y: clamp01(start.auxFrac.y + dy) }
         })
+      } else if (drag.mode === 'bend' && drag.bendIndex !== undefined) {
+        const idx = drag.bendIndex
+        const startBends = kagiBendPoints(start)
+        const nextPoints = startBends.map((p, i) => (i === idx ? { x: clamp01(p.x + dx), y: clamp01(p.y + dy) } : p))
+        updateAnnotation(drag.id, { kagiPoints: nextPoints })
       }
     }
   }
@@ -469,12 +586,171 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
   }
 
   const handleBackgroundClick = (): void => {
+    if (cropMode) return
     if (justFinishedDrawingRef.current) {
       justFinishedDrawingRef.current = false
       return
     }
     if (editingTextId) exitTextEditing(editingTextId)
     setSelectedId(null)
+  }
+
+  const startCrop = (): void => {
+    setSelectedId(null)
+    setDrawTool(null)
+    setCropRect({ x: 0.08, y: 0.08, w: 0.84, h: 0.84 })
+    setCropMode(true)
+  }
+
+  const cancelCrop = (): void => {
+    setCropMode(false)
+    setCropRect(null)
+  }
+
+  const beginCropDrag = (e: React.PointerEvent, mode: 'move' | 'nw' | 'ne' | 'sw' | 'se'): void => {
+    if (!cropRect) return
+    e.stopPropagation()
+    cropDragRef.current = { mode, startX: e.clientX, startY: e.clientY, start: { ...cropRect } }
+    window.addEventListener('pointermove', handleCropPointerMove)
+    window.addEventListener('pointerup', handleCropPointerUp)
+  }
+
+  const handleCropPointerMove = (e: PointerEvent): void => {
+    const drag = cropDragRef.current
+    const wrap = wrapRef.current
+    if (!drag || !wrap) return
+    const rect = wrap.getBoundingClientRect()
+    const dx = (e.clientX - drag.startX) / rect.width
+    const dy = (e.clientY - drag.startY) / rect.height
+    const s = drag.start
+
+    if (drag.mode === 'move') {
+      const maxX = Math.max(0, 1 - s.w)
+      const maxY = Math.max(0, 1 - s.h)
+      setCropRect({ x: Math.min(maxX, Math.max(0, s.x + dx)), y: Math.min(maxY, Math.max(0, s.y + dy)), w: s.w, h: s.h })
+      return
+    }
+
+    let x = s.x
+    let y = s.y
+    let w = s.w
+    let h = s.h
+    if (drag.mode === 'nw' || drag.mode === 'sw') {
+      const newX = clamp01(s.x + dx)
+      w = s.x + s.w - newX
+      x = newX
+    }
+    if (drag.mode === 'ne' || drag.mode === 'se') {
+      w = clamp01(s.x + s.w + dx) - s.x
+    }
+    if (drag.mode === 'nw' || drag.mode === 'ne') {
+      const newY = clamp01(s.y + dy)
+      h = s.y + s.h - newY
+      y = newY
+    }
+    if (drag.mode === 'sw' || drag.mode === 'se') {
+      h = clamp01(s.y + s.h + dy) - s.y
+    }
+    if (w < MIN_CROP_FRAC) {
+      if (drag.mode === 'nw' || drag.mode === 'sw') x = s.x + s.w - MIN_CROP_FRAC
+      w = MIN_CROP_FRAC
+    }
+    if (h < MIN_CROP_FRAC) {
+      if (drag.mode === 'nw' || drag.mode === 'ne') y = s.y + s.h - MIN_CROP_FRAC
+      h = MIN_CROP_FRAC
+    }
+    setCropRect({ x, y, w, h })
+  }
+
+  const handleCropPointerUp = (): void => {
+    cropDragRef.current = null
+    window.removeEventListener('pointermove', handleCropPointerMove)
+    window.removeEventListener('pointerup', handleCropPointerUp)
+  }
+
+  const applyCrop = (): void => {
+    const rect = cropRect
+    const img = imgRef.current
+    if (!rect || !img || img.naturalWidth === 0 || rect.w < 0.01 || rect.h < 0.01) {
+      setCropMode(false)
+      setCropRect(null)
+      return
+    }
+
+    const sx = rect.x * img.naturalWidth
+    const sy = rect.y * img.naturalHeight
+    const sw = rect.w * img.naturalWidth
+    const sh = rect.h * img.naturalHeight
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(sw))
+    canvas.height = Math.max(1, Math.round(sh))
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      setCropMode(false)
+      setCropRect(null)
+      return
+    }
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height)
+    const newUrl = canvas.toDataURL('image/png')
+
+    const remap = (p: Point): Point => ({ x: (p.x - rect.x) / rect.w, y: (p.y - rect.y) / rect.h })
+    const intersects = (x0: number, y0: number, x1: number, y1: number): boolean => x1 > 0 && x0 < 1 && y1 > 0 && y0 < 1
+
+    setAnnotations((prev) =>
+      prev
+        .map((a): Annotation => {
+          switch (a.kind) {
+            case 'text': {
+              const p = remap({ x: a.xFrac, y: a.yFrac })
+              return { ...a, xFrac: p.x, yFrac: p.y }
+            }
+            case 'rect':
+            case 'ellipse': {
+              const p0 = remap({ x: a.xFrac, y: a.yFrac })
+              return { ...a, xFrac: p0.x, yFrac: p0.y, widthFrac: a.widthFrac / rect.w, heightFrac: a.heightFrac / rect.h }
+            }
+            case 'line': {
+              const p1 = remap({ x: a.x1Frac, y: a.y1Frac })
+              const p2 = remap({ x: a.x2Frac, y: a.y2Frac })
+              return {
+                ...a,
+                x1Frac: p1.x,
+                y1Frac: p1.y,
+                x2Frac: p2.x,
+                y2Frac: p2.y,
+                auxFrac: remap(a.auxFrac),
+                kagiPoints: a.kagiPoints.map(remap)
+              }
+            }
+            case 'freehand':
+              return { ...a, points: a.points.map(remap) }
+          }
+        })
+        .filter((a) => {
+          switch (a.kind) {
+            case 'text':
+              return intersects(a.xFrac - 0.02, a.yFrac - 0.02, a.xFrac + 0.02, a.yFrac + 0.02)
+            case 'rect':
+            case 'ellipse':
+              return intersects(a.xFrac, a.yFrac, a.xFrac + a.widthFrac, a.yFrac + a.heightFrac)
+            case 'line': {
+              const xs = [a.x1Frac, a.x2Frac, a.auxFrac.x, ...a.kagiPoints.map((p) => p.x)]
+              const ys = [a.y1Frac, a.y2Frac, a.auxFrac.y, ...a.kagiPoints.map((p) => p.y)]
+              return intersects(Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys))
+            }
+            case 'freehand': {
+              const xs = a.points.map((p) => p.x)
+              const ys = a.points.map((p) => p.y)
+              return intersects(Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys))
+            }
+          }
+        })
+    )
+
+    setCurrentImageUrl(newUrl)
+    setSelectedId(null)
+    setCropMode(false)
+    setCropRect(null)
   }
 
   useEffect(() => {
@@ -546,7 +822,7 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
         } else if (a.kind === 'line') {
           const p1: Point = { x: a.x1Frac * W, y: a.y1Frac * H }
           const p2: Point = { x: a.x2Frac * W, y: a.y2Frac * H }
-          const aux: Point = { x: a.auxFrac.x * W, y: a.auxFrac.y * H }
+          const { startFrom, endFrom } = lineArrowRefs(a, W, H)
           ctx.strokeStyle = a.color
           ctx.lineWidth = strokeW
           ctx.lineCap = 'round'
@@ -554,15 +830,13 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
           ctx.stroke(path2d)
           const headLen = Math.max(12, W * 0.015)
           if (a.arrowEnds === 'end' || a.arrowEnds === 'both') {
-            const from = a.pathStyle === 'straight' ? p1 : aux
-            const pts = arrowHeadPoints(p2, from, headLen)
+            const pts = arrowHeadPoints(p2, endFrom, headLen)
             const poly = new Path2D(`M ${pts.split(' ').join(' L ')} Z`)
             ctx.fillStyle = a.color
             ctx.fill(poly)
           }
           if (a.arrowEnds === 'start' || a.arrowEnds === 'both') {
-            const from = a.pathStyle === 'straight' ? p2 : aux
-            const pts = arrowHeadPoints(p1, from, headLen)
+            const pts = arrowHeadPoints(p1, startFrom, headLen)
             const poly = new Path2D(`M ${pts.split(' ').join(' L ')} Z`)
             ctx.fillStyle = a.color
             ctx.fill(poly)
@@ -637,37 +911,47 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
 
   return (
     <div className="screenshot-editor-page">
-      <div className="screenshot-editor-header">
-        <span>スクリーンショットを確認</span>
-        <button className="debug-log-close-btn" onClick={onCancel} title="閉じる">
-          ×
-        </button>
-      </div>
-
       <div className="screenshot-editor-toolbar">
-        <div className="se-icon-group">
-          <button className="se-icon-btn" onClick={addText} title="テキストを追加">
-            <TextGlyph />
-          </button>
-          <button className="se-icon-btn" onClick={() => addShape('rect')} title="四角形を追加">
-            <RectIcon />
-          </button>
-          <button className="se-icon-btn" onClick={() => addShape('ellipse')} title="楕円を追加">
-            <EllipseIcon />
-          </button>
-          <button className="se-icon-btn" onClick={addLine} title="線を追加">
-            <LineIcon />
-          </button>
-          <button
-            className={`se-icon-btn${drawTool === 'freehand' ? ' active' : ''}`}
-            onClick={startFreehand}
-            title="フリーハンドで描く"
-          >
-            <PenIcon />
-          </button>
-        </div>
+        {cropMode ? (
+          <div className="se-icon-group">
+            <span className="se-crop-hint">トリミング範囲をドラッグで調整してください</span>
+            <span className="se-sep" />
+            <button className="se-text-btn" onClick={cancelCrop}>
+              キャンセル
+            </button>
+            <button className="se-text-btn se-text-btn--primary" onClick={applyCrop}>
+              適用
+            </button>
+          </div>
+        ) : (
+          <div className="se-icon-group">
+            <button className="se-icon-btn" onClick={addText} title="テキストを追加">
+              <TextGlyph />
+            </button>
+            <button className="se-icon-btn" onClick={() => addShape('rect')} title="四角形を追加">
+              <RectIcon />
+            </button>
+            <button className="se-icon-btn" onClick={() => addShape('ellipse')} title="楕円を追加">
+              <EllipseIcon />
+            </button>
+            <button className="se-icon-btn" onClick={addLine} title="線を追加">
+              <LineIcon />
+            </button>
+            <button
+              className={`se-icon-btn${drawTool === 'freehand' ? ' active' : ''}`}
+              onClick={startFreehand}
+              title="フリーハンドで描く"
+            >
+              <PenIcon />
+            </button>
+            <span className="se-sep" />
+            <button className="se-icon-btn" onClick={startCrop} title="トリミング">
+              <CropIcon />
+            </button>
+          </div>
+        )}
 
-        {selected && selected.kind === 'text' && (
+        {!cropMode && selected && selected.kind === 'text' && (
           <TextProperties
             annotation={selected}
             onChange={(patch) => updateAnnotation(selected.id, patch)}
@@ -712,7 +996,12 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
             </button>
             <button
               className={`se-icon-btn${selected.pathStyle === 'kagi' ? ' active' : ''}`}
-              onClick={() => updateAnnotation(selected.id, { pathStyle: 'kagi' })}
+              onClick={() =>
+                updateAnnotation(selected.id, {
+                  pathStyle: 'kagi',
+                  kagiPoints: selected.kagiPoints.length > 0 ? selected.kagiPoints : [{ x: selected.x2Frac, y: selected.y1Frac }]
+                })
+              }
               title="カギ線"
             >
               <KagiIcon />
@@ -788,10 +1077,16 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
           onClick={handleBackgroundClick}
           onPointerDown={handleWrapPointerDown}
         >
-          <img ref={imgRef} src={imageDataUrl} alt="スクリーンショット" className="screenshot-editor-image" onLoad={recomputeSize} />
+          <img ref={imgRef} src={currentImageUrl} alt="スクリーンショット" className="screenshot-editor-image" onLoad={recomputeSize} />
 
           {W > 0 && H > 0 && (
-            <svg className="screenshot-annotation-svg" width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
+            <svg
+              className="screenshot-annotation-svg"
+              width={W}
+              height={H}
+              viewBox={`0 0 ${W} ${H}`}
+              style={{ pointerEvents: cropMode ? 'none' : undefined }}
+            >
               {drawingPoints && drawingPoints.length > 1 && (
                 <path d={smoothPathD(drawingPoints, W, H)} fill="none" stroke={SIMPLE_COLORS_DEFAULT} strokeWidth={STROKE_WIDTH_PX} strokeLinecap="round" strokeLinejoin="round" />
               )}
@@ -891,12 +1186,11 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
                   const y1 = a.y1Frac * H
                   const x2 = a.x2Frac * W
                   const y2 = a.y2Frac * H
-                  const aux = { x: a.auxFrac.x * W, y: a.auxFrac.y * H }
                   const isSelected = selectedId === a.id
                   const pathD = linePathD(a, W, H)
                   const headLen = 14
-                  const endFrom = a.pathStyle === 'straight' ? { x: x1, y: y1 } : aux
-                  const startFrom = a.pathStyle === 'straight' ? { x: x2, y: y2 } : aux
+                  const { startFrom, endFrom } = lineArrowRefs(a, W, H)
+                  const bendPoints = a.pathStyle === 'kagi' ? kagiBendPoints(a) : []
                   return (
                     <g key={a.id} onClick={(e) => e.stopPropagation()}>
                       <path d={pathD} fill="none" stroke={a.color} strokeWidth={STROKE_WIDTH_PX} strokeLinecap="round" pointerEvents="none" />
@@ -918,9 +1212,32 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
                         <>
                           <circle cx={x1} cy={y1} r={7} fill="#fff" stroke="#0a84ff" strokeWidth={2} style={{ cursor: 'grab' }} onPointerDown={(e) => beginDrag(e, a, 'p1')} />
                           <circle cx={x2} cy={y2} r={7} fill="#fff" stroke="#0a84ff" strokeWidth={2} style={{ cursor: 'grab' }} onPointerDown={(e) => beginDrag(e, a, 'p2')} />
-                          {a.pathStyle !== 'straight' && (
-                            <circle cx={aux.x} cy={aux.y} r={7} fill="#ffd60a" stroke="#333" strokeWidth={1.5} style={{ cursor: 'grab' }} onPointerDown={(e) => beginDrag(e, a, 'aux')} />
+                          {a.pathStyle === 'curve' && (
+                            <circle
+                              cx={a.auxFrac.x * W}
+                              cy={a.auxFrac.y * H}
+                              r={7}
+                              fill="#ffd60a"
+                              stroke="#333"
+                              strokeWidth={1.5}
+                              style={{ cursor: 'grab' }}
+                              onPointerDown={(e) => beginDrag(e, a, 'aux')}
+                            />
                           )}
+                          {a.pathStyle === 'kagi' &&
+                            bendPoints.map((b, i) => (
+                              <circle
+                                key={i}
+                                cx={b.x * W}
+                                cy={b.y * H}
+                                r={7}
+                                fill="#ffd60a"
+                                stroke="#333"
+                                strokeWidth={1.5}
+                                style={{ cursor: 'grab' }}
+                                onPointerDown={(e) => beginDrag(e, a, 'bend', i)}
+                              />
+                            ))}
                         </>
                       )}
                     </g>
@@ -979,6 +1296,44 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
               </div>
             )
           })}
+
+          {cropMode && cropRect && W > 0 && H > 0 && (
+            <div className="screenshot-crop-overlay">
+              <div className="screenshot-crop-mask" style={{ left: 0, top: 0, right: 0, height: `${cropRect.y * 100}%` }} />
+              <div
+                className="screenshot-crop-mask"
+                style={{ left: 0, bottom: 0, right: 0, top: `${(cropRect.y + cropRect.h) * 100}%` }}
+              />
+              <div
+                className="screenshot-crop-mask"
+                style={{ left: 0, top: `${cropRect.y * 100}%`, width: `${cropRect.x * 100}%`, height: `${cropRect.h * 100}%` }}
+              />
+              <div
+                className="screenshot-crop-mask"
+                style={{
+                  right: 0,
+                  top: `${cropRect.y * 100}%`,
+                  width: `${(1 - cropRect.x - cropRect.w) * 100}%`,
+                  height: `${cropRect.h * 100}%`
+                }}
+              />
+              <div
+                className="screenshot-crop-rect"
+                style={{
+                  left: `${cropRect.x * 100}%`,
+                  top: `${cropRect.y * 100}%`,
+                  width: `${cropRect.w * 100}%`,
+                  height: `${cropRect.h * 100}%`
+                }}
+                onPointerDown={(e) => beginCropDrag(e, 'move')}
+              >
+                <div className="screenshot-crop-handle nw" onPointerDown={(e) => beginCropDrag(e, 'nw')} />
+                <div className="screenshot-crop-handle ne" onPointerDown={(e) => beginCropDrag(e, 'ne')} />
+                <div className="screenshot-crop-handle sw" onPointerDown={(e) => beginCropDrag(e, 'sw')} />
+                <div className="screenshot-crop-handle se" onPointerDown={(e) => beginCropDrag(e, 'se')} />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1215,7 +1570,7 @@ function TextGlyph(): React.JSX.Element {
 
 function iconSvg(children: React.ReactNode): React.JSX.Element {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       {children}
     </svg>
   )
@@ -1241,6 +1596,14 @@ function PenIcon(): React.JSX.Element {
     <>
       <path d="M12 20h9" />
       <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </>
+  )
+}
+function CropIcon(): React.JSX.Element {
+  return iconSvg(
+    <>
+      <path d="M6 2v14a2 2 0 0 0 2 2h14" />
+      <path d="M18 22V8a2 2 0 0 0-2-2H2" />
     </>
   )
 }
@@ -1332,8 +1695,8 @@ function ArrowBothIcon(): React.JSX.Element {
 }
 function FontColorIcon(): React.JSX.Element {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24">
-      <text x="12" y="16" fontSize="16" fontWeight="700" textAnchor="middle" fill="currentColor">
+    <svg width="21" height="21" viewBox="0 0 24 24">
+      <text x="12" y="17" fontSize="19" fontWeight="700" textAnchor="middle" fill="currentColor">
         A
       </text>
     </svg>
