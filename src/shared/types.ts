@@ -164,6 +164,15 @@ export interface AppSettings {
   theme: ThemeMode
 }
 
+/** 設定画面の「アップデートを確認」ボタンの状態表示に使う */
+export type UpdateStatus =
+  | { state: 'checking' }
+  | { state: 'available'; version: string }
+  | { state: 'not-available' }
+  | { state: 'downloading'; percent: number }
+  | { state: 'downloaded'; version: string }
+  | { state: 'error'; message: string }
+
 export type StepStatus = 'pending' | 'running' | 'ok' | 'fail' | 'skipped'
 
 export interface PlaybackProgress {
@@ -282,5 +291,10 @@ export const IPC = {
 
   // 設定画面のデバッグログ確認機能
   readDebugLog: 'debug-log:read',
-  openDebugLogFolder: 'debug-log:open-folder'
+  openDebugLogFolder: 'debug-log:open-folder',
+
+  // 設定画面のバージョン表示・アップデート確認機能
+  getAppVersion: 'app:get-version',
+  checkForUpdates: 'update:check',
+  updateStatus: 'update:status' // main -> renderer push
 } as const

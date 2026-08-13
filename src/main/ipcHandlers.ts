@@ -1,4 +1,5 @@
 import {
+  app,
   ipcMain,
   dialog,
   desktopCapturer,
@@ -26,6 +27,7 @@ import * as settingsStore from './settingsStore'
 import * as targetHistoryStore from './targetHistoryStore'
 import { setHotkeyCombo, startHotkeyCapture, cancelHotkeyCapture } from './hotkey'
 import * as debugLog from './debugLog'
+import { checkForUpdates } from './autoUpdater'
 
 export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
   const manager = new TargetManager()
@@ -287,6 +289,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   ipcMain.handle(IPC.readDebugLog, async () => debugLog.readLog())
 
   ipcMain.handle(IPC.openDebugLogFolder, async () => debugLog.openLogFolder())
+
+  ipcMain.handle(IPC.getAppVersion, async () => app.getVersion())
+
+  ipcMain.handle(IPC.checkForUpdates, async () => checkForUpdates())
 
   ipcMain.handle(IPC.startHotkeyCapture, async () => {
     const w = getWindow()

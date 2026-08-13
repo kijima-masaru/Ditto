@@ -16,7 +16,8 @@ import {
   type TestCase,
   type TestFolder,
   type TestTarget,
-  type ThemeMode
+  type ThemeMode,
+  type UpdateStatus
 } from '../shared/types'
 
 const api = {
@@ -118,6 +119,13 @@ const api = {
   setTheme: (theme: ThemeMode): Promise<AppSettings> => ipcRenderer.invoke(IPC.setTheme, theme),
   readDebugLog: (): Promise<string> => ipcRenderer.invoke(IPC.readDebugLog),
   openDebugLogFolder: (): Promise<void> => ipcRenderer.invoke(IPC.openDebugLogFolder),
+  getAppVersion: (): Promise<string> => ipcRenderer.invoke(IPC.getAppVersion),
+  checkForUpdates: (): Promise<void> => ipcRenderer.invoke(IPC.checkForUpdates),
+  onUpdateStatus: (cb: (status: UpdateStatus) => void): (() => void) => {
+    const listener = (_e: unknown, status: UpdateStatus): void => cb(status)
+    ipcRenderer.on(IPC.updateStatus, listener)
+    return () => ipcRenderer.removeListener(IPC.updateStatus, listener)
+  },
   startHotkeyCapture: (): Promise<void> => ipcRenderer.invoke(IPC.startHotkeyCapture),
   cancelHotkeyCapture: (): Promise<void> => ipcRenderer.invoke(IPC.cancelHotkeyCapture),
   onHotkeyCapturePreview: (cb: (label: string) => void): (() => void) => {

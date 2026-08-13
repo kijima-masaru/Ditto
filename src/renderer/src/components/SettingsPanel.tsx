@@ -1,9 +1,29 @@
 import { useEffect, useRef, useState } from 'react'
-import type { HotkeyCombo, ThemeMode } from '../../../shared/types'
+import type { HotkeyCombo, ThemeMode, UpdateStatus } from '../../../shared/types'
 
 interface Props {
   theme: ThemeMode
   onThemeChange: (theme: ThemeMode) => void
+}
+
+function updateStatusLabel(status: UpdateStatus | null): string {
+  if (!status) return ''
+  switch (status.state) {
+    case 'checking':
+      return '確認中...'
+    case 'available':
+      return `新しいバージョン v${status.version} が見つかりました。ダウンロード中です...`
+    case 'not-available':
+      return 'お使いのバージョンは最新です。'
+    case 'downloading':
+      return `ダウンロード中... ${status.percent}%`
+    case 'downloaded':
+      return `v${status.version} の準備ができました。再起動すると更新されます。`
+    case 'error':
+      return `確認に失敗しました: ${status.message}`
+    default:
+      return ''
+  }
 }
 
 export default function SettingsPanel({ theme, onThemeChange }: Props): React.JSX.Element {
@@ -17,11 +37,19 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const [logLoading, setLogLoading] = useState(false)
   const logBodyRef = useRef<HTMLPreElement>(null)
 
+  const [appVersion, setAppVersion] = useState('')
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null)
+
   useEffect(() => {
     window.api.getSettings().then((s) => {
       setHotkey(s.hotkey)
       setLoading(false)
     })
+    window.api.getAppVersion().then(setAppVersion)
+  }, [])
+
+  useEffect(() => {
+    return window.api.onUpdateStatus(setUpdateStatus)
   }, [])
 
   useEffect(() => {
@@ -70,6 +98,11 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     await loadLog()
   }
 
+  const handleCheckForUpdates = async (): Promise<void> => {
+    setUpdateStatus({ state: 'checking' })
+    await window.api.checkForUpdates()
+  }
+
   if (loading || !hotkey) return <div className="panel">読み込み中...</div>
 
   return (
@@ -103,6 +136,17 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
             ダーク
           </button>
         </div>
+      </div>
+
+      <div className="field">
+        <label>バージョン情報</label>
+        <p className="hint">現在のバージョン: v{appVersion}</p>
+        <div className="row">
+          <button onClick={handleCheckForUpdates} disabled={updateStatus?.state === 'checking'}>
+            アップデートを確認
+          </button>
+        </div>
+        {updateStatus && <p className="hint">{updateStatusLabel(updateStatus)}</p>}
       </div>
 
       <div className="field">
