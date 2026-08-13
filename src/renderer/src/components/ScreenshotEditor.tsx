@@ -1077,7 +1077,15 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
           onClick={handleBackgroundClick}
           onPointerDown={handleWrapPointerDown}
         >
-          <img ref={imgRef} src={currentImageUrl} alt="スクリーンショット" className="screenshot-editor-image" onLoad={recomputeSize} />
+          <img
+            ref={imgRef}
+            src={currentImageUrl}
+            alt="スクリーンショット"
+            className="screenshot-editor-image"
+            onLoad={recomputeSize}
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
+          />
 
           {W > 0 && H > 0 && (
             <svg
@@ -1570,7 +1578,7 @@ function TextGlyph(): React.JSX.Element {
 
 function iconSvg(children: React.ReactNode): React.JSX.Element {
   return (
-    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       {children}
     </svg>
   )
@@ -1695,8 +1703,8 @@ function ArrowBothIcon(): React.JSX.Element {
 }
 function FontColorIcon(): React.JSX.Element {
   return (
-    <svg width="21" height="21" viewBox="0 0 24 24">
-      <text x="12" y="17" fontSize="19" fontWeight="700" textAnchor="middle" fill="currentColor">
+    <svg width="27" height="27" viewBox="0 0 24 24">
+      <text x="12" y="18" fontSize="21" fontWeight="700" textAnchor="middle" fill="currentColor">
         A
       </text>
     </svg>

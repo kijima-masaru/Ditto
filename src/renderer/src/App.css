@@ -1219,8 +1219,8 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 .se-icon-btn {
   position: relative;
   flex-shrink: 0;
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1251,7 +1251,7 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 }
 
 .se-glyph {
-  font-size: 18px;
+  font-size: 22px;
   font-family: 'Segoe UI', sans-serif;
   line-height: 1;
 }
@@ -1449,6 +1449,8 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   position: relative;
   display: inline-block;
   line-height: 0;
+  -webkit-user-drag: none;
+  user-select: none;
 }
 
 .screenshot-editor-image-wrap.drawing {
@@ -1459,6 +1461,9 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   display: block;
   max-width: 100%;
   max-height: calc(100vh - 200px);
+  -webkit-user-drag: none;
+  user-select: none;
+  pointer-events: none;
 }
 
 .screenshot-annotation-svg {
