@@ -909,7 +909,6 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 }
 
 .debug-log-modal {
-  position: relative;
   margin: 10px;
   flex: 1;
   display: flex;
@@ -923,9 +922,7 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 }
 
 .debug-log-close-btn {
-  position: absolute;
-  top: 6px;
-  right: 8px;
+  flex-shrink: 0;
   width: 24px;
   height: 24px;
   padding: 0;
@@ -938,7 +935,6 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   font-size: 18px;
   line-height: 1;
   cursor: pointer;
-  z-index: 1;
 }
 
 .debug-log-close-btn:hover {
@@ -949,7 +945,7 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 34px 8px 10px;
+  padding: 8px 10px;
   border-bottom: 1px solid var(--border);
   font-weight: 700;
   font-size: 13px;
@@ -957,7 +953,7 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 }
 
 .debug-log-modal-header select {
-  flex-shrink: 1;
+  flex: 1;
   min-width: 0;
 }
 
