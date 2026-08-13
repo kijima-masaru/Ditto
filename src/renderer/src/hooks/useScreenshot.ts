@@ -2,10 +2,9 @@ import { useCallback, useRef, useState } from 'react'
 
 export interface ScreenshotApi {
   capturing: boolean
-  imageDataUrl: string | null
   errorMessage: string | null
   capture: () => Promise<void>
-  dismiss: () => void
+  dismissError: () => void
   videoRef: React.RefObject<HTMLVideoElement | null>
   canvasRef: React.RefObject<HTMLCanvasElement | null>
 }
@@ -13,11 +12,12 @@ export interface ScreenshotApi {
 /**
  * 録画枠の範囲を静止画1枚としてキャプチャする。動画録画(useScreenRecording)と同じ
  * desktopCapturer+<video>+<canvas>の組み合わせを使うが、MediaRecorderは使わず
- * 1フレームだけcanvasに描画してPNGのdata URLを得たらすぐストリームを破棄する。
+ * 1フレームだけcanvasに描画してPNGのdata URLを得る。
+ * 撮影後の確認・注釈編集はメインウィンドウ内ではなく別の最大化ウィンドウで行うため、
+ * data URLはこのフックの状態には残さずopenScreenshotEditorへそのまま渡す。
  */
 export function useScreenshot(): ScreenshotApi {
   const [capturing, setCapturing] = useState(false)
-  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -68,7 +68,7 @@ export function useScreenshot(): ScreenshotApi {
       if (!ctx) throw new Error('キャプチャの初期化に失敗しました')
       ctx.drawImage(video, sx, sy, outW, outH, 0, 0, outW, outH)
 
-      setImageDataUrl(canvas.toDataURL('image/png'))
+      await window.api.openScreenshotEditor(canvas.toDataURL('image/png'))
     } catch (e) {
       setErrorMessage((e as Error).message)
     } finally {
@@ -78,10 +78,9 @@ export function useScreenshot(): ScreenshotApi {
     }
   }, [])
 
-  const dismiss = useCallback(() => {
-    setImageDataUrl(null)
+  const dismissError = useCallback(() => {
     setErrorMessage(null)
   }, [])
 
-  return { capturing, imageDataUrl, errorMessage, capture, dismiss, videoRef, canvasRef }
+  return { capturing, errorMessage, capture, dismissError, videoRef, canvasRef }
 }

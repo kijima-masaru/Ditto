@@ -10,6 +10,7 @@ import { setupGlobalHotkey } from './hotkey'
 import { startClipboardWatcher } from './clipboardWatcher'
 import * as settingsStore from './settingsStore'
 import { initPreviewWindows } from './previewWindow'
+import { initScreenshotEditorWindow } from './screenshotEditorWindow'
 import log from './logger'
 import { pruneOldLogs } from './debugLog'
 
@@ -141,6 +142,7 @@ app.whenReady().then(async () => {
   createWindow()
   registerIpcHandlers(() => mainWindow)
   initPreviewWindows(() => mainWindow)
+  initScreenshotEditorWindow(() => mainWindow)
 
   setupAutoUpdater(() => mainWindow)
   if (app.isPackaged) {

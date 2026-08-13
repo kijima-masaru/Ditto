@@ -189,6 +189,19 @@ const api = {
     const listener = (_e: unknown, payload: TopPage): void => cb(payload)
     ipcRenderer.on(IPC.showTopPage, listener)
     return () => ipcRenderer.removeListener(IPC.showTopPage, listener)
+  },
+
+  openScreenshotEditor: (dataUrl: string): Promise<void> => ipcRenderer.invoke(IPC.openScreenshotEditor, dataUrl),
+  onScreenshotEditorImage: (cb: (dataUrl: string) => void): (() => void) => {
+    const listener = (_e: unknown, dataUrl: string): void => cb(dataUrl)
+    ipcRenderer.on(IPC.screenshotEditorImage, listener)
+    return () => ipcRenderer.removeListener(IPC.screenshotEditorImage, listener)
+  },
+  notifyScreenshotSaved: (path: string): void => ipcRenderer.send(IPC.notifyScreenshotSaved, path),
+  onScreenshotEditorSaved: (cb: (path: string) => void): (() => void) => {
+    const listener = (_e: unknown, path: string): void => cb(path)
+    ipcRenderer.on(IPC.screenshotEditorSaved, listener)
+    return () => ipcRenderer.removeListener(IPC.screenshotEditorSaved, listener)
   }
 }
 

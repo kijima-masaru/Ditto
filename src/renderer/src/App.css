@@ -1171,46 +1171,61 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   color: var(--text-secondary);
 }
 
-/* スクリーンショット撮影後の確認・注釈編集モーダル */
-.screenshot-editor-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  z-index: 150;
-}
-
-.screenshot-editor-modal {
-  margin: 10px;
-  flex: 1;
+/* スクリーンショット撮影後の確認・注釈編集画面。Ditto本体とは別のOSウィンドウとして
+   PC画面いっぱいに最大化して表示するため、モーダルではなくページ全体のレイアウトにする */
+.screenshot-editor-page {
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  background: var(--panel-bg);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 10px 28px var(--shadow);
-  overflow: hidden;
+  height: 100vh;
+  background: var(--bg);
+}
+
+.screenshot-editor-loading {
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
 }
 
 .screenshot-editor-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px;
+  padding: 10px 16px;
   border-bottom: 1px solid var(--border);
   font-weight: 700;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-secondary);
+  background: var(--panel-bg);
 }
 
 .screenshot-editor-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
+  gap: 14px;
+  padding: 10px 16px;
   border-bottom: 1px solid var(--border);
+  background: var(--panel-bg);
+}
+
+.screenshot-editor-insert-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.screenshot-editor-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 14px;
+  border-left: 1px solid var(--border);
+}
+
+.screenshot-editor-group-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .screenshot-editor-colors {
@@ -1220,8 +1235,8 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 }
 
 .screenshot-editor-color {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   border: 2px solid transparent;
   padding: 0;
@@ -1232,10 +1247,36 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   border-color: var(--accent);
 }
 
+.screenshot-editor-color--none {
+  background: linear-gradient(45deg, transparent 46%, #ff3b30 48%, #ff3b30 52%, transparent 54%), #fff;
+  border-color: var(--border-strong);
+}
+
+.screenshot-editor-color--none.active {
+  border-color: var(--accent);
+}
+
 .screenshot-editor-font-size {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.screenshot-editor-line-style {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.screenshot-editor-line-style button {
+  font-size: 12px;
+  padding: 5px 10px;
+}
+
+.screenshot-editor-line-style button.active {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent);
 }
 
 .screenshot-editor-canvas-area {
@@ -1245,8 +1286,7 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 14px;
-  background: var(--panel-bg-alt);
+  padding: 24px;
 }
 
 .screenshot-editor-image-wrap {
@@ -1258,7 +1298,18 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 .screenshot-editor-image {
   display: block;
   max-width: 100%;
-  max-height: 55vh;
+  max-height: calc(100vh - 200px);
+}
+
+.screenshot-annotation-svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+
+.screenshot-annotation-svg g {
+  pointer-events: auto;
 }
 
 .screenshot-text-box {
@@ -1272,23 +1323,27 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 }
 
 .screenshot-text-display {
+  /* 親の.screenshot-editor-image-wrapがimg下の余白を消すためline-height:0を指定しており、
+     それを継承すると行ボックスが潰れテキストが枠の外にはみ出して見えてしまうため上書きする */
+  line-height: normal;
   white-space: pre-wrap;
   text-align: center;
   padding: 2px 6px;
   font-weight: 700;
   font-family: 'Segoe UI', sans-serif;
   user-select: none;
+  border-radius: 4px;
 }
 
 .screenshot-text-input {
+  line-height: normal;
   min-width: 80px;
   min-height: 1.4em;
   text-align: center;
   font-weight: 700;
   font-family: 'Segoe UI', sans-serif;
   padding: 2px 6px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px dashed rgba(255, 255, 255, 0.7);
+  border: 2px dashed rgba(255, 255, 255, 0.7);
   border-radius: 4px;
   resize: both;
   outline: none;
@@ -1298,8 +1353,9 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  padding: 10px;
+  padding: 12px 16px;
   border-top: 1px solid var(--border);
+  background: var(--panel-bg);
 }
 
 .target-history-list {

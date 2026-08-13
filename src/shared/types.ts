@@ -328,5 +328,11 @@ export const IPC = {
   isCursorOverPreviewWindow: 'preview-window:is-cursor-over',
   navigateToFolder: 'preview-window:navigate', // preview window -> main
   navigateToFolderPush: 'preview-window:navigate-push', // main -> メインウィンドウ push
-  showTopPage: 'window:show-top-page' // main -> メインウィンドウ push(ホットキー表示時)
+  showTopPage: 'window:show-top-page', // main -> メインウィンドウ push(ホットキー表示時)
+
+  // スクリーンショット確認・注釈編集用の別ウィンドウ(PC画面いっぱいに最大化して表示する)
+  openScreenshotEditor: 'screenshot-editor:open', // メインウィンドウ -> main
+  screenshotEditorImage: 'screenshot-editor:image', // main -> 編集ウィンドウ push
+  notifyScreenshotSaved: 'screenshot-editor:notify-saved', // 編集ウィンドウ -> main
+  screenshotEditorSaved: 'screenshot-editor:saved-push' // main -> メインウィンドウ push
 } as const

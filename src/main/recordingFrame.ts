@@ -191,11 +191,15 @@ function buildHtml(): string {
   .size-fields { display:flex; align-items:center; gap:4px; color:#aeb2ba; font-size:11px; }
   .size-fields input { width:52px; background:#262a33; color:#e8e8ea; border:1px solid #454b57; border-radius:4px; padding:4px 5px; font-size:11px; }
   .size-fields input:disabled { color:#6b6f78; cursor:not-allowed; }
-  .mode-toggle { display:flex; gap:2px; padding:2px; background:#20232b; border-radius:14px; }
-  .mode-toggle button { border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-  .mode-btn { width:26px; height:22px; border-radius:12px; background:transparent; color:#aeb2ba; font-size:12px; }
-  .mode-btn.active { background:#3a3f4b; color:#fff; }
-  .mode-toggle[data-locked="true"] .mode-btn { pointer-events:none; opacity:0.4; }
+  .mode-toggle-wrap { display:flex; align-items:center; gap:6px; min-width:0; }
+  .mode-toggle-wrap[data-locked="true"] { pointer-events:none; opacity:0.4; }
+  .mode-switch { position:relative; display:inline-block; flex-shrink:0; width:32px; height:18px; cursor:pointer; }
+  .mode-switch input { position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; }
+  .mode-switch-slider { position:absolute; inset:0; background:#3a3f4b; border-radius:999px; transition:background-color .15s ease; }
+  .mode-switch-slider::before { content:''; position:absolute; top:2px; left:2px; width:14px; height:14px; background:#fff; border-radius:50%; transition:transform .15s ease; }
+  .mode-switch input:checked + .mode-switch-slider { background:#ff4d4f; }
+  .mode-switch input:checked + .mode-switch-slider::before { transform:translateX(14px); }
+  .mode-label { color:#cfd2d8; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
   .toolbar-actions { display:flex; align-items:center; gap:6px; }
   .toolbar-actions button { display:none; border:none; cursor:pointer; color:#fff; align-items:center; justify-content:center; }
@@ -236,9 +240,12 @@ function buildHtml(): string {
       <input type="number" id="h-input" min="${MIN_H}" />
       <span>px</span>
     </div>
-    <div class="mode-toggle" id="mode-toggle" data-locked="false">
-      <button class="mode-btn active" id="mode-video" title="画面録画">🎥</button>
-      <button class="mode-btn" id="mode-photo" title="スクリーンショット">📷</button>
+    <div class="mode-toggle-wrap" id="mode-toggle-wrap" data-locked="false">
+      <label class="mode-switch">
+        <input type="checkbox" id="mode-switch-input" />
+        <span class="mode-switch-slider"></span>
+      </label>
+      <span class="mode-label" id="mode-label">画面録画</span>
     </div>
     <div class="toolbar-actions" id="actions" data-state="idle" data-mode="video">
       <button class="rec-btn" id="btn-start" title="録画開始"></button>
@@ -305,21 +312,20 @@ function buildHtml(): string {
       wInput.disabled = v
       hInput.disabled = v
     })
-    const modeToggle = document.getElementById('mode-toggle')
-    const modeVideoBtn = document.getElementById('mode-video')
-    const modePhotoBtn = document.getElementById('mode-photo')
+    const modeToggleWrap = document.getElementById('mode-toggle-wrap')
+    const modeSwitchInput = document.getElementById('mode-switch-input')
+    const modeLabel = document.getElementById('mode-label')
     function setMode(mode) {
       document.getElementById('actions').dataset.mode = mode
-      modeVideoBtn.classList.toggle('active', mode === 'video')
-      modePhotoBtn.classList.toggle('active', mode === 'photo')
+      modeSwitchInput.checked = mode === 'photo'
+      modeLabel.textContent = mode === 'photo' ? 'スクリーンショット' : '画面録画'
     }
-    modeVideoBtn.addEventListener('click', () => setMode('video'))
-    modePhotoBtn.addEventListener('click', () => setMode('photo'))
+    modeSwitchInput.addEventListener('change', () => setMode(modeSwitchInput.checked ? 'photo' : 'video'))
 
     ipcRenderer.on('set-footer-state', (_e, state) => {
       document.getElementById('actions').dataset.state = state
       // 動画録画/一時停止中はモード切替できないようにする(静止画には録画中の概念が無いため対象外)
-      modeToggle.dataset.locked = state !== 'idle' ? 'true' : 'false'
+      modeToggleWrap.dataset.locked = state !== 'idle' ? 'true' : 'false'
     })
 
     document.getElementById('btn-start').addEventListener('click', () => ipcRenderer.send('recording-frame:footer-action', 'start'))
