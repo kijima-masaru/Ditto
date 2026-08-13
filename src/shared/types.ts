@@ -166,6 +166,8 @@ export interface AppSettings {
   topPage: TopPage | null
   /** trueならウィンドウのリサイズ・最大化を禁止し、現在の大きさに固定する */
   windowSizeLocked: boolean
+  /** trueならDittoのウィンドウを常に他のアプリより前面に表示する */
+  alwaysOnTop: boolean
 }
 
 /** ネストしたフォルダプレビューを別ウィンドウで開く際、どちらのデータを見せるか */
@@ -289,6 +291,7 @@ export const IPC = {
   setTheme: 'settings:set-theme',
   setTopPage: 'settings:set-top-page',
   setWindowSizeLocked: 'settings:set-window-size-locked',
+  setAlwaysOnTop: 'settings:set-always-on-top',
   startHotkeyCapture: 'hotkey-capture:start',
   cancelHotkeyCapture: 'hotkey-capture:cancel',
   hotkeyCapturePreview: 'hotkey-capture:preview', // main -> renderer push

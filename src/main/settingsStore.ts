@@ -7,7 +7,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   hotkey: { ctrl: true, shift: false, alt: false, meta: false, keycode: null, label: 'Ctrl 2回' },
   theme: 'light',
   topPage: null,
-  windowSizeLocked: false
+  windowSizeLocked: false,
+  alwaysOnTop: false
 }
 
 function settingsFilePath(): string {
@@ -22,7 +23,8 @@ export async function getSettings(): Promise<AppSettings> {
       hotkey: parsed.hotkey ?? DEFAULT_SETTINGS.hotkey,
       theme: parsed.theme ?? DEFAULT_SETTINGS.theme,
       topPage: parsed.topPage ?? DEFAULT_SETTINGS.topPage,
-      windowSizeLocked: parsed.windowSizeLocked ?? DEFAULT_SETTINGS.windowSizeLocked
+      windowSizeLocked: parsed.windowSizeLocked ?? DEFAULT_SETTINGS.windowSizeLocked,
+      alwaysOnTop: parsed.alwaysOnTop ?? DEFAULT_SETTINGS.alwaysOnTop
     }
   } catch {
     return { ...DEFAULT_SETTINGS }
@@ -57,6 +59,13 @@ export async function setTopPage(topPage: TopPage | null): Promise<AppSettings> 
 export async function setWindowSizeLocked(locked: boolean): Promise<AppSettings> {
   const settings = await getSettings()
   settings.windowSizeLocked = locked
+  await writeSettings(settings)
+  return settings
+}
+
+export async function setAlwaysOnTop(alwaysOnTop: boolean): Promise<AppSettings> {
+  const settings = await getSettings()
+  settings.alwaysOnTop = alwaysOnTop
   await writeSettings(settings)
   return settings
 }

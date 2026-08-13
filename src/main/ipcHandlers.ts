@@ -297,6 +297,12 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     return settings
   })
 
+  ipcMain.handle(IPC.setAlwaysOnTop, async (_e, alwaysOnTop: boolean) => {
+    const settings = await settingsStore.setAlwaysOnTop(alwaysOnTop)
+    getWindow()?.setAlwaysOnTop(alwaysOnTop)
+    return settings
+  })
+
   ipcMain.handle(IPC.readDebugLog, async () => debugLog.readLog())
 
   ipcMain.handle(IPC.openDebugLogFolder, async () => debugLog.openLogFolder())

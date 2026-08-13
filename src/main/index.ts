@@ -86,6 +86,7 @@ async function createWindow(): Promise<void> {
     minHeight: 420,
     resizable: !settings.windowSizeLocked,
     maximizable: !settings.windowSizeLocked,
+    alwaysOnTop: settings.alwaysOnTop,
     show: false,
     autoHideMenuBar: true,
     webPreferences: {

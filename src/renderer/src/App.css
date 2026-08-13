@@ -975,7 +975,7 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   height: 32px;
   padding: 0 8px;
   border: 1.5px solid var(--border-strong);
-  background: var(--panel-bg);
+  background: var(--btn-bg);
   color: var(--text-secondary);
   border-radius: 8px;
   font-size: 13px;

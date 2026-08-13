@@ -88,6 +88,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const [clipboardFolders, setClipboardFolders] = useState<ClipboardTemplateFolder[]>([])
   const [testFolders, setTestFolders] = useState<TestFolder[]>([])
   const [windowSizeLocked, setWindowSizeLocked] = useState(false)
+  const [alwaysOnTop, setAlwaysOnTop] = useState(false)
 
   const [showLog, setShowLog] = useState(false)
   const [logText, setLogText] = useState('')
@@ -103,6 +104,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
       setHotkey(s.hotkey)
       setTopPage(s.topPage)
       setWindowSizeLocked(s.windowSizeLocked)
+      setAlwaysOnTop(s.alwaysOnTop)
       setLoading(false)
     })
     window.api.getAppVersion().then(setAppVersion)
@@ -152,6 +154,11 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const handleWindowSizeLockedChange = async (locked: boolean): Promise<void> => {
     setWindowSizeLocked(locked)
     await window.api.setWindowSizeLocked(locked)
+  }
+
+  const handleAlwaysOnTopChange = async (value: boolean): Promise<void> => {
+    setAlwaysOnTop(value)
+    await window.api.setAlwaysOnTop(value)
   }
 
   const loadLog = async (): Promise<void> => {
@@ -274,6 +281,26 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
                   type="checkbox"
                   checked={windowSizeLocked}
                   onChange={(e) => handleWindowSizeLockedChange(e.target.checked)}
+                />
+                <span className="theme-toggle-slider" />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="settings-item">
+          <div className="settings-item-row">
+            <span className="settings-item-label">
+              常に最前面に表示
+              <HelpIcon text={'ONにすると、Dittoのウィンドウを他のアプリより常に前面に表示します。'} />
+            </span>
+            <div className="settings-item-control">
+              <span className="toggle-state-label">{alwaysOnTop ? 'ON' : 'OFF'}</span>
+              <label className="theme-toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={alwaysOnTop}
+                  onChange={(e) => handleAlwaysOnTopChange(e.target.checked)}
                 />
                 <span className="theme-toggle-slider" />
               </label>

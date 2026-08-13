@@ -122,6 +122,8 @@ const api = {
   setTopPage: (topPage: TopPage | null): Promise<AppSettings> => ipcRenderer.invoke(IPC.setTopPage, topPage),
   setWindowSizeLocked: (locked: boolean): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setWindowSizeLocked, locked),
+  setAlwaysOnTop: (alwaysOnTop: boolean): Promise<AppSettings> =>
+    ipcRenderer.invoke(IPC.setAlwaysOnTop, alwaysOnTop),
   readDebugLog: (): Promise<string> => ipcRenderer.invoke(IPC.readDebugLog),
   openDebugLogFolder: (): Promise<void> => ipcRenderer.invoke(IPC.openDebugLogFolder),
   getAppVersion: (): Promise<string> => ipcRenderer.invoke(IPC.getAppVersion),
