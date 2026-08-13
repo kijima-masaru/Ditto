@@ -50,7 +50,7 @@ function scheduleClose(depth: number): void {
 
 function openPreview(
   event: IpcMainInvokeEvent,
-  payload: { kind: PreviewKind; folderId: string; depth: number }
+  payload: { kind: PreviewKind; folderId: string; depth: number; rowTop: number }
 ): void {
   cancelPendingClose()
   const senderWindow = BrowserWindow.fromWebContents(event.sender)
@@ -58,7 +58,11 @@ function openPreview(
   // 同じ深さ(または、それより深い階層)に既に開いているものがあれば片付けてから開き直す
   closeFromDepth(payload.depth)
 
+  // 幅の計算(左右)はウィンドウ全体の外枠基準、高さの位置合わせ(送信元の行と同じ高さに
+  // 開く)はタイトルバーを含まないコンテンツ領域基準で計算する(rowTopはコンテンツ領域内での
+  // 相対位置のため)
   const senderBounds = senderWindow.getBounds()
+  const senderContentBounds = senderWindow.getContentBounds()
   const display = screen.getDisplayMatching(senderBounds)
   let x = senderBounds.x + senderBounds.width
   if (x + WIDTH > display.workArea.x + display.workArea.width) {
@@ -66,7 +70,7 @@ function openPreview(
     x = senderBounds.x - WIDTH
   }
   const y = Math.min(
-    Math.max(senderBounds.y, display.workArea.y),
+    Math.max(senderContentBounds.y + payload.rowTop, display.workArea.y),
     display.workArea.y + display.workArea.height - HEIGHT
   )
 

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import type { PreviewKind } from '../../../shared/types'
 import { useHoverIntent } from '../hooks/useHoverIntent'
 
@@ -64,10 +64,14 @@ function FolderPreviewRow({
 }): React.JSX.Element {
   const hover = useHoverIntent()
   const isOpen = hover.activeId === folder.id
+  const rowRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!isOpen) return undefined
-    window.api.openPreviewWindow({ kind, folderId: folder.id, depth: depth + 1 })
+    // 別ウィンドウをこの行と同じ高さに開けるよう、自分自身の画面上の位置(ウィンドウ内での
+    // 相対位置)を伝える。実際の画面座標への変換はメインプロセス側で行う
+    const rowTop = rowRef.current?.getBoundingClientRect().top ?? 0
+    window.api.openPreviewWindow({ kind, folderId: folder.id, depth: depth + 1, rowTop })
     return () => {
       window.api.scheduleClosePreviewWindow(depth + 1)
     }
@@ -76,6 +80,7 @@ function FolderPreviewRow({
 
   return (
     <div
+      ref={rowRef}
       className="folder-preview-row"
       onMouseEnter={() => hover.scheduleShow(folder.id)}
       onMouseLeave={hover.scheduleHide}

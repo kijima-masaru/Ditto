@@ -35,6 +35,14 @@ export default function PreviewWindowRoot(): React.JSX.Element {
   const copiedTimer = useRef<number | null>(null)
 
   useEffect(() => {
+    // メインウィンドウとは別のBrowserWindowなのでdata-theme属性を独自に引き継ぐ必要がある。
+    // 引き継がないと常にライトテーマ(既定値)になり、メインウィンドウと色が食い違ってしまう
+    window.api.getSettings().then((s) => {
+      document.documentElement.setAttribute('data-theme', s.theme)
+    })
+  }, [])
+
+  useEffect(() => {
     if (kind === 'clipboard') {
       Promise.all([window.api.listClipboardTemplateFolders(), window.api.listClipboardTemplates()]).then(
         ([folders, items]) => setData({ folders, items })

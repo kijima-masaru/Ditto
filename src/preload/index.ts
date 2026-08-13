@@ -162,8 +162,12 @@ const api = {
     return () => ipcRenderer.removeListener(IPC.recordingFrameVisibilityChanged, listener)
   },
 
-  openPreviewWindow: (payload: { kind: PreviewKind; folderId: string; depth: number }): Promise<void> =>
-    ipcRenderer.invoke(IPC.openPreviewWindow, payload),
+  openPreviewWindow: (payload: {
+    kind: PreviewKind
+    folderId: string
+    depth: number
+    rowTop: number
+  }): Promise<void> => ipcRenderer.invoke(IPC.openPreviewWindow, payload),
   scheduleClosePreviewWindow: (depth: number): void => ipcRenderer.send(IPC.scheduleClosePreviewWindow, depth),
   cancelClosePreviewWindow: (): void => ipcRenderer.send(IPC.cancelClosePreviewWindow),
   navigateToFolder: (kind: PreviewKind, folderId: string): void =>
