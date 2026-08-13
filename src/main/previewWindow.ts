@@ -10,8 +10,9 @@ import { IPC, type PreviewKind } from '../shared/types'
  * メインウィンドウは幅が狭い(300〜360px)サイドバー的なウィンドウで、1階層目のプレビュー
  * (フォルダカードにカーソルを乗せた時の中身)は既にウィンドウの右端いっぱいに開いている。
  * そこにさらにネストしたサブフォルダのプレビューを重ねて表示すると、ウィンドウ内では
- * 表示しきれず重なってしまう。実際のOSウィンドウとして独立させ、送信元ウィンドウの
- * すぐ右に隙間なく開くことで、重ならずカスケード表示できるようにしている。
+ * 表示しきれず重なってしまう。実際のOSウィンドウとして独立させることで表示しきれる
+ * ようにし、送信元ウィンドウと同じ幅で、送信元の右半分に半分だけ重なる位置に開くことで、
+ * 階層が続いていることが見た目でも分かるカスケード表示にしている。
  *
  * depth(何階層目のプレビューか)をキーに開いているウィンドウを管理し、同じdepth以降を
  * 一括で片付けられるようにする(別の行にカーソルが移った時に置き換える・カーソルが
@@ -23,7 +24,6 @@ import { IPC, type PreviewKind } from '../shared/types'
  * 実際には動いていない)、レンダラー側のイベントだけを信用すると、サブフォルダに
  * カーソルを合わせた瞬間に階層全体が閉じてしまう不具合が起きていたため。
  */
-const WIDTH = 260
 const HEIGHT = 340
 const CLOSE_CHECK_MS = 250
 
@@ -87,10 +87,14 @@ function openPreview(
   const senderBounds = senderWindow.getBounds()
   const senderContentBounds = senderWindow.getContentBounds()
   const display = screen.getDisplayMatching(senderBounds)
-  let x = senderBounds.x + senderBounds.width
-  if (x + WIDTH > display.workArea.x + display.workArea.width) {
-    // 画面右端に入らない場合は送信元ウィンドウの左側に開く
-    x = senderBounds.x - WIDTH
+  // 幅は送信元ウィンドウ(1つ上の階層)と同じにし、送信元の右半分に半分だけ重なる
+  // 位置に開く(送信元の右端いっぱいに隙間なく並べるより、階層が続いていることが
+  // 見た目でも分かりやすいカスケード表示にするため)
+  const width = senderBounds.width
+  let x = senderBounds.x + Math.round(senderBounds.width / 2)
+  if (x + width > display.workArea.x + display.workArea.width) {
+    // 画面右端に入らない場合は送信元ウィンドウの左半分に重なる位置に開く
+    x = senderBounds.x - Math.round(width / 2)
   }
   const y = Math.min(
     Math.max(senderContentBounds.y + payload.rowTop, display.workArea.y),
@@ -100,7 +104,7 @@ function openPreview(
   const win = new BrowserWindow({
     x,
     y,
-    width: WIDTH,
+    width,
     height: HEIGHT,
     frame: false,
     resizable: false,
