@@ -353,6 +353,7 @@ export default function ClipboardPanel(): React.JSX.Element {
                     ? {
                         draggable: drag.draggable,
                         onDragStart: drag.onDragStart,
+                        onDragEnter: drag.onDragEnter,
                         onDragOver: drag.onDragOver,
                         onDrop: drag.onDrop,
                         onDragEnd: drag.onDragEnd
@@ -496,6 +497,7 @@ export default function ClipboardPanel(): React.JSX.Element {
                       ? {
                           draggable: drag.draggable,
                           onDragStart: drag.onDragStart,
+                          onDragEnter: drag.onDragEnter,
                           onDragOver: drag.onDragOver,
                           onDrop: drag.onDrop,
                           onDragEnd: drag.onDragEnd

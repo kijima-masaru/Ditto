@@ -259,6 +259,7 @@ export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Elem
                     ? {
                         draggable: drag.draggable,
                         onDragStart: drag.onDragStart,
+                        onDragEnter: drag.onDragEnter,
                         onDragOver: drag.onDragOver,
                         onDrop: drag.onDrop,
                         onDragEnd: drag.onDragEnd
@@ -348,6 +349,7 @@ export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Elem
                     ? {
                         draggable: drag.draggable,
                         onDragStart: drag.onDragStart,
+                        onDragEnter: drag.onDragEnter,
                         onDragOver: drag.onDragOver,
                         onDrop: drag.onDrop,
                         onDragEnd: drag.onDragEnd
