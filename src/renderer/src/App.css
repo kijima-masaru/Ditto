@@ -887,16 +887,154 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   min-width: 100px;
 }
 
-.hotkey-current {
-  font-weight: 700;
-  color: var(--text-secondary);
-  font-size: 13px;
-}
-
 .hotkey-preview {
   font-weight: 700;
   color: var(--accent);
   font-size: 13px;
+}
+
+/* 設定画面の各項目(ウィンドウ表示ホットキー・テーマカラー・バージョン情報・デバッグログ)。
+   項目間を罫線で区切り、ラベルと操作(ボタン/トグルスイッチ)を1行に横並びで表示する */
+.settings-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-item:first-child {
+  padding-top: 0;
+}
+
+.settings-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.settings-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.settings-item-label {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.settings-item-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ホットキー変更・アップデート確認・ログ表示ボタン。全項目でサイズを統一する */
+.settings-action-btn {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 14px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--panel-bg);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.settings-action-btn:hover {
+  background: var(--hover-bg);
+}
+
+.theme-toggle-switch {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  width: 44px;
+  height: 24px;
+  cursor: pointer;
+}
+
+.theme-toggle-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+.theme-toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: var(--border-strong);
+  border-radius: 999px;
+  transition: background-color 0.15s ease;
+}
+
+.theme-toggle-slider::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.15s ease;
+}
+
+.theme-toggle-switch input:checked + .theme-toggle-slider {
+  background: var(--accent);
+}
+
+.theme-toggle-switch input:checked + .theme-toggle-slider::before {
+  transform: translateX(20px);
+}
+
+/* ウィンドウ表示ホットキー・デバッグログのラベル横に置く「?」ヘルプアイコン。
+   ホバー/フォーカスで説明文をツールチップ表示する */
+.help-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 5px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1;
+  cursor: help;
+}
+
+.help-icon-tooltip {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 6px;
+  width: max-content;
+  max-width: 200px;
+  padding: 8px 10px;
+  background: rgba(30, 30, 30, 0.95);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: pre-line;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px var(--shadow);
+  z-index: 20;
+  pointer-events: none;
+}
+
+.help-icon:hover .help-icon-tooltip,
+.help-icon:focus .help-icon-tooltip {
+  display: block;
 }
 
 /* 設定画面の「デバッグログ」モーダル。ウィンドウが狭いためほぼ全画面で表示する */

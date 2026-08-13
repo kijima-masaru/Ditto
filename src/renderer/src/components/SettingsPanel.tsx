@@ -29,6 +29,14 @@ function filterLogByLevel(text: string, level: string): string {
   return kept.join('\n')
 }
 
+function HelpIcon({ text }: { text: string }): React.JSX.Element {
+  return (
+    <span className="help-icon" tabIndex={0}>
+      ?<span className="help-icon-tooltip">{text}</span>
+    </span>
+  )
+}
+
 function updateStatusLabel(status: UpdateStatus | null): string {
   if (!status) return ''
   switch (status.state) {
@@ -139,52 +147,60 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     <div className="panel">
       <h2>設定</h2>
 
-      <div className="field">
-        <label>ウィンドウ表示ホットキー</label>
-        <p className="hint">「変更」を押してからキーを押してください。</p>
-        <p className="hint">修飾キー(Ctrl/Shift/Alt/Win)単体なら素早く2回、修飾キーを押しながら別のキーを押せば1回押しで発火します。</p>
-        {capturing ? (
-          <div className="row inline-form">
-            <span className="hotkey-preview">{previewLabel}</span>
-            <button onClick={cancelCapture}>キャンセル</button>
-          </div>
-        ) : (
-          <div className="row">
-            <span className="hotkey-current">{hotkey.label}</span>
-            <button onClick={startCapture}>変更</button>
-          </div>
-        )}
-      </div>
-
-      <div className="field">
-        <label>テーマカラー</label>
-        <div className="target-type-toggle">
-          <button className={theme === 'light' ? 'active' : ''} onClick={() => handleThemeChange('light')}>
-            ライト
-          </button>
-          <button className={theme === 'dark' ? 'active' : ''} onClick={() => handleThemeChange('dark')}>
-            ダーク
-          </button>
+      <div className="settings-item">
+        <div className="settings-item-row">
+          <span className="settings-item-label">
+            ウィンドウ表示ホットキー
+            <HelpIcon text={'「変更」を押してからキーを押してください。\n修飾キー(Ctrl/Shift/Alt/Win)単体なら素早く2回、修飾キーを押しながら別のキーを押せば1回押しで発火します。'} />
+          </span>
+          {capturing ? (
+            <div className="settings-item-control">
+              <span className="hotkey-preview">{previewLabel}</span>
+              <button className="settings-action-btn" onClick={cancelCapture}>
+                キャンセル
+              </button>
+            </div>
+          ) : (
+            <button className="settings-action-btn" onClick={startCapture}>
+              {hotkey.label}
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="field">
-        <label>バージョン情報</label>
-        <p className="hint">現在のバージョン: v{appVersion}</p>
-        <div className="row">
-          <button onClick={handleCheckForUpdates} disabled={updateStatus?.state === 'checking'}>
+      <div className="settings-item">
+        <div className="settings-item-row">
+          <span className="settings-item-label">テーマカラー</span>
+          <label className="theme-toggle-switch">
+            <input
+              type="checkbox"
+              checked={theme === 'dark'}
+              onChange={(e) => handleThemeChange(e.target.checked ? 'dark' : 'light')}
+            />
+            <span className="theme-toggle-slider" />
+          </label>
+        </div>
+      </div>
+
+      <div className="settings-item">
+        <div className="settings-item-row">
+          <span className="settings-item-label">現在のバージョン: v{appVersion}</span>
+          <button className="settings-action-btn" onClick={handleCheckForUpdates} disabled={updateStatus?.state === 'checking'}>
             アップデートを確認
           </button>
         </div>
         {updateStatus && <p className="hint">{updateStatusLabel(updateStatus)}</p>}
       </div>
 
-      <div className="field">
-        <label>デバッグログ</label>
-        <p className="hint">Dittoの動作記録です。不具合が起きた時や、突然終了してしまった時の原因調査に使えます。</p>
-        <p className="hint">直近3日分を保存し、それより古いログは自動的に削除されます。</p>
-        <div className="row">
-          <button onClick={openLog}>確認する</button>
+      <div className="settings-item">
+        <div className="settings-item-row">
+          <span className="settings-item-label">
+            デバッグログ
+            <HelpIcon text={'Dittoの動作記録です。\n不具合が起きた時や、突然終了してしまった時の原因調査に使えます。\n直近3日分を保存し、それより古いログは自動的に削除されます。'} />
+          </span>
+          <button className="settings-action-btn" onClick={openLog}>
+            ログを表示
+          </button>
         </div>
       </div>
 
