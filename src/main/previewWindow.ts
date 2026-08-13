@@ -129,8 +129,22 @@ function openPreview(
   windows.set(payload.depth, win)
 }
 
+/**
+ * カーソルが現在いずれかのプレビュー別ウィンドウの上にあるかどうか。
+ * メインウィンドウ側の1階層目プレビュー(フォルダカードの中身、in-page表示)は、
+ * カーソルが別ウィンドウ(2階層目以降)に移った時点でDOM的には「離れた」ことになり
+ * 通常のmouseleaveで閉じてしまう。それを防ぐため、1階層目プレビューを閉じる前にも
+ * この判定を使って「実は子の別ウィンドウの中にいるだけ」かどうかを確認する
+ */
+function isCursorOverAnyPreviewWindow(): boolean {
+  const cursor = screen.getCursorScreenPoint()
+  return [...windows.values()].some((w) => !w.isDestroyed() && rectContainsPoint(w.getBounds(), cursor.x, cursor.y))
+}
+
 export function initPreviewWindows(getMainWindow: () => BrowserWindow | null): void {
   ipcMain.handle(IPC.openPreviewWindow, (event, payload) => openPreview(event, payload))
+
+  ipcMain.handle(IPC.isCursorOverPreviewWindow, () => isCursorOverAnyPreviewWindow())
 
   ipcMain.on(IPC.scheduleClosePreviewWindow, (_e, depth: number) => scheduleClose(depth))
 

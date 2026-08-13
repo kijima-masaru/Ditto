@@ -304,6 +304,7 @@ export const IPC = {
   // ネストしたフォルダプレビュー(メインウィンドウの外に別ウィンドウとして連鎖表示する)
   openPreviewWindow: 'preview-window:open',
   scheduleClosePreviewWindow: 'preview-window:schedule-close',
+  isCursorOverPreviewWindow: 'preview-window:is-cursor-over',
   navigateToFolder: 'preview-window:navigate', // preview window -> main
   navigateToFolderPush: 'preview-window:navigate-push' // main -> メインウィンドウ push
 } as const

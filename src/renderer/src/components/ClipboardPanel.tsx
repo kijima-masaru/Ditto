@@ -60,7 +60,7 @@ export default function ClipboardPanel(): React.JSX.Element {
   const [renameFolderInput, setRenameFolderInput] = useState('')
   const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null)
 
-  const folderPreview = useHoverIntent()
+  const folderPreview = useHoverIntent(300, 200, { respectPreviewWindows: true })
 
   const reload = async (): Promise<void> => {
     const [h, t, f] = await Promise.all([

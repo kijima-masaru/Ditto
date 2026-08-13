@@ -44,7 +44,7 @@ export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Elem
   const [renameFolderInput, setRenameFolderInput] = useState('')
   const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null)
 
-  const folderPreview = useHoverIntent()
+  const folderPreview = useHoverIntent(300, 200, { respectPreviewWindows: true })
 
   const reload = async (): Promise<void> => {
     setLoading(true)

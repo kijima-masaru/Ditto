@@ -62,7 +62,7 @@ function FolderPreviewRow({
   depth: number
   onNavigate: (folderId: string) => void
 }): React.JSX.Element {
-  const hover = useHoverIntent()
+  const hover = useHoverIntent(300, 200, { respectPreviewWindows: true })
   const isOpen = hover.activeId === folder.id
   const rowRef = useRef<HTMLDivElement>(null)
 
