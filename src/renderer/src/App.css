@@ -705,6 +705,10 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 }
 
 .folder-preview-folder {
+  /* buttonは既定でshrink-to-fit幅になり、兄弟のdiv(定型文/テスト項目)行と幅が
+     揃わず縮んで見えてしまうため、ブロック要素として幅いっぱいに広げる */
+  display: block;
+  width: 100%;
   text-align: left;
   background: var(--panel-bg-alt);
   border: 1px solid var(--border);
