@@ -277,7 +277,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
 
       {subTab === 'history' && (
         <>
-          <p className="hint">左クリックでコピー、右クリックで定型文登録などの操作ができます。</p>
+          <p className="hint hint--emphasis">左クリックでコピー、右クリックで定型文登録などの操作ができます。</p>
 
           {history.length > 0 && (
             <div className="history-search">

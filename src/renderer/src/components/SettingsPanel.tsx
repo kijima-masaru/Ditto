@@ -182,123 +182,125 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     await window.api.checkForUpdates()
   }
 
-  if (loading || !hotkey) return <div className="panel">読み込み中...</div>
+  if (loading || !hotkey) return <div className="settings-page">読み込み中...</div>
 
   const flatClipboardFolders = flattenFolders(clipboardFolders)
   const flatTestFolders = flattenFolders(testFolders)
   const topPageValue = topPage ? encodeTopPage(topPage.kind, topPage.folderId) : TOP_PAGE_NONE
 
   return (
-    <div className="panel">
+    <div className="settings-page">
       <h2>設定</h2>
 
-      <div className="settings-item">
-        <div className="settings-item-row">
-          <span className="settings-item-label">
-            ウィンドウ表示ホットキー
-            <HelpIcon text={'「変更」を押してからキーを押してください。\n修飾キー(Ctrl/Shift/Alt/Win)単体なら素早く2回、修飾キーを押しながら別のキーを押せば1回押しで発火します。'} />
-          </span>
-          {capturing ? (
-            <div className="settings-item-control">
-              <span className="hotkey-preview">{previewLabel}</span>
-              <button className="settings-action-btn" onClick={cancelCapture}>
-                キャンセル
+      <div className="settings-list">
+        <div className="settings-item">
+          <div className="settings-item-row">
+            <span className="settings-item-label">
+              ウィンドウ表示ホットキー
+              <HelpIcon text={'「変更」を押してからキーを押してください。\n修飾キー(Ctrl/Shift/Alt/Win)単体なら素早く2回、修飾キーを押しながら別のキーを押せば1回押しで発火します。'} />
+            </span>
+            {capturing ? (
+              <div className="settings-item-control">
+                <span className="hotkey-preview">{previewLabel}</span>
+                <button className="settings-action-btn" onClick={cancelCapture}>
+                  キャンセル
+                </button>
+              </div>
+            ) : (
+              <button className="settings-action-btn" onClick={startCapture}>
+                {hotkey.label}
               </button>
+            )}
+          </div>
+        </div>
+
+        <div className="settings-item">
+          <div className="settings-item-row">
+            <span className="settings-item-label">
+              トップページ
+              <HelpIcon text={'ウィンドウ表示ホットキーでDittoを表示した際に開く画面を指定します。'} />
+            </span>
+            <select className="settings-select" value={topPageValue} onChange={(e) => handleTopPageChange(e.target.value)}>
+              <option value={TOP_PAGE_NONE}>未設定</option>
+              <optgroup label="クリップボード">
+                <option value={encodeTopPage('clipboard', null)}>home</option>
+                {flatClipboardFolders.map(({ folder, depth }) => (
+                  <option key={folder.id} value={encodeTopPage('clipboard', folder.id)}>
+                    {'　'.repeat(depth + 1)}
+                    {folder.name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="テスト">
+                <option value={encodeTopPage('test', null)}>home</option>
+                {flatTestFolders.map(({ folder, depth }) => (
+                  <option key={folder.id} value={encodeTopPage('test', folder.id)}>
+                    {'　'.repeat(depth + 1)}
+                    {folder.name}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+          </div>
+        </div>
+
+        <div className="settings-item">
+          <div className="settings-item-row">
+            <span className="settings-item-label">テーマカラー</span>
+            <div className="settings-item-control">
+              <span className="toggle-state-label">{theme === 'dark' ? 'ダーク' : 'ライト'}</span>
+              <label className="theme-toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={theme === 'dark'}
+                  onChange={(e) => handleThemeChange(e.target.checked ? 'dark' : 'light')}
+                />
+                <span className="theme-toggle-slider" />
+              </label>
             </div>
-          ) : (
-            <button className="settings-action-btn" onClick={startCapture}>
-              {hotkey.label}
+          </div>
+        </div>
+
+        <div className="settings-item">
+          <div className="settings-item-row">
+            <span className="settings-item-label">
+              ウィンドウサイズ
+              <HelpIcon text={'Dittoのウィンドウの大きさを固定するか、自由に変更できるようにするかを切り替えます。'} />
+            </span>
+            <div className="settings-item-control">
+              <span className="toggle-state-label">{windowSizeLocked ? '固定' : '自由'}</span>
+              <label className="theme-toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={windowSizeLocked}
+                  onChange={(e) => handleWindowSizeLockedChange(e.target.checked)}
+                />
+                <span className="theme-toggle-slider" />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="settings-item">
+          <div className="settings-item-row">
+            <span className="settings-item-label">現在のバージョン: v{appVersion}</span>
+            <button className="settings-action-btn" onClick={handleCheckForUpdates} disabled={updateStatus?.state === 'checking'}>
+              アップデートを確認
             </button>
-          )}
-        </div>
-      </div>
-
-      <div className="settings-item">
-        <div className="settings-item-row">
-          <span className="settings-item-label">
-            トップページ
-            <HelpIcon text={'ウィンドウ表示ホットキーでDittoを表示した際に開く画面を指定します。'} />
-          </span>
-          <select className="settings-select" value={topPageValue} onChange={(e) => handleTopPageChange(e.target.value)}>
-            <option value={TOP_PAGE_NONE}>未設定</option>
-            <optgroup label="クリップボード">
-              <option value={encodeTopPage('clipboard', null)}>home</option>
-              {flatClipboardFolders.map(({ folder, depth }) => (
-                <option key={folder.id} value={encodeTopPage('clipboard', folder.id)}>
-                  {'　'.repeat(depth + 1)}
-                  {folder.name}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="テスト">
-              <option value={encodeTopPage('test', null)}>home</option>
-              {flatTestFolders.map(({ folder, depth }) => (
-                <option key={folder.id} value={encodeTopPage('test', folder.id)}>
-                  {'　'.repeat(depth + 1)}
-                  {folder.name}
-                </option>
-              ))}
-            </optgroup>
-          </select>
-        </div>
-      </div>
-
-      <div className="settings-item">
-        <div className="settings-item-row">
-          <span className="settings-item-label">テーマカラー</span>
-          <div className="settings-item-control">
-            <span className="toggle-state-label">{theme === 'dark' ? 'ダーク' : 'ライト'}</span>
-            <label className="theme-toggle-switch">
-              <input
-                type="checkbox"
-                checked={theme === 'dark'}
-                onChange={(e) => handleThemeChange(e.target.checked ? 'dark' : 'light')}
-              />
-              <span className="theme-toggle-slider" />
-            </label>
           </div>
+          {updateStatus && <p className="hint">{updateStatusLabel(updateStatus)}</p>}
         </div>
-      </div>
 
-      <div className="settings-item">
-        <div className="settings-item-row">
-          <span className="settings-item-label">
-            ウィンドウサイズ
-            <HelpIcon text={'Dittoのウィンドウの大きさを固定するか、自由に変更できるようにするかを切り替えます。'} />
-          </span>
-          <div className="settings-item-control">
-            <span className="toggle-state-label">{windowSizeLocked ? '固定' : '自由'}</span>
-            <label className="theme-toggle-switch">
-              <input
-                type="checkbox"
-                checked={windowSizeLocked}
-                onChange={(e) => handleWindowSizeLockedChange(e.target.checked)}
-              />
-              <span className="theme-toggle-slider" />
-            </label>
+        <div className="settings-item">
+          <div className="settings-item-row">
+            <span className="settings-item-label">
+              デバッグログ
+              <HelpIcon text={'Dittoの動作記録です。\n不具合が起きた時や、突然終了してしまった時の原因調査に使えます。\n直近3日分を保存し、それより古いログは自動的に削除されます。'} />
+            </span>
+            <button className="settings-action-btn" onClick={openLog}>
+              ログを表示
+            </button>
           </div>
-        </div>
-      </div>
-
-      <div className="settings-item">
-        <div className="settings-item-row">
-          <span className="settings-item-label">現在のバージョン: v{appVersion}</span>
-          <button className="settings-action-btn" onClick={handleCheckForUpdates} disabled={updateStatus?.state === 'checking'}>
-            アップデートを確認
-          </button>
-        </div>
-        {updateStatus && <p className="hint">{updateStatusLabel(updateStatus)}</p>}
-      </div>
-
-      <div className="settings-item">
-        <div className="settings-item-row">
-          <span className="settings-item-label">
-            デバッグログ
-            <HelpIcon text={'Dittoの動作記録です。\n不具合が起きた時や、突然終了してしまった時の原因調査に使えます。\n直近3日分を保存し、それより古いログは自動的に削除されます。'} />
-          </span>
-          <button className="settings-action-btn" onClick={openLog}>
-            ログを表示
-          </button>
         </div>
       </div>
 
