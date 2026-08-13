@@ -59,6 +59,24 @@ function showMainWindow(): void {
   mainWindow.focus()
 }
 
+// ウィンドウ表示ホットキーで表示した際、設定画面で指定した「トップページ」
+// (クリップボード/テストの特定フォルダ)へジャンプする。ウィンドウ生成直後で
+// レンダラーの読み込みが終わっていない場合は、読み込み完了を待ってから送る
+async function showMainWindowAtTopPage(): Promise<void> {
+  showMainWindow()
+  const win = mainWindow
+  if (!win) return
+  const settings = await settingsStore.getSettings()
+  if (!settings.topPage) return
+  const topPage = settings.topPage
+  const send = (): void => win.webContents.send(IPC.showTopPage, topPage)
+  if (win.webContents.isLoading()) {
+    win.webContents.once('did-finish-load', send)
+  } else {
+    send()
+  }
+}
+
 function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 360,
@@ -133,7 +151,9 @@ app.whenReady().then(async () => {
     app.quit()
   })
   const settings = await settingsStore.getSettings()
-  setupGlobalHotkey(settings.hotkey, showMainWindow)
+  setupGlobalHotkey(settings.hotkey, () => {
+    void showMainWindowAtTopPage()
+  })
 
   // ウィンドウが閉じられていてもクリップボード履歴を記録し続けるため、常時監視する
   startClipboardWatcher((entry) => {

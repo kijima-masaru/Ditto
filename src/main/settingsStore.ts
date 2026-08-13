@@ -1,11 +1,12 @@
 import { app } from 'electron'
 import fs from 'fs/promises'
 import path from 'path'
-import type { AppSettings, HotkeyCombo, ThemeMode } from '../shared/types'
+import type { AppSettings, HotkeyCombo, ThemeMode, TopPage } from '../shared/types'
 
 const DEFAULT_SETTINGS: AppSettings = {
   hotkey: { ctrl: true, shift: false, alt: false, meta: false, keycode: null, label: 'Ctrl 2回' },
-  theme: 'light'
+  theme: 'light',
+  topPage: null
 }
 
 function settingsFilePath(): string {
@@ -18,7 +19,8 @@ export async function getSettings(): Promise<AppSettings> {
     const parsed = JSON.parse(raw) as Partial<AppSettings>
     return {
       hotkey: parsed.hotkey ?? DEFAULT_SETTINGS.hotkey,
-      theme: parsed.theme ?? DEFAULT_SETTINGS.theme
+      theme: parsed.theme ?? DEFAULT_SETTINGS.theme,
+      topPage: parsed.topPage ?? DEFAULT_SETTINGS.topPage
     }
   } catch {
     return { ...DEFAULT_SETTINGS }
@@ -39,6 +41,13 @@ export async function setHotkey(hotkey: HotkeyCombo): Promise<AppSettings> {
 export async function setTheme(theme: ThemeMode): Promise<AppSettings> {
   const settings = await getSettings()
   settings.theme = theme
+  await writeSettings(settings)
+  return settings
+}
+
+export async function setTopPage(topPage: TopPage | null): Promise<AppSettings> {
+  const settings = await getSettings()
+  settings.topPage = topPage
   await writeSettings(settings)
   return settings
 }

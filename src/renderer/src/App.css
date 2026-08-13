@@ -947,6 +947,19 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   background: var(--hover-bg);
 }
 
+.settings-select {
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 60%;
+  height: 32px;
+  padding: 0 8px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--panel-bg);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
 .theme-toggle-switch {
   position: relative;
   display: inline-block;

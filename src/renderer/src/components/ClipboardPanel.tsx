@@ -35,13 +35,18 @@ function swapOrder(ids: string[], id: string, direction: 'up' | 'down'): string[
   return next
 }
 
-export default function ClipboardPanel(): React.JSX.Element {
-  const [subTab, setSubTab] = useState<SubTab>('history')
+interface Props {
+  initialFolderId?: string | null
+  initialSubTab?: SubTab
+}
+
+export default function ClipboardPanel({ initialFolderId = null, initialSubTab = 'history' }: Props): React.JSX.Element {
+  const [subTab, setSubTab] = useState<SubTab>(initialSubTab)
   const [historyQuery, setHistoryQuery] = useState('')
   const [history, setHistory] = useState<ClipboardHistoryEntry[]>([])
   const [templates, setTemplates] = useState<ClipboardTemplate[]>([])
   const [templateFolders, setTemplateFolders] = useState<ClipboardTemplateFolder[]>([])
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null)
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(initialFolderId)
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const [creating, setCreating] = useState(false)

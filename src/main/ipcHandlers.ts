@@ -14,6 +14,7 @@ import {
   type ContextMenuItem,
   type HotkeyCombo,
   type ThemeMode,
+  type TopPage,
   type TestCase,
   type TestTarget
 } from '../shared/types'
@@ -285,6 +286,8 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   })
 
   ipcMain.handle(IPC.setTheme, async (_e, theme: ThemeMode) => settingsStore.setTheme(theme))
+
+  ipcMain.handle(IPC.setTopPage, async (_e, topPage: TopPage | null) => settingsStore.setTopPage(topPage))
 
   ipcMain.handle(IPC.readDebugLog, async () => debugLog.readLog())
 

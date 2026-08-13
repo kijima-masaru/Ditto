@@ -8,6 +8,7 @@ import FolderPreviewFlyout from './FolderPreviewFlyout'
 interface Props {
   onRun: (testCase: TestCase) => void
   onCreateTest: (folderId: string | null) => void
+  initialFolderId?: string | null
 }
 
 function buildMoveSubmenu(flatFolders: { folder: TestFolder; depth: number }[]): ContextMenuItem[] {
@@ -28,10 +29,10 @@ function swapOrder(ids: string[], id: string, direction: 'up' | 'down'): string[
   return next
 }
 
-export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Element {
+export default function TestList({ onRun, onCreateTest, initialFolderId = null }: Props): React.JSX.Element {
   const [tests, setTests] = useState<TestCase[]>([])
   const [folders, setFolders] = useState<TestFolder[]>([])
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null)
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(initialFolderId)
   const [loading, setLoading] = useState(true)
 
   const [renamingTestId, setRenamingTestId] = useState<string | null>(null)

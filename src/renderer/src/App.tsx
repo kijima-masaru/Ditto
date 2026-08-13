@@ -39,10 +39,25 @@ function MainApp(): React.JSX.Element {
   const [view, setView] = useState<View>({ name: 'clipboard' })
   const [refreshKey, setRefreshKey] = useState(0)
   const [theme, setTheme] = useState<ThemeMode>('light')
+  // ウィンドウ表示ホットキーで「トップページ」に指定したフォルダへジャンプするための状態。
+  // topPageNonceが変わるたびにClipboardPanel/TestListをkey経由で強制的に作り直し、
+  // その時点のtopPageFolderIdを初期フォルダとして渡す(通常のタブ切替では変化しないため
+  // 手動ナビゲーション中の状態を壊さない)
+  const [topPageFolderId, setTopPageFolderId] = useState<string | null>(null)
+  const [topPageNonce, setTopPageNonce] = useState(0)
   const recorder = useScreenRecording()
 
   useEffect(() => {
     window.api.getSettings().then((s) => setTheme(s.theme))
+  }, [])
+
+  useEffect(() => {
+    return window.api.onShowTopPage(({ kind, folderId }) => {
+      setTopPageFolderId(folderId)
+      setTopPageNonce((n) => n + 1)
+      if (kind === 'clipboard') setView({ name: 'clipboard' })
+      else setView({ name: 'test-list' })
+    })
   }, [])
 
   useEffect(() => {
@@ -144,7 +159,8 @@ function MainApp(): React.JSX.Element {
 
         {view.name === 'test-list' && (
           <TestList
-            key={refreshKey}
+            key={`${refreshKey}-${topPageNonce}`}
+            initialFolderId={topPageFolderId}
             onRun={(testCase) => setView({ name: 'playback', testCase })}
             onCreateTest={(folderId) => setView({ name: 'target-select', folderId })}
           />
@@ -152,7 +168,13 @@ function MainApp(): React.JSX.Element {
 
         {view.name === 'playback' && <Playback testCase={view.testCase} onDone={goHome} />}
 
-        {view.name === 'clipboard' && <ClipboardPanel />}
+        {view.name === 'clipboard' && (
+          <ClipboardPanel
+            key={topPageNonce}
+            initialFolderId={topPageFolderId}
+            initialSubTab={topPageNonce > 0 ? 'templates' : undefined}
+          />
+        )}
 
         {view.name === 'settings' && <SettingsPanel theme={theme} onThemeChange={setTheme} />}
       </main>

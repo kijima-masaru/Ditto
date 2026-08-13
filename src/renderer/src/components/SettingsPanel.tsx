@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import type { HotkeyCombo, ThemeMode, UpdateStatus } from '../../../shared/types'
+import type {
+  ClipboardTemplateFolder,
+  HotkeyCombo,
+  PreviewKind,
+  TestFolder,
+  ThemeMode,
+  TopPage,
+  UpdateStatus
+} from '../../../shared/types'
+import { flattenFolders } from '../folderTree'
 
 interface Props {
   theme: ThemeMode
@@ -27,6 +36,18 @@ function filterLogByLevel(text: string, level: string): string {
     if (currentLevel === level) kept.push(line)
   }
   return kept.join('\n')
+}
+
+const TOP_PAGE_NONE = 'none'
+
+function encodeTopPage(kind: PreviewKind, folderId: string | null): string {
+  return `${kind}:${folderId ?? ''}`
+}
+
+function decodeTopPage(value: string): TopPage | null {
+  if (value === TOP_PAGE_NONE) return null
+  const [kind, folderId] = value.split(':') as [PreviewKind, string]
+  return { kind, folderId: folderId === '' ? null : folderId }
 }
 
 function HelpIcon({ text }: { text: string }): React.JSX.Element {
@@ -63,6 +84,10 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const [capturing, setCapturing] = useState(false)
   const [previewLabel, setPreviewLabel] = useState('')
 
+  const [topPage, setTopPage] = useState<TopPage | null>(null)
+  const [clipboardFolders, setClipboardFolders] = useState<ClipboardTemplateFolder[]>([])
+  const [testFolders, setTestFolders] = useState<TestFolder[]>([])
+
   const [showLog, setShowLog] = useState(false)
   const [logText, setLogText] = useState('')
   const [logLoading, setLogLoading] = useState(false)
@@ -75,9 +100,12 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   useEffect(() => {
     window.api.getSettings().then((s) => {
       setHotkey(s.hotkey)
+      setTopPage(s.topPage)
       setLoading(false)
     })
     window.api.getAppVersion().then(setAppVersion)
+    window.api.listClipboardTemplateFolders().then(setClipboardFolders)
+    window.api.listFolders().then(setTestFolders)
   }, [])
 
   useEffect(() => {
@@ -113,6 +141,12 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     await window.api.setTheme(value)
   }
 
+  const handleTopPageChange = async (value: string): Promise<void> => {
+    const next = decodeTopPage(value)
+    setTopPage(next)
+    await window.api.setTopPage(next)
+  }
+
   const loadLog = async (): Promise<void> => {
     setLogLoading(true)
     const text = await window.api.readDebugLog()
@@ -143,6 +177,10 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
 
   if (loading || !hotkey) return <div className="panel">読み込み中...</div>
 
+  const flatClipboardFolders = flattenFolders(clipboardFolders)
+  const flatTestFolders = flattenFolders(testFolders)
+  const topPageValue = topPage ? encodeTopPage(topPage.kind, topPage.folderId) : TOP_PAGE_NONE
+
   return (
     <div className="panel">
       <h2>設定</h2>
@@ -165,6 +203,36 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
               {hotkey.label}
             </button>
           )}
+        </div>
+      </div>
+
+      <div className="settings-item">
+        <div className="settings-item-row">
+          <span className="settings-item-label">
+            トップページ
+            <HelpIcon text={'ウィンドウ表示ホットキーでDittoを表示した際に開く画面を指定します。'} />
+          </span>
+          <select className="settings-select" value={topPageValue} onChange={(e) => handleTopPageChange(e.target.value)}>
+            <option value={TOP_PAGE_NONE}>未設定</option>
+            <optgroup label="クリップボード">
+              <option value={encodeTopPage('clipboard', null)}>home</option>
+              {flatClipboardFolders.map(({ folder, depth }) => (
+                <option key={folder.id} value={encodeTopPage('clipboard', folder.id)}>
+                  {'　'.repeat(depth + 1)}
+                  {folder.name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="テスト">
+              <option value={encodeTopPage('test', null)}>home</option>
+              {flatTestFolders.map(({ folder, depth }) => (
+                <option key={folder.id} value={encodeTopPage('test', folder.id)}>
+                  {'　'.repeat(depth + 1)}
+                  {folder.name}
+                </option>
+              ))}
+            </optgroup>
+          </select>
         </div>
       </div>
 

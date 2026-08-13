@@ -162,10 +162,18 @@ export type ThemeMode = 'light' | 'dark'
 export interface AppSettings {
   hotkey: HotkeyCombo
   theme: ThemeMode
+  /** ウィンドウ表示ホットキーでDittoを表示した際に開く画面。未設定(null)なら従来通り */
+  topPage: TopPage | null
 }
 
 /** ネストしたフォルダプレビューを別ウィンドウで開く際、どちらのデータを見せるか */
 export type PreviewKind = 'test' | 'clipboard'
+
+/** 設定画面の「トップページ」。ホットキー表示時にジャンプする対象(タブ+フォルダ) */
+export interface TopPage {
+  kind: PreviewKind
+  folderId: string | null
+}
 
 /** 設定画面の「アップデートを確認」ボタンの状態表示に使う */
 export type UpdateStatus =
@@ -277,6 +285,7 @@ export const IPC = {
   getSettings: 'settings:get',
   setHotkey: 'settings:set-hotkey',
   setTheme: 'settings:set-theme',
+  setTopPage: 'settings:set-top-page',
   startHotkeyCapture: 'hotkey-capture:start',
   cancelHotkeyCapture: 'hotkey-capture:cancel',
   hotkeyCapturePreview: 'hotkey-capture:preview', // main -> renderer push
@@ -306,5 +315,6 @@ export const IPC = {
   scheduleClosePreviewWindow: 'preview-window:schedule-close',
   isCursorOverPreviewWindow: 'preview-window:is-cursor-over',
   navigateToFolder: 'preview-window:navigate', // preview window -> main
-  navigateToFolderPush: 'preview-window:navigate-push' // main -> メインウィンドウ push
+  navigateToFolderPush: 'preview-window:navigate-push', // main -> メインウィンドウ push
+  showTopPage: 'window:show-top-page' // main -> メインウィンドウ push(ホットキー表示時)
 } as const

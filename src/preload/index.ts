@@ -18,6 +18,7 @@ import {
   type TestFolder,
   type TestTarget,
   type ThemeMode,
+  type TopPage,
   type UpdateStatus
 } from '../shared/types'
 
@@ -118,6 +119,7 @@ const api = {
   getSettings: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.getSettings),
   setHotkey: (hotkey: HotkeyCombo): Promise<AppSettings> => ipcRenderer.invoke(IPC.setHotkey, hotkey),
   setTheme: (theme: ThemeMode): Promise<AppSettings> => ipcRenderer.invoke(IPC.setTheme, theme),
+  setTopPage: (topPage: TopPage | null): Promise<AppSettings> => ipcRenderer.invoke(IPC.setTopPage, topPage),
   readDebugLog: (): Promise<string> => ipcRenderer.invoke(IPC.readDebugLog),
   openDebugLogFolder: (): Promise<void> => ipcRenderer.invoke(IPC.openDebugLogFolder),
   getAppVersion: (): Promise<string> => ipcRenderer.invoke(IPC.getAppVersion),
@@ -176,6 +178,11 @@ const api = {
     const listener = (_e: unknown, payload: { kind: PreviewKind; folderId: string }): void => cb(payload)
     ipcRenderer.on(IPC.navigateToFolderPush, listener)
     return () => ipcRenderer.removeListener(IPC.navigateToFolderPush, listener)
+  },
+  onShowTopPage: (cb: (payload: TopPage) => void): (() => void) => {
+    const listener = (_e: unknown, payload: TopPage): void => cb(payload)
+    ipcRenderer.on(IPC.showTopPage, listener)
+    return () => ipcRenderer.removeListener(IPC.showTopPage, listener)
   }
 }
 
