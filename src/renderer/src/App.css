@@ -687,16 +687,14 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   gap: 6px;
 }
 
-/* ネストしたフォルダプレビュー。トリガーとなる行の右側に連鎖して開く(サブメニュー風) */
-.folder-preview-row {
-  position: relative;
-}
-
+/* ネストしたフォルダプレビュー。トリガーとなる行の右側に連鎖して開く(サブメニュー風)。
+   祖先のフライアウトがoverflow:autoで中身をクリップしてしまうため、portalで
+   document.body直下に描画し、position:fixedで行の右側に座標指定で配置する */
 .folder-preview-flyout--nested {
-  top: -1px;
+  position: fixed;
   right: auto;
-  left: 100%;
-  margin-left: 6px;
+  /* position:fixedの場合、幅%指定はビューポート基準になってしまうため固定する */
+  width: 240px;
 }
 
 .folder-preview-empty {
