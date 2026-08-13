@@ -120,6 +120,8 @@ const api = {
   setHotkey: (hotkey: HotkeyCombo): Promise<AppSettings> => ipcRenderer.invoke(IPC.setHotkey, hotkey),
   setTheme: (theme: ThemeMode): Promise<AppSettings> => ipcRenderer.invoke(IPC.setTheme, theme),
   setTopPage: (topPage: TopPage | null): Promise<AppSettings> => ipcRenderer.invoke(IPC.setTopPage, topPage),
+  setWindowSizeLocked: (locked: boolean): Promise<AppSettings> =>
+    ipcRenderer.invoke(IPC.setWindowSizeLocked, locked),
   readDebugLog: (): Promise<string> => ipcRenderer.invoke(IPC.readDebugLog),
   openDebugLogFolder: (): Promise<void> => ipcRenderer.invoke(IPC.openDebugLogFolder),
   getAppVersion: (): Promise<string> => ipcRenderer.invoke(IPC.getAppVersion),

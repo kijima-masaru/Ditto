@@ -164,6 +164,8 @@ export interface AppSettings {
   theme: ThemeMode
   /** ウィンドウ表示ホットキーでDittoを表示した際に開く画面。未設定(null)なら従来通り */
   topPage: TopPage | null
+  /** trueならウィンドウのリサイズ・最大化を禁止し、現在の大きさに固定する */
+  windowSizeLocked: boolean
 }
 
 /** ネストしたフォルダプレビューを別ウィンドウで開く際、どちらのデータを見せるか */
@@ -286,6 +288,7 @@ export const IPC = {
   setHotkey: 'settings:set-hotkey',
   setTheme: 'settings:set-theme',
   setTopPage: 'settings:set-top-page',
+  setWindowSizeLocked: 'settings:set-window-size-locked',
   startHotkeyCapture: 'hotkey-capture:start',
   cancelHotkeyCapture: 'hotkey-capture:cancel',
   hotkeyCapturePreview: 'hotkey-capture:preview', // main -> renderer push

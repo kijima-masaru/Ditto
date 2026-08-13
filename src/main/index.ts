@@ -77,12 +77,15 @@ async function showMainWindowAtTopPage(): Promise<void> {
   }
 }
 
-function createWindow(): void {
+async function createWindow(): Promise<void> {
+  const settings = await settingsStore.getSettings()
   mainWindow = new BrowserWindow({
     width: 360,
     height: 640,
     minWidth: 300,
     minHeight: 420,
+    resizable: !settings.windowSizeLocked,
+    maximizable: !settings.windowSizeLocked,
     show: false,
     autoHideMenuBar: true,
     webPreferences: {

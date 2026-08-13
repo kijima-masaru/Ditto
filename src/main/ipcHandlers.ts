@@ -289,6 +289,14 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.setTopPage, async (_e, topPage: TopPage | null) => settingsStore.setTopPage(topPage))
 
+  ipcMain.handle(IPC.setWindowSizeLocked, async (_e, locked: boolean) => {
+    const settings = await settingsStore.setWindowSizeLocked(locked)
+    const w = getWindow()
+    w?.setResizable(!locked)
+    w?.setMaximizable(!locked)
+    return settings
+  })
+
   ipcMain.handle(IPC.readDebugLog, async () => debugLog.readLog())
 
   ipcMain.handle(IPC.openDebugLogFolder, async () => debugLog.openLogFolder())

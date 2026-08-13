@@ -87,6 +87,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const [topPage, setTopPage] = useState<TopPage | null>(null)
   const [clipboardFolders, setClipboardFolders] = useState<ClipboardTemplateFolder[]>([])
   const [testFolders, setTestFolders] = useState<TestFolder[]>([])
+  const [windowSizeLocked, setWindowSizeLocked] = useState(false)
 
   const [showLog, setShowLog] = useState(false)
   const [logText, setLogText] = useState('')
@@ -101,6 +102,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     window.api.getSettings().then((s) => {
       setHotkey(s.hotkey)
       setTopPage(s.topPage)
+      setWindowSizeLocked(s.windowSizeLocked)
       setLoading(false)
     })
     window.api.getAppVersion().then(setAppVersion)
@@ -145,6 +147,11 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     const next = decodeTopPage(value)
     setTopPage(next)
     await window.api.setTopPage(next)
+  }
+
+  const handleWindowSizeLockedChange = async (locked: boolean): Promise<void> => {
+    setWindowSizeLocked(locked)
+    await window.api.setWindowSizeLocked(locked)
   }
 
   const loadLog = async (): Promise<void> => {
@@ -247,6 +254,26 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
             />
             <span className="theme-toggle-slider" />
           </label>
+        </div>
+      </div>
+
+      <div className="settings-item">
+        <div className="settings-item-row">
+          <span className="settings-item-label">
+            ウィンドウサイズ
+            <HelpIcon text={'Dittoのウィンドウの大きさを固定するか、自由に変更できるようにするかを切り替えます。'} />
+          </span>
+          <div className="settings-item-control">
+            <span className="window-size-state-label">{windowSizeLocked ? '固定' : '自由'}</span>
+            <label className="theme-toggle-switch">
+              <input
+                type="checkbox"
+                checked={windowSizeLocked}
+                onChange={(e) => handleWindowSizeLockedChange(e.target.checked)}
+              />
+              <span className="theme-toggle-slider" />
+            </label>
+          </div>
         </div>
       </div>
 
