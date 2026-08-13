@@ -4,11 +4,12 @@ import TargetTabs from './TargetTabs'
 
 interface Props {
   targets: TestTarget[]
+  folderId: string | null
   onDone: () => void
   onCancel: () => void
 }
 
-export default function Recording({ targets, onDone, onCancel }: Props): React.JSX.Element {
+export default function Recording({ targets, folderId, onDone, onCancel }: Props): React.JSX.Element {
   const [steps, setSteps] = useState<RecordedStep[]>([])
   const [status, setStatus] = useState<'starting' | 'recording' | 'stopping' | 'stopped' | 'error'>('starting')
   const [error, setError] = useState<string | null>(null)
@@ -71,7 +72,7 @@ export default function Recording({ targets, onDone, onCancel }: Props): React.J
     setSaveError(null)
     setSaving(true)
     try {
-      await window.api.saveTest({ name: testName.trim(), targets, steps })
+      await window.api.saveTest({ name: testName.trim(), targets, steps, folderId })
       onDone()
     } catch (e) {
       setSaveError((e as Error).message)

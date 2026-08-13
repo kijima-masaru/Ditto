@@ -214,13 +214,20 @@ export default function ClipboardPanel(): React.JSX.Element {
     const ids = subfolders.map((sf) => sf.id)
     const index = ids.indexOf(f.id)
     const result = await window.api.showContextMenu([
+      { id: 'create-template', label: '新規定型文を作成' },
+      { id: 'sep0', type: 'separator' },
       { id: 'rename', label: '名前変更' },
       { id: 'move-up', label: '上に移動', enabled: index > 0 },
       { id: 'move-down', label: '下に移動', enabled: index < ids.length - 1 },
       { id: 'sep', type: 'separator' },
       { id: 'delete', label: '削除' }
     ])
-    if (result === 'rename') startRenameFolder(f)
+    if (result === 'create-template') {
+      setCurrentFolderId(f.id)
+      setCreating(true)
+      setNewText('')
+      setNewLabel('')
+    } else if (result === 'rename') startRenameFolder(f)
     else if (result === 'delete') setDeletingFolderId(f.id)
     else if (result === 'move-up' || result === 'move-down') {
       const next = swapOrder(ids, f.id, result === 'move-up' ? 'up' : 'down')

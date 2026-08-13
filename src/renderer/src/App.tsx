@@ -14,8 +14,8 @@ import { useScreenRecording } from './hooks/useScreenRecording'
 const isPreviewWindow = new URLSearchParams(window.location.search).get('preview') === '1'
 
 type View =
-  | { name: 'target-select' }
-  | { name: 'recording'; targets: TestTarget[] }
+  | { name: 'target-select'; folderId: string | null }
+  | { name: 'recording'; targets: TestTarget[]; folderId: string | null }
   | { name: 'test-list' }
   | { name: 'playback'; testCase: TestCase }
   | { name: 'clipboard' }
@@ -135,16 +135,18 @@ function MainApp(): React.JSX.Element {
 
       <main className={`app-main${isWorkspace ? ' app-main--workspace' : ''}`}>
         {view.name === 'target-select' && (
-          <TargetSelect onStart={(targets) => setView({ name: 'recording', targets })} />
+          <TargetSelect onStart={(targets) => setView({ name: 'recording', targets, folderId: view.folderId })} />
         )}
 
-        {view.name === 'recording' && <Recording targets={view.targets} onDone={goHome} onCancel={goHome} />}
+        {view.name === 'recording' && (
+          <Recording targets={view.targets} folderId={view.folderId} onDone={goHome} onCancel={goHome} />
+        )}
 
         {view.name === 'test-list' && (
           <TestList
             key={refreshKey}
             onRun={(testCase) => setView({ name: 'playback', testCase })}
-            onCreateTest={() => setView({ name: 'target-select' })}
+            onCreateTest={(folderId) => setView({ name: 'target-select', folderId })}
           />
         )}
 

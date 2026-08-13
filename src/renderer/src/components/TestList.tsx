@@ -7,7 +7,7 @@ import FolderPreviewFlyout from './FolderPreviewFlyout'
 
 interface Props {
   onRun: (testCase: TestCase) => void
-  onCreateTest: () => void
+  onCreateTest: (folderId: string | null) => void
 }
 
 function buildMoveSubmenu(flatFolders: { folder: TestFolder; depth: number }[]): ContextMenuItem[] {
@@ -148,7 +148,7 @@ export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Elem
       setCreatingFolder(true)
       setNewFolderName('')
     } else if (result === 'create-test') {
-      onCreateTest()
+      onCreateTest(currentFolderId)
     } else if (result === 'go-up') {
       setCurrentFolderId(currentFolder?.parentId ?? null)
     }
@@ -160,13 +160,16 @@ export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Elem
     const ids = subfolders.map((sf) => sf.id)
     const index = ids.indexOf(f.id)
     const result = await window.api.showContextMenu([
+      { id: 'create-test', label: '新規テストを作成' },
+      { id: 'sep0', type: 'separator' },
       { id: 'rename', label: '名前変更' },
       { id: 'move-up', label: '上に移動', enabled: index > 0 },
       { id: 'move-down', label: '下に移動', enabled: index < ids.length - 1 },
       { id: 'sep', type: 'separator' },
       { id: 'delete', label: '削除' }
     ])
-    if (result === 'rename') startRenameFolder(f)
+    if (result === 'create-test') onCreateTest(f.id)
+    else if (result === 'rename') startRenameFolder(f)
     else if (result === 'delete') setDeletingFolderId(f.id)
     else if (result === 'move-up' || result === 'move-down') {
       const next = swapOrder(ids, f.id, result === 'move-up' ? 'up' : 'down')
