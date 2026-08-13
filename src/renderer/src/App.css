@@ -774,6 +774,10 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   display: flex;
   gap: 6px;
   margin-bottom: 10px;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 2;
 }
 
 .clipboard-subtabs button {
