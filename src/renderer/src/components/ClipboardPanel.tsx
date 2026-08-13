@@ -267,18 +267,10 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
   return (
     <div className="clipboard-panel">
       <div className="clipboard-subtabs">
-        <button
-          className={subTab === 'history' ? 'active' : ''}
-          onMouseEnter={() => setSubTab('history')}
-          onClick={() => setSubTab('history')}
-        >
+        <button className={subTab === 'history' ? 'active' : ''} onClick={() => setSubTab('history')}>
           履歴
         </button>
-        <button
-          className={subTab === 'templates' ? 'active' : ''}
-          onMouseEnter={() => setSubTab('templates')}
-          onClick={() => setSubTab('templates')}
-        >
+        <button className={subTab === 'templates' ? 'active' : ''} onClick={() => setSubTab('templates')}>
           定型文
         </button>
       </div>
