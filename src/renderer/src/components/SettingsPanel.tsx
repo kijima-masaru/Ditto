@@ -122,6 +122,12 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     await loadLog()
   }
 
+  const filteredLogText = filterLogByLevel(logText, logLevelFilter)
+
+  const copyLog = async (): Promise<void> => {
+    await window.api.copyToClipboard(filteredLogText)
+  }
+
   const handleCheckForUpdates = async (): Promise<void> => {
     setUpdateStatus({ state: 'checking' })
     await window.api.checkForUpdates()
@@ -193,20 +199,25 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
                   </option>
                 ))}
               </select>
-              <div className="row">
-                <button onClick={loadLog} disabled={logLoading}>
-                  更新
-                </button>
-                <button onClick={() => window.api.openDebugLogFolder()}>フォルダを開く</button>
-                <button onClick={() => setShowLog(false)}>閉じる</button>
-              </div>
+              <button className="debug-log-icon-btn" onClick={loadLog} disabled={logLoading} title="更新">
+                ⟳
+              </button>
+              <button className="debug-log-icon-btn" onClick={() => window.api.openDebugLogFolder()} title="フォルダを開く">
+                📁
+              </button>
+              <button className="debug-log-icon-btn" onClick={copyLog} title="ログをコピー">
+                📋
+              </button>
+              <button className="debug-log-icon-btn" onClick={() => setShowLog(false)} title="閉じる">
+                ×
+              </button>
             </div>
             <pre className="debug-log-modal-body" ref={logBodyRef}>
               {logLoading
                 ? '読み込み中...'
                 : !logText.trim()
                   ? 'ログはまだありません。'
-                  : filterLogByLevel(logText, logLevelFilter).trim() || '選択したレベルのログはありません。'}
+                  : filteredLogText.trim() || '選択したレベルのログはありません。'}
             </pre>
           </div>
         </div>
