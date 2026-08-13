@@ -9,6 +9,7 @@ import { createTray } from './tray'
 import { setupGlobalHotkey } from './hotkey'
 import { startClipboardWatcher } from './clipboardWatcher'
 import * as settingsStore from './settingsStore'
+import { initPreviewWindows } from './previewWindow'
 import log from './logger'
 
 // 表示名は"Ditto"だが、内部的な名前(userDataの保存先フォルダ名等に影響)は
@@ -100,6 +101,7 @@ app.whenReady().then(async () => {
 
   createWindow()
   registerIpcHandlers(() => mainWindow)
+  initPreviewWindows(() => mainWindow)
 
   setupAutoUpdater(() => mainWindow)
   if (app.isPackaged) {

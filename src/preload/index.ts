@@ -13,6 +13,7 @@ import {
   type PlaybackProgress,
   type PlaybackResult,
   type TargetHistoryEntry,
+  type PreviewKind,
   type TestCase,
   type TestFolder,
   type TestTarget,
@@ -159,6 +160,18 @@ const api = {
     const listener = (_e: unknown, visible: boolean): void => cb(visible)
     ipcRenderer.on(IPC.recordingFrameVisibilityChanged, listener)
     return () => ipcRenderer.removeListener(IPC.recordingFrameVisibilityChanged, listener)
+  },
+
+  openPreviewWindow: (payload: { kind: PreviewKind; folderId: string; depth: number }): Promise<void> =>
+    ipcRenderer.invoke(IPC.openPreviewWindow, payload),
+  scheduleClosePreviewWindow: (depth: number): void => ipcRenderer.send(IPC.scheduleClosePreviewWindow, depth),
+  cancelClosePreviewWindow: (): void => ipcRenderer.send(IPC.cancelClosePreviewWindow),
+  navigateToFolder: (kind: PreviewKind, folderId: string): void =>
+    ipcRenderer.send(IPC.navigateToFolder, { kind, folderId }),
+  onNavigateToFolder: (cb: (payload: { kind: PreviewKind; folderId: string }) => void): (() => void) => {
+    const listener = (_e: unknown, payload: { kind: PreviewKind; folderId: string }): void => cb(payload)
+    ipcRenderer.on(IPC.navigateToFolderPush, listener)
+    return () => ipcRenderer.removeListener(IPC.navigateToFolderPush, listener)
   }
 }
 

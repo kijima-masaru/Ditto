@@ -164,6 +164,9 @@ export interface AppSettings {
   theme: ThemeMode
 }
 
+/** ネストしたフォルダプレビューを別ウィンドウで開く際、どちらのデータを見せるか */
+export type PreviewKind = 'test' | 'clipboard'
+
 /** 設定画面の「アップデートを確認」ボタンの状態表示に使う */
 export type UpdateStatus =
   | { state: 'checking' }
@@ -296,5 +299,12 @@ export const IPC = {
   // 設定画面のバージョン表示・アップデート確認機能
   getAppVersion: 'app:get-version',
   checkForUpdates: 'update:check',
-  updateStatus: 'update:status' // main -> renderer push
+  updateStatus: 'update:status', // main -> renderer push
+
+  // ネストしたフォルダプレビュー(メインウィンドウの外に別ウィンドウとして連鎖表示する)
+  openPreviewWindow: 'preview-window:open',
+  scheduleClosePreviewWindow: 'preview-window:schedule-close',
+  cancelClosePreviewWindow: 'preview-window:cancel-close',
+  navigateToFolder: 'preview-window:navigate', // preview window -> main
+  navigateToFolderPush: 'preview-window:navigate-push' // main -> メインウィンドウ push
 } as const

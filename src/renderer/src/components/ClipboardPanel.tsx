@@ -79,6 +79,12 @@ export default function ClipboardPanel(): React.JSX.Element {
     return unsubscribe
   }, [])
 
+  useEffect(() => {
+    return window.api.onNavigateToFolder(({ kind, folderId }) => {
+      if (kind === 'clipboard') setCurrentFolderId(folderId)
+    })
+  }, [])
+
   const handleCopy = async (id: string, text: string): Promise<void> => {
     await window.api.copyToClipboard(text)
     setCopiedId(id)
@@ -398,6 +404,8 @@ export default function ClipboardPanel(): React.JSX.Element {
                         folders={templateFolders}
                         items={templates}
                         folderId={f.id}
+                        kind="clipboard"
+                        depth={1}
                         getItemFolderId={(t) => t.folderId ?? null}
                         onNavigate={setCurrentFolderId}
                         renderItem={(t) => (

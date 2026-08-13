@@ -6,7 +6,12 @@ import TestList from './components/TestList'
 import Playback from './components/Playback'
 import ClipboardPanel from './components/ClipboardPanel'
 import SettingsPanel from './components/SettingsPanel'
+import PreviewWindowRoot from './components/PreviewWindowRoot'
 import { useScreenRecording } from './hooks/useScreenRecording'
+
+// ネストしたフォルダプレビュー用の別ウィンドウは、同じrenderer bundleを
+// ?preview=1付きで読み込んで判別する(previewWindow.ts参照)
+const isPreviewWindow = new URLSearchParams(window.location.search).get('preview') === '1'
 
 type View =
   | { name: 'target-select' }
@@ -24,6 +29,13 @@ function formatElapsed(ms: number): string {
 }
 
 export default function App(): React.JSX.Element {
+  // ネストしたフォルダプレビュー用の別ウィンドウでは、通常のタブUIではなく
+  // PreviewWindowRootだけを描画する(以降のフックは通常のメインウィンドウ専用)
+  if (isPreviewWindow) return <PreviewWindowRoot />
+  return <MainApp />
+}
+
+function MainApp(): React.JSX.Element {
   const [view, setView] = useState<View>({ name: 'clipboard' })
   const [refreshKey, setRefreshKey] = useState(0)
   const [theme, setTheme] = useState<ThemeMode>('light')

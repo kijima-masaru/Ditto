@@ -1,0 +1,121 @@
+import { BrowserWindow, ipcMain, screen, type IpcMainInvokeEvent } from 'electron'
+import { join } from 'path'
+import { is } from '@electron-toolkit/utils'
+import { IPC, type PreviewKind } from '../shared/types'
+
+/**
+ * ネストしたフォルダ(サブフォルダの中のサブフォルダ...)のプレビューを、メインウィンドウの
+ * 中にではなく、その右側に連鎖する別ウィンドウとして表示する。
+ *
+ * メインウィンドウは幅が狭い(300〜360px)サイドバー的なウィンドウで、1階層目のプレビュー
+ * (フォルダカードにカーソルを乗せた時の中身)は既にウィンドウの右端いっぱいに開いている。
+ * そこにさらにネストしたサブフォルダのプレビューを重ねて表示すると、ウィンドウ内では
+ * 表示しきれず重なってしまう。実際のOSウィンドウとして独立させ、送信元ウィンドウの
+ * すぐ右に隙間なく開くことで、重ならずカスケード表示できるようにしている。
+ *
+ * depth(何階層目のプレビューか)をキーに開いているウィンドウを管理し、同じdepth以降を
+ * 一括で片付けられるようにする(別の行にカーソルが移った時に置き換える・カーソルが
+ * 離れた時に子階層ごと閉じる、の両方に対応するため)。
+ */
+const WIDTH = 260
+const HEIGHT = 340
+const CLOSE_DELAY_MS = 250
+
+const windows = new Map<number, BrowserWindow>()
+let pendingCloseTimer: ReturnType<typeof setTimeout> | null = null
+
+function closeFromDepth(depth: number): void {
+  for (const [d, w] of [...windows.entries()]) {
+    if (d >= depth) {
+      windows.delete(d)
+      if (!w.isDestroyed()) w.close()
+    }
+  }
+}
+
+function cancelPendingClose(): void {
+  if (pendingCloseTimer) {
+    clearTimeout(pendingCloseTimer)
+    pendingCloseTimer = null
+  }
+}
+
+function scheduleClose(depth: number): void {
+  cancelPendingClose()
+  pendingCloseTimer = setTimeout(() => {
+    pendingCloseTimer = null
+    closeFromDepth(depth)
+  }, CLOSE_DELAY_MS)
+}
+
+function openPreview(
+  event: IpcMainInvokeEvent,
+  payload: { kind: PreviewKind; folderId: string; depth: number }
+): void {
+  cancelPendingClose()
+  const senderWindow = BrowserWindow.fromWebContents(event.sender)
+  if (!senderWindow) return
+  // 同じ深さ(または、それより深い階層)に既に開いているものがあれば片付けてから開き直す
+  closeFromDepth(payload.depth)
+
+  const senderBounds = senderWindow.getBounds()
+  const display = screen.getDisplayMatching(senderBounds)
+  let x = senderBounds.x + senderBounds.width
+  if (x + WIDTH > display.workArea.x + display.workArea.width) {
+    // 画面右端に入らない場合は送信元ウィンドウの左側に開く
+    x = senderBounds.x - WIDTH
+  }
+  const y = Math.min(
+    Math.max(senderBounds.y, display.workArea.y),
+    display.workArea.y + display.workArea.height - HEIGHT
+  )
+
+  const win = new BrowserWindow({
+    x,
+    y,
+    width: WIDTH,
+    height: HEIGHT,
+    frame: false,
+    resizable: false,
+    movable: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    show: false,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false
+    }
+  })
+  win.setAlwaysOnTop(true, 'screen-saver')
+  win.once('ready-to-show', () => win.show())
+  win.on('closed', () => {
+    if (windows.get(payload.depth) === win) windows.delete(payload.depth)
+  })
+
+  const search = `?preview=1&kind=${payload.kind}&folder=${encodeURIComponent(payload.folderId)}&depth=${payload.depth}`
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    win.loadURL(process.env['ELECTRON_RENDERER_URL'] + '/' + search)
+  } else {
+    win.loadFile(join(__dirname, '../renderer/index.html'), { search })
+  }
+
+  windows.set(payload.depth, win)
+}
+
+export function initPreviewWindows(getMainWindow: () => BrowserWindow | null): void {
+  ipcMain.handle(IPC.openPreviewWindow, (event, payload) => openPreview(event, payload))
+
+  ipcMain.on(IPC.scheduleClosePreviewWindow, (_e, depth: number) => scheduleClose(depth))
+
+  ipcMain.on(IPC.cancelClosePreviewWindow, () => cancelPendingClose())
+
+  ipcMain.on(IPC.navigateToFolder, (_e, payload: { kind: PreviewKind; folderId: string }) => {
+    closeFromDepth(1)
+    const main = getMainWindow()
+    if (main) {
+      main.show()
+      main.focus()
+      main.webContents.send(IPC.navigateToFolderPush, payload)
+    }
+  })
+}

@@ -687,13 +687,16 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   gap: 6px;
 }
 
-/* ネストしたフォルダプレビュー。祖先のフライアウトがoverflow:autoで中身をクリップして
-   しまうため、portalでdocument.body直下に描画し、position:fixedで配置する。
-   幅・水平位置(ウィンドウ右端基準)はJS側でトップレベルのフライアウトと揃えて計算し、
-   インラインstyleで指定するため、ここではposition/rightの上書きのみ行う */
-.folder-preview-flyout--nested {
-  position: fixed;
-  right: auto;
+/* ネストしたフォルダプレビュー用の別ウィンドウ(previewWindow.ts)の中身。
+   メインウィンドウ本体の外に出す別ウィンドウなので、幅いっぱい・全面表示になる */
+.preview-window-root {
+  height: 100vh;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  background: var(--panel-bg);
 }
 
 .folder-preview-empty {

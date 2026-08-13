@@ -58,6 +58,12 @@ export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Elem
     reload()
   }, [])
 
+  useEffect(() => {
+    return window.api.onNavigateToFolder(({ kind, folderId }) => {
+      if (kind === 'test') setCurrentFolderId(folderId)
+    })
+  }, [])
+
   const startRenameTest = (t: TestCase): void => {
     setRenamingTestId(t.id)
     setRenameTestInput(t.name)
@@ -304,6 +310,8 @@ export default function TestList({ onRun, onCreateTest }: Props): React.JSX.Elem
                         folders={folders}
                         items={tests}
                         folderId={f.id}
+                        kind="test"
+                        depth={1}
                         getItemFolderId={(t) => t.folderId ?? null}
                         onNavigate={setCurrentFolderId}
                         renderItem={(t) => (
