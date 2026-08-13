@@ -181,10 +181,11 @@ export default function ClipboardPanel(): React.JSX.Element {
 
   const handleAreaContextMenu = async (e: React.MouseEvent): Promise<void> => {
     e.preventDefault()
-    const items: ContextMenuItem[] = [
-      { id: 'create-folder', label: '新規フォルダを作成' },
-      { id: 'create-template', label: '新規定型文を作成' }
-    ]
+    const items: ContextMenuItem[] = []
+    if (currentFolderId === null) {
+      items.push({ id: 'create-folder', label: '新規フォルダを作成' })
+    }
+    items.push({ id: 'create-template', label: '新規定型文を作成' })
     if (currentFolderId !== null) {
       items.push({ id: 'sep1', type: 'separator' })
       items.push({ id: 'go-up', label: '上の階層に戻る' })
