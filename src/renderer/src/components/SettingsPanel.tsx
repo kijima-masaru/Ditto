@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { HotkeyCombo, ThemeMode } from '../../../shared/types'
 
 interface Props {
@@ -11,6 +11,11 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const [loading, setLoading] = useState(true)
   const [capturing, setCapturing] = useState(false)
   const [previewLabel, setPreviewLabel] = useState('')
+
+  const [showLog, setShowLog] = useState(false)
+  const [logText, setLogText] = useState('')
+  const [logLoading, setLogLoading] = useState(false)
+  const logBodyRef = useRef<HTMLPreElement>(null)
 
   useEffect(() => {
     window.api.getSettings().then((s) => {
@@ -48,6 +53,23 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     await window.api.setTheme(value)
   }
 
+  const loadLog = async (): Promise<void> => {
+    setLogLoading(true)
+    const text = await window.api.readDebugLog()
+    setLogText(text)
+    setLogLoading(false)
+    // 直近のログが末尾にあるので、開いた時点で自動的に一番下までスクロールしておく
+    requestAnimationFrame(() => {
+      const el = logBodyRef.current
+      if (el) el.scrollTop = el.scrollHeight
+    })
+  }
+
+  const openLog = async (): Promise<void> => {
+    setShowLog(true)
+    await loadLog()
+  }
+
   if (loading || !hotkey) return <div className="panel">読み込み中...</div>
 
   return (
@@ -82,6 +104,34 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
           </button>
         </div>
       </div>
+
+      <div className="field">
+        <label>デバッグログ</label>
+        <p className="hint">Dittoの動作記録です。不具合が起きた時や、突然終了してしまった時の原因調査に使えます。</p>
+        <div className="row">
+          <button onClick={openLog}>確認する</button>
+        </div>
+      </div>
+
+      {showLog && (
+        <div className="debug-log-overlay" onClick={() => setShowLog(false)}>
+          <div className="debug-log-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="debug-log-modal-header">
+              <span>デバッグログ</span>
+              <div className="row">
+                <button onClick={loadLog} disabled={logLoading}>
+                  更新
+                </button>
+                <button onClick={() => window.api.openDebugLogFolder()}>フォルダを開く</button>
+                <button onClick={() => setShowLog(false)}>閉じる</button>
+              </div>
+            </div>
+            <pre className="debug-log-modal-body" ref={logBodyRef}>
+              {logLoading ? '読み込み中...' : logText.trim() ? logText : 'ログはまだありません。'}
+            </pre>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

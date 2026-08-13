@@ -687,14 +687,13 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   gap: 6px;
 }
 
-/* ネストしたフォルダプレビュー。トリガーとなる行の右側に連鎖して開く(サブメニュー風)。
-   祖先のフライアウトがoverflow:autoで中身をクリップしてしまうため、portalで
-   document.body直下に描画し、position:fixedで行の右側に座標指定で配置する */
+/* ネストしたフォルダプレビュー。祖先のフライアウトがoverflow:autoで中身をクリップして
+   しまうため、portalでdocument.body直下に描画し、position:fixedで配置する。
+   幅・水平位置(ウィンドウ右端基準)はJS側でトップレベルのフライアウトと揃えて計算し、
+   インラインstyleで指定するため、ここではposition/rightの上書きのみ行う */
 .folder-preview-flyout--nested {
   position: fixed;
   right: auto;
-  /* position:fixedの場合、幅%指定はビューポート基準になってしまうため固定する */
-  width: 240px;
 }
 
 .folder-preview-empty {
@@ -887,6 +886,53 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   font-weight: 700;
   color: var(--accent);
   font-size: 13px;
+}
+
+/* 設定画面の「デバッグログ」モーダル。ウィンドウが狭いためほぼ全画面で表示する */
+.debug-log-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  z-index: 100;
+}
+
+.debug-log-modal {
+  margin: 10px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 10px 28px var(--shadow);
+  overflow: hidden;
+}
+
+.debug-log-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.debug-log-modal-body {
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  padding: 10px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: Consolas, 'SFMono-Regular', Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-secondary);
 }
 
 .target-history-list {

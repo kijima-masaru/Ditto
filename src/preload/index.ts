@@ -116,6 +116,8 @@ const api = {
   getSettings: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.getSettings),
   setHotkey: (hotkey: HotkeyCombo): Promise<AppSettings> => ipcRenderer.invoke(IPC.setHotkey, hotkey),
   setTheme: (theme: ThemeMode): Promise<AppSettings> => ipcRenderer.invoke(IPC.setTheme, theme),
+  readDebugLog: (): Promise<string> => ipcRenderer.invoke(IPC.readDebugLog),
+  openDebugLogFolder: (): Promise<void> => ipcRenderer.invoke(IPC.openDebugLogFolder),
   startHotkeyCapture: (): Promise<void> => ipcRenderer.invoke(IPC.startHotkeyCapture),
   cancelHotkeyCapture: (): Promise<void> => ipcRenderer.invoke(IPC.cancelHotkeyCapture),
   onHotkeyCapturePreview: (cb: (label: string) => void): (() => void) => {

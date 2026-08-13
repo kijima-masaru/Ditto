@@ -278,5 +278,9 @@ export const IPC = {
   recordingFrameFooterAction: 'recording-frame:footer-action', // overlay -> main -> メインウィンドウ
   setRecordingFrameFooterState: 'recording-frame:set-footer-state', // メインウィンドウ -> main -> overlay
   // 枠のタイトルバーの閉じる/最小化ボタンで枠が非表示になったことをメインウィンドウへ知らせる
-  recordingFrameVisibilityChanged: 'recording-frame:visibility-changed' // main -> renderer push
+  recordingFrameVisibilityChanged: 'recording-frame:visibility-changed', // main -> renderer push
+
+  // 設定画面のデバッグログ確認機能
+  readDebugLog: 'debug-log:read',
+  openDebugLogFolder: 'debug-log:open-folder'
 } as const

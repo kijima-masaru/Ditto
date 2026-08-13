@@ -8,8 +8,10 @@ interface FolderLike {
   parentId: string | null
 }
 
-/** App.cssの.folder-preview-flyout--nestedのwidthと一致させる値 */
-const NESTED_FLYOUT_WIDTH = 240
+/** App.cssの.folder-preview-flyoutのwidth(72%, min180px, max260px)と揃えるための計算 */
+function calcFlyoutWidth(): number {
+  return Math.min(260, Math.max(180, window.innerWidth * 0.72))
+}
 
 interface FolderPreviewFlyoutProps<F extends FolderLike, I> {
   folders: F[]
@@ -51,7 +53,7 @@ function FolderPreviewRow<F extends FolderLike, I>({
 }: { folder: F } & FolderPreviewFlyoutProps<F, I>): React.JSX.Element {
   const hover = useHoverIntent()
   const rowRef = useRef<HTMLDivElement>(null)
-  const [nestedPos, setNestedPos] = useState<{ top: number; left: number } | null>(null)
+  const [nestedPos, setNestedPos] = useState<{ top: number; left: number; width: number } | null>(null)
 
   const isOpen = hover.activeId === folder.id
 
@@ -61,17 +63,14 @@ function FolderPreviewRow<F extends FolderLike, I>({
     // position:fixedで画面基準の座標に配置することでクリップを回避する
     const rect = rowRef.current?.getBoundingClientRect()
     if (rect) {
-      // このアプリのウィンドウはサイドバー的に幅が狭く(300〜360px程度)、行の右側に
-      // 単純に開くとウィンドウの外にはみ出して見えなくなることがある。
-      // 右に入らなければ左側に、それも入らなければ親フライアウトに重ねてでも
-      // ウィンドウ内に収まる位置へずらす
-      let left = rect.right + 6
-      if (left + NESTED_FLYOUT_WIDTH > window.innerWidth) {
-        left = rect.left - NESTED_FLYOUT_WIDTH - 6
-      }
-      left = Math.min(Math.max(left, 4), window.innerWidth - NESTED_FLYOUT_WIDTH - 4)
+      // このアプリのウィンドウはサイドバー的に幅が狭く(300〜360px程度)で、
+      // 親フライアウト自体が既にウィンドウ右端に寄せて開いているため、行のさらに
+      // 右側を起点にすると必ず画面外にはみ出す。トップレベルのフライアウトと同じく
+      // 常にウィンドウ右端を基準に(同じ幅で)開くことで、カード幅と揃え右に展開する
+      const width = calcFlyoutWidth()
+      const left = Math.max(4, window.innerWidth - width - 4)
       const top = Math.min(Math.max(rect.top, 4), window.innerHeight - 60)
-      setNestedPos({ top, left })
+      setNestedPos({ top, left, width })
     }
     hover.scheduleShow(folder.id)
   }
@@ -86,7 +85,7 @@ function FolderPreviewRow<F extends FolderLike, I>({
         createPortal(
           <div
             className="folder-preview-flyout folder-preview-flyout--nested"
-            style={{ top: nestedPos.top, left: nestedPos.left }}
+            style={{ top: nestedPos.top, left: nestedPos.left, width: nestedPos.width }}
             onMouseEnter={hover.cancelHide}
             onMouseLeave={hover.scheduleHide}
           >

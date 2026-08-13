@@ -25,6 +25,7 @@ import * as clipboardTransforms from './clipboardTransforms'
 import * as settingsStore from './settingsStore'
 import * as targetHistoryStore from './targetHistoryStore'
 import { setHotkeyCombo, startHotkeyCapture, cancelHotkeyCapture } from './hotkey'
+import * as debugLog from './debugLog'
 
 export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
   const manager = new TargetManager()
@@ -282,6 +283,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   })
 
   ipcMain.handle(IPC.setTheme, async (_e, theme: ThemeMode) => settingsStore.setTheme(theme))
+
+  ipcMain.handle(IPC.readDebugLog, async () => debugLog.readLog())
+
+  ipcMain.handle(IPC.openDebugLogFolder, async () => debugLog.openLogFolder())
 
   ipcMain.handle(IPC.startHotkeyCapture, async () => {
     const w = getWindow()

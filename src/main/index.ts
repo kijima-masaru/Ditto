@@ -9,6 +9,7 @@ import { createTray } from './tray'
 import { setupGlobalHotkey } from './hotkey'
 import { startClipboardWatcher } from './clipboardWatcher'
 import * as settingsStore from './settingsStore'
+import log from './logger'
 
 // 表示名は"Ditto"だが、内部的な名前(userDataの保存先フォルダ名等に影響)は
 // 旧アプリ名のまま固定し、既存インストールのテストデータ・設定を引き継ぐ
@@ -81,10 +82,20 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
+  log.info(`[main] app ready. version=${app.getVersion()}`)
   electronApp.setAppUserModelId('com.flatline.autotesttool')
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
+  })
+
+  // レンダラーやGPU/ユーティリティプロセスが落ちた場合、mainプロセスの
+  // uncaughtExceptionでは捕捉できないため個別にログへ残す
+  app.on('render-process-gone', (_event, _webContents, details) => {
+    log.error('[main] render-process-gone:', details)
+  })
+  app.on('child-process-gone', (_event, details) => {
+    log.error('[main] child-process-gone:', details)
   })
 
   createWindow()

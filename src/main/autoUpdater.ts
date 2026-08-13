@@ -1,6 +1,6 @@
 import { autoUpdater } from 'electron-updater'
-import log from 'electron-log/main'
 import { dialog, type BrowserWindow } from 'electron'
+import log from './logger'
 
 /**
  * GitHub Releases(electron-builder.ymlのpublish設定)を配信元とした自動アップデート。
@@ -11,8 +11,6 @@ import { dialog, type BrowserWindow } from 'electron'
  * ログファイルに記録しておく(既定の保存先: %APPDATA%/auto-test-tool/logs/main.log)。
  */
 export function setupAutoUpdater(getWindow: () => BrowserWindow | null): void {
-  log.initialize()
-  log.transports.file.level = 'info'
   autoUpdater.logger = log
 
   autoUpdater.autoDownload = true
