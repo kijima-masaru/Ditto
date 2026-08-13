@@ -960,7 +960,7 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   font-size: 13px;
 }
 
-.window-size-state-label {
+.toggle-state-label {
   font-size: 12px;
   color: var(--text-secondary);
   white-space: nowrap;

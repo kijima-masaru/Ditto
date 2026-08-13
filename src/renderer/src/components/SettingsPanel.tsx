@@ -246,14 +246,17 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
       <div className="settings-item">
         <div className="settings-item-row">
           <span className="settings-item-label">テーマカラー</span>
-          <label className="theme-toggle-switch">
-            <input
-              type="checkbox"
-              checked={theme === 'dark'}
-              onChange={(e) => handleThemeChange(e.target.checked ? 'dark' : 'light')}
-            />
-            <span className="theme-toggle-slider" />
-          </label>
+          <div className="settings-item-control">
+            <span className="toggle-state-label">{theme === 'dark' ? 'ダーク' : 'ライト'}</span>
+            <label className="theme-toggle-switch">
+              <input
+                type="checkbox"
+                checked={theme === 'dark'}
+                onChange={(e) => handleThemeChange(e.target.checked ? 'dark' : 'light')}
+              />
+              <span className="theme-toggle-slider" />
+            </label>
+          </div>
         </div>
       </div>
 
@@ -264,7 +267,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
             <HelpIcon text={'Dittoのウィンドウの大きさを固定するか、自由に変更できるようにするかを切り替えます。'} />
           </span>
           <div className="settings-item-control">
-            <span className="window-size-state-label">{windowSizeLocked ? '固定' : '自由'}</span>
+            <span className="toggle-state-label">{windowSizeLocked ? '固定' : '自由'}</span>
             <label className="theme-toggle-switch">
               <input
                 type="checkbox"
