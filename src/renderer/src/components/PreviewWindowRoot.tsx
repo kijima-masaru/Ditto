@@ -54,19 +54,6 @@ export default function PreviewWindowRoot(): React.JSX.Element {
     }
   }, [kind])
 
-  useEffect(() => {
-    // このウィンドウ自身にカーソルが入っている間は、自分自身(depth)から先を
-    // 閉じないようにする。出た時は自分自身を起点に閉じる予約をする
-    const onEnter = (): void => window.api.cancelClosePreviewWindow()
-    const onLeave = (): void => window.api.scheduleClosePreviewWindow(depth)
-    document.body.addEventListener('mouseenter', onEnter)
-    document.body.addEventListener('mouseleave', onLeave)
-    return () => {
-      document.body.removeEventListener('mouseenter', onEnter)
-      document.body.removeEventListener('mouseleave', onLeave)
-    }
-  }, [depth])
-
   const handleNavigate = (id: string): void => {
     window.api.navigateToFolder(kind, id)
   }

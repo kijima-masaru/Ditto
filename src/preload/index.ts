@@ -169,7 +169,6 @@ const api = {
     rowTop: number
   }): Promise<void> => ipcRenderer.invoke(IPC.openPreviewWindow, payload),
   scheduleClosePreviewWindow: (depth: number): void => ipcRenderer.send(IPC.scheduleClosePreviewWindow, depth),
-  cancelClosePreviewWindow: (): void => ipcRenderer.send(IPC.cancelClosePreviewWindow),
   navigateToFolder: (kind: PreviewKind, folderId: string): void =>
     ipcRenderer.send(IPC.navigateToFolder, { kind, folderId }),
   onNavigateToFolder: (cb: (payload: { kind: PreviewKind; folderId: string }) => void): (() => void) => {

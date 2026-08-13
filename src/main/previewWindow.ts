@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, screen, type IpcMainInvokeEvent } from 'electron'
+import { BrowserWindow, ipcMain, screen, type IpcMainInvokeEvent, type Rectangle } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { IPC, type PreviewKind } from '../shared/types'
@@ -16,15 +16,31 @@ import { IPC, type PreviewKind } from '../shared/types'
  * depth(何階層目のプレビューか)をキーに開いているウィンドウを管理し、同じdepth以降を
  * 一括で片付けられるようにする(別の行にカーソルが移った時に置き換える・カーソルが
  * 離れた時に子階層ごと閉じる、の両方に対応するため)。
+ *
+ * 「閉じる」判定はレンダラー側のmouseenter/mouseleaveイベントを信用せず、実際に閉じる
+ * 直前にOSのカーソル位置を確認する方式にしている。子ウィンドウを新規作成した際、
+ * 作成元のウィンドウへブラウザが誤ってmouseleaveを送ってしまうことがあり(カーソルは
+ * 実際には動いていない)、レンダラー側のイベントだけを信用すると、サブフォルダに
+ * カーソルを合わせた瞬間に階層全体が閉じてしまう不具合が起きていたため。
  */
 const WIDTH = 260
 const HEIGHT = 340
-const CLOSE_DELAY_MS = 250
+const CLOSE_CHECK_MS = 250
 
 const windows = new Map<number, BrowserWindow>()
-let pendingCloseTimer: ReturnType<typeof setTimeout> | null = null
+const pendingCloseTimers = new Map<number, ReturnType<typeof setTimeout>>()
+
+function rectContainsPoint(rect: Rectangle, x: number, y: number, pad = 4): boolean {
+  return x >= rect.x - pad && x <= rect.x + rect.width + pad && y >= rect.y - pad && y <= rect.y + rect.height + pad
+}
 
 function closeFromDepth(depth: number): void {
+  for (const [d, timer] of [...pendingCloseTimers.entries()]) {
+    if (d >= depth) {
+      clearTimeout(timer)
+      pendingCloseTimers.delete(d)
+    }
+  }
   for (const [d, w] of [...windows.entries()]) {
     if (d >= depth) {
       windows.delete(d)
@@ -33,26 +49,33 @@ function closeFromDepth(depth: number): void {
   }
 }
 
-function cancelPendingClose(): void {
-  if (pendingCloseTimer) {
-    clearTimeout(pendingCloseTimer)
-    pendingCloseTimer = null
-  }
-}
-
+/**
+ * depth以降のウィンドウを閉じる予約をする。実行時、カーソルがdepth以降のいずれかの
+ * ウィンドウの上にまだあれば(mouseleaveが誤送信だった場合)閉じずに再度後で確認する
+ */
 function scheduleClose(depth: number): void {
-  cancelPendingClose()
-  pendingCloseTimer = setTimeout(() => {
-    pendingCloseTimer = null
+  const existing = pendingCloseTimers.get(depth)
+  if (existing) clearTimeout(existing)
+
+  const check = (): void => {
+    pendingCloseTimers.delete(depth)
+    const cursor = screen.getCursorScreenPoint()
+    const stillInUse = [...windows.entries()]
+      .filter(([d]) => d >= depth)
+      .some(([, w]) => !w.isDestroyed() && rectContainsPoint(w.getBounds(), cursor.x, cursor.y))
+    if (stillInUse) {
+      pendingCloseTimers.set(depth, setTimeout(check, CLOSE_CHECK_MS))
+      return
+    }
     closeFromDepth(depth)
-  }, CLOSE_DELAY_MS)
+  }
+  pendingCloseTimers.set(depth, setTimeout(check, CLOSE_CHECK_MS))
 }
 
 function openPreview(
   event: IpcMainInvokeEvent,
   payload: { kind: PreviewKind; folderId: string; depth: number; rowTop: number }
 ): void {
-  cancelPendingClose()
   const senderWindow = BrowserWindow.fromWebContents(event.sender)
   if (!senderWindow) return
   // 同じ深さ(または、それより深い階層)に既に開いているものがあれば片付けてから開き直す
@@ -110,8 +133,6 @@ export function initPreviewWindows(getMainWindow: () => BrowserWindow | null): v
   ipcMain.handle(IPC.openPreviewWindow, (event, payload) => openPreview(event, payload))
 
   ipcMain.on(IPC.scheduleClosePreviewWindow, (_e, depth: number) => scheduleClose(depth))
-
-  ipcMain.on(IPC.cancelClosePreviewWindow, () => cancelPendingClose())
 
   ipcMain.on(IPC.navigateToFolder, (_e, payload: { kind: PreviewKind; folderId: string }) => {
     closeFromDepth(1)
