@@ -78,18 +78,10 @@ function MainApp(): React.JSX.Element {
 
       <header className="app-header">
         <nav>
-          <button
-            className={view.name === 'clipboard' ? 'active' : ''}
-            onMouseEnter={() => setView({ name: 'clipboard' })}
-            onClick={() => setView({ name: 'clipboard' })}
-          >
+          <button className={view.name === 'clipboard' ? 'active' : ''} onClick={() => setView({ name: 'clipboard' })}>
             クリップボード
           </button>
-          <button
-            className={view.name === 'test-list' ? 'active' : ''}
-            onMouseEnter={() => setView({ name: 'test-list' })}
-            onClick={() => setView({ name: 'test-list' })}
-          >
+          <button className={view.name === 'test-list' ? 'active' : ''} onClick={() => setView({ name: 'test-list' })}>
             テスト
           </button>
         </nav>
