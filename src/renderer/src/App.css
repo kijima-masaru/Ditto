@@ -142,6 +142,11 @@ body {
   line-height: 1;
 }
 
+/* 歯車マークは記号自体の見た目が小さいため、他のヘッダーアイコンより一回り大きくする */
+.settings-icon-btn {
+  font-size: 20px;
+}
+
 /* 録画マークは常に赤色(録画UIの共通色)にし、テーマやhover/active状態で色が変わらないようにする */
 .record-icon-btn {
   color: #ff4d4f;
@@ -1108,6 +1113,8 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 
 .help-icon-tooltip {
   display: none;
+  flex-direction: column;
+  gap: 8px;
   position: absolute;
   top: 100%;
   left: 0;
@@ -1120,16 +1127,19 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   font-size: 11px;
   font-weight: 400;
   line-height: 1.5;
-  white-space: pre-line;
   border-radius: 6px;
   box-shadow: 0 4px 14px var(--shadow);
   z-index: 20;
   pointer-events: none;
 }
 
+.help-icon-tooltip-line {
+  display: block;
+}
+
 .help-icon:hover .help-icon-tooltip,
 .help-icon:focus .help-icon-tooltip {
-  display: block;
+  display: flex;
 }
 
 /* 設定画面の「デバッグログ」モーダル。ウィンドウが狭いためほぼ全画面で表示する */

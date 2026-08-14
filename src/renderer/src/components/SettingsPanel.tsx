@@ -58,9 +58,17 @@ function decodeNavigationTarget(value: string): NavigationTarget | null {
 const UNSET_HOTKEY: HotkeyCombo = { ctrl: false, shift: false, alt: false, meta: false, keycode: null, label: '(未設定)' }
 
 function HelpIcon({ text }: { text: string }): React.JSX.Element {
+  const lines = text.split('\n')
   return (
     <span className="help-icon" tabIndex={0}>
-      ?<span className="help-icon-tooltip">{text}</span>
+      ?
+      <span className="help-icon-tooltip">
+        {lines.map((line, i) => (
+          <span className="help-icon-tooltip-line" key={i}>
+            {line}
+          </span>
+        ))}
+      </span>
     </span>
   )
 }
