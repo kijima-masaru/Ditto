@@ -522,16 +522,6 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
             <div className="settings-subitem-row">
               <span className="settings-subitem-label">クリップボード履歴</span>
               <div className="settings-item-control">
-                {clipboardPiiProtection.enabled && (
-                  <select
-                    className="settings-select"
-                    value={clipboardPiiProtection.mode}
-                    onChange={(e) => handleClipboardPiiModeChange(e.target.value as ClipboardPiiProtectionMode)}
-                  >
-                    <option value="mask">マスキング</option>
-                    <option value="delete">自動消去</option>
-                  </select>
-                )}
                 <span className="toggle-state-label">{clipboardPiiProtection.enabled ? 'ON' : 'OFF'}</span>
                 <label className="theme-toggle-switch">
                   <input
@@ -543,6 +533,21 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
                 </label>
               </div>
             </div>
+            {clipboardPiiProtection.enabled && (
+              <div className="settings-subitem-row settings-subitem-row--nested">
+                <span className="settings-subitem-label">保護方法</span>
+                <div className="settings-item-control">
+                  <select
+                    className="settings-select"
+                    value={clipboardPiiProtection.mode}
+                    onChange={(e) => handleClipboardPiiModeChange(e.target.value as ClipboardPiiProtectionMode)}
+                  >
+                    <option value="mask">マスキング</option>
+                    <option value="delete">自動消去</option>
+                  </select>
+                </div>
+              </div>
+            )}
             {clipboardPiiProtection.enabled &&
               AUTO_MASK_CATEGORIES.map(({ key, label }) => (
                 <div className="settings-subitem-row settings-subitem-row--nested" key={`clipboard-${key}`}>

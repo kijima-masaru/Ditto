@@ -389,7 +389,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
           onClick={() => setSubTab('rules')}
           title="整形ルール"
         >
-          ⚙
+          ✎
         </button>
       </div>
 

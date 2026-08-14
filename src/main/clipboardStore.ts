@@ -76,18 +76,19 @@ export async function appendImageHistory(imageDataUrl: string): Promise<Clipboar
   return entry
 }
 
-/**
- * 画像エントリのOCR認識結果を後から書き込む。OCR完了までの間に履歴が200件を超えて
- * 追い出されている、あるいは削除済みの場合はnullを返す(呼び出し側は何もしない)
- */
-export async function setHistoryEntryOcrText(id: string, ocrText: string): Promise<ClipboardHistoryEntry | null> {
-  const history = await listHistory()
-  const idx = history.findIndex((h) => h.id === id)
-  if (idx === -1) return null
-  history[idx] = { ...history[idx], ocrText }
-  await writeHistory(history)
-  return history[idx]
-}
+// OCR画像内テキスト検索機能は無効化しているため、OCR結果の書き込み処理自体をコメントアウトしている。
+// /**
+//  * 画像エントリのOCR認識結果を後から書き込む。OCR完了までの間に履歴が200件を超えて
+//  * 追い出されている、あるいは削除済みの場合はnullを返す(呼び出し側は何もしない)
+//  */
+// export async function setHistoryEntryOcrText(id: string, ocrText: string): Promise<ClipboardHistoryEntry | null> {
+//   const history = await listHistory()
+//   const idx = history.findIndex((h) => h.id === id)
+//   if (idx === -1) return null
+//   history[idx] = { ...history[idx], ocrText }
+//   await writeHistory(history)
+//   return history[idx]
+// }
 
 export async function deleteHistoryEntry(id: string): Promise<void> {
   const history = await listHistory()
