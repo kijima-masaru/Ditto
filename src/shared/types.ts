@@ -111,10 +111,21 @@ export interface CaptureInfo {
 /** 録画枠フッターのボタン操作。'screenshot'は静止画1枚を撮影する(録画状態には遷移しない) */
 export type RecordingFrameFooterAction = 'start' | 'pause' | 'resume' | 'stop' | 'screenshot'
 
-/** クリップボード履歴の1件(PC上でコピーされたテキストを自動記録) */
+export type ClipboardEntryType = 'text' | 'image'
+
+/** クリップボード履歴の1件(PC上でコピーされたテキスト/画像を自動記録) */
 export interface ClipboardHistoryEntry {
   id: string
+  type: ClipboardEntryType
+  /** type:'text'の場合のみ有効 */
   text: string
+  /** type:'image'の場合のみ有効。data URL(PNG) */
+  imageDataUrl?: string
+  /**
+   * type:'image'の場合、OCRで認識したテキスト(履歴検索用)。OCRは非同期で行うため、
+   * コピー直後の一瞬は未設定のことがある
+   */
+  ocrText?: string
   copiedAt: string
 }
 
@@ -308,7 +319,9 @@ export const IPC = {
   moveClipboardTemplate: 'clipboard:move-template',
   reorderClipboardTemplates: 'clipboard:reorder-templates',
   copyToClipboard: 'clipboard:copy',
+  copyImageToClipboard: 'clipboard:copy-image',
   showClipboardHistoryMenu: 'clipboard:show-history-menu',
+  showClipboardImageHistoryMenu: 'clipboard:show-image-history-menu',
   clipboardDataChanged: 'clipboard:data-changed', // main -> renderer push
 
   listClipboardTemplateFolders: 'clipboard:list-template-folders',

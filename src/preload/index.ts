@@ -110,8 +110,11 @@ const api = {
     ipcRenderer.invoke(IPC.deleteClipboardTemplateFolder, id),
 
   copyToClipboard: (text: string): Promise<void> => ipcRenderer.invoke(IPC.copyToClipboard, text),
+  copyImageToClipboard: (dataUrl: string): Promise<void> => ipcRenderer.invoke(IPC.copyImageToClipboard, dataUrl),
   showClipboardHistoryMenu: (entryId: string, text: string): Promise<void> =>
     ipcRenderer.invoke(IPC.showClipboardHistoryMenu, entryId, text),
+  showClipboardImageHistoryMenu: (entryId: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.showClipboardImageHistoryMenu, entryId),
   onClipboardDataChanged: (cb: () => void): (() => void) => {
     const listener = (): void => cb()
     ipcRenderer.on(IPC.clipboardDataChanged, listener)

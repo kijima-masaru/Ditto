@@ -884,6 +884,41 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   text-overflow: ellipsis;
 }
 
+/* クリップボード履歴の画像エントリ。サムネイル+OCR認識テキスト(検索対象)を横並びで表示する */
+.clip-item-image-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.clip-item-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--panel-bg-alt);
+  flex-shrink: 0;
+}
+
+.clip-item-image-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.clip-item-image-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.clip-item-text--ocr {
+  color: var(--text-muted);
+}
+
 .clip-copied-badge {
   position: absolute;
   top: 8px;

@@ -1,10 +1,8 @@
-import { app, nativeImage } from 'electron'
+import { nativeImage } from 'electron'
 import type { NativeImage } from 'electron'
-import { execFile } from 'child_process'
-import { writeFile, readFile, unlink } from 'fs/promises'
-import path from 'path'
 import log from './logger'
 import * as settingsStore from './settingsStore'
+import { runOcrOnImage, type OcrWord } from './ocr'
 import type { AutoMaskCategory, AutoMaskSettings } from '../shared/types'
 
 /**
@@ -13,22 +11,8 @@ import type { AutoMaskCategory, AutoMaskSettings } from '../shared/types'
  * 設定でON/OFFを切り替えられ、OFFの場合や検出に失敗した場合は元の画像をそのまま返す
  * (この機能自体が保存処理を止めてしまわないようにするため)。
  *
- * OCRは追加の重いライブラリやモデルファイルを同梱せずに済むよう、Windowsに標準で
- * 入っているOCRエンジン(Windows.Media.Ocr)をPowerShell経由で呼び出す方式にしている。
+ * OCR自体はWindows標準のOCRエンジンをPowerShell経由で呼び出す共通処理(./ocr)を使う。
  */
-
-interface OcrWord {
-  text: string
-  x: number
-  y: number
-  width: number
-  height: number
-}
-
-interface OcrLine {
-  text: string
-  words: OcrWord[]
-}
 
 // 電話番号・郵便番号・メールアドレス・クレジットカード/マイナンバー(12桁)らしき文字列を検出する。
 // OCRは単語単位(空白区切り)で認識されることが多いため、単語全体の完全一致ではなく
@@ -54,101 +38,6 @@ function looksLikePii(lineText: string, categories: AutoMaskSettings): boolean {
   if (activePatterns.some((re) => re.test(trimmed))) return true
   const noSpace = trimmed.replace(/\s+/g, '')
   return activePatterns.some((re) => re.test(noSpace))
-}
-
-// PowerShellからWindows RuntimeのOCR APIを呼び出し、認識できた行テキストと各単語の画像内座標をJSONで返す。
-// $args[0]に画像ファイルパス、$args[1]に結果JSONの出力先パスを渡す。
-// 標準出力経由で日本語を返すとPowerShellのコンソール出力コードページ(システムのANSI/OEM)で
-// 再エンコードされ文字化けするため、UTF-8を明示してファイルへ書き出す方式にしている。
-const OCR_SCRIPT = `
-$ErrorActionPreference = 'Stop'
-$imagePath = $args[0]
-$outPath = $args[1]
-try {
-  Add-Type -AssemblyName System.Runtime.WindowsRuntime
-  $asTaskGeneric = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {
-    $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation\`1'
-  })[0]
-  function Await($WinRtTask, $ResultType) {
-    $asTask = $asTaskGeneric.MakeGenericMethod($ResultType)
-    $netTask = $asTask.Invoke($null, @($WinRtTask))
-    $netTask.Wait(-1) | Out-Null
-    $netTask.Result
-  }
-  [Windows.Storage.StorageFile,Windows.Storage,ContentType=WindowsRuntime] | Out-Null
-  [Windows.Graphics.Imaging.BitmapDecoder,Windows.Graphics.Imaging,ContentType=WindowsRuntime] | Out-Null
-  [Windows.Media.Ocr.OcrEngine,Windows.Media.Ocr,ContentType=WindowsRuntime] | Out-Null
-
-  $file = Await ([Windows.Storage.StorageFile]::GetFileFromPathAsync($imagePath)) ([Windows.Storage.StorageFile])
-  $stream = Await ($file.OpenAsync([Windows.Storage.FileAccessMode]::Read)) ([Windows.Storage.Streams.IRandomAccessStream])
-  $decoder = Await ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($stream)) ([Windows.Graphics.Imaging.BitmapDecoder])
-  $bitmap = Await ($decoder.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
-
-  $engine = $null
-  try { $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage([Windows.Globalization.Language]::new('ja')) } catch {}
-  if (-not $engine) { $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages() }
-  if (-not $engine) { [System.IO.File]::WriteAllText($outPath, '[]', (New-Object System.Text.UTF8Encoding($false))); exit 0 }
-
-  $result = Await ($engine.RecognizeAsync($bitmap)) ([Windows.Media.Ocr.OcrResult])
-  $lines = New-Object System.Collections.Generic.List[object]
-  foreach ($line in $result.Lines) {
-    $words = New-Object System.Collections.Generic.List[object]
-    foreach ($word in $line.Words) {
-      $rect = $word.BoundingRect
-      $words.Add([PSCustomObject]@{
-        x = [math]::Round($rect.X, 0)
-        y = [math]::Round($rect.Y, 0)
-        width = [math]::Round($rect.Width, 0)
-        height = [math]::Round($rect.Height, 0)
-      })
-    }
-    $lines.Add([PSCustomObject]@{
-      text = $line.Text
-      words = $words
-    })
-  }
-  $json = $lines | ConvertTo-Json -Compress -Depth 5
-  if (-not $json) { $json = '[]' }
-  [System.IO.File]::WriteAllText($outPath, $json, (New-Object System.Text.UTF8Encoding($false)))
-} catch {
-  [System.IO.File]::WriteAllText($outPath, '[]', (New-Object System.Text.UTF8Encoding($false)))
-}
-`
-
-// -Commandに続けて画像パス等を渡すとPowerShell 5.1側の$args束縛が不安定になり
-// (実機検証でパス引数が空扱いになる不具合を確認済み)、スクリプト本体を毎回一時.ps1ファイルに
-// 書き出し-Fileで実行する方式にしている。こちらは$argsへの束縛が確実に安定する。
-async function runOcr(imagePath: string): Promise<OcrLine[]> {
-  const scriptPath = path.join(app.getPath('temp'), `ditto-ocr-script-${Date.now()}-${Math.random().toString(36).slice(2)}.ps1`)
-  const outPath = path.join(app.getPath('temp'), `ditto-ocr-out-${Date.now()}-${Math.random().toString(36).slice(2)}.json`)
-  try {
-    await writeFile(scriptPath, OCR_SCRIPT, 'utf8')
-    await new Promise<void>((resolve) => {
-      execFile(
-        'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, imagePath, outPath],
-        { maxBuffer: 20 * 1024 * 1024, timeout: 15000 },
-        (err) => {
-          if (err) log.warn('piiMask OCR failed', err)
-          resolve()
-        }
-      )
-    })
-    const raw = await readFile(outPath, 'utf8')
-    const trimmed = raw.trim()
-    if (!trimmed) return []
-    const parsed = JSON.parse(trimmed) as OcrLine | OcrLine[]
-    const lines = Array.isArray(parsed) ? parsed : [parsed]
-    // PowerShellの単一要素配列はConvertTo-Jsonでオブジェクト直書きになる場合があるため、
-    // wordsが単一オブジェクトになっているケースも配列に正規化する
-    return lines.map((l) => ({ text: l.text ?? '', words: Array.isArray(l.words) ? l.words : l.words ? [l.words] : [] }))
-  } catch (err) {
-    log.warn('piiMask OCR output read/parse failed', err)
-    return []
-  } finally {
-    unlink(outPath).catch(() => {})
-    unlink(scriptPath).catch(() => {})
-  }
 }
 
 interface Rect {
@@ -212,10 +101,8 @@ async function getEnabledCategories(): Promise<AutoMaskSettings | null> {
 }
 
 async function detectAndMask(image: NativeImage, categories: AutoMaskSettings): Promise<NativeImage> {
-  const tmpPath = path.join(app.getPath('temp'), `ditto-ocr-${Date.now()}-${Math.random().toString(36).slice(2)}.png`)
   try {
-    await writeFile(tmpPath, image.toPNG())
-    const lines = await runOcr(tmpPath)
+    const lines = await runOcrOnImage(image)
     const piiRegions = lines
       .filter((l) => looksLikePii(l.text, categories))
       .map((l) => unionRect(l.words))
@@ -225,8 +112,6 @@ async function detectAndMask(image: NativeImage, categories: AutoMaskSettings): 
   } catch (err) {
     log.warn('piiMask detectAndMask failed', err)
     return image
-  } finally {
-    unlink(tmpPath).catch(() => {})
   }
 }
 

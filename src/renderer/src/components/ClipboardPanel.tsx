@@ -96,9 +96,22 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
     window.setTimeout(() => setCopiedId((cur) => (cur === id ? null : cur)), 1200)
   }
 
+  const handleCopyImage = async (id: string, imageDataUrl: string): Promise<void> => {
+    if (!imageDataUrl) return
+    await window.api.copyImageToClipboard(imageDataUrl)
+    setCopiedId(id)
+    window.setTimeout(() => setCopiedId((cur) => (cur === id ? null : cur)), 1200)
+  }
+
+  const handleHistoryClick = (entry: ClipboardHistoryEntry): void => {
+    if (entry.type === 'image') handleCopyImage(entry.id, entry.imageDataUrl ?? '')
+    else handleCopy(entry.id, entry.text)
+  }
+
   const handleHistoryContextMenu = (e: React.MouseEvent, entry: ClipboardHistoryEntry): void => {
     e.preventDefault()
-    window.api.showClipboardHistoryMenu(entry.id, entry.text)
+    if (entry.type === 'image') window.api.showClipboardImageHistoryMenu(entry.id)
+    else window.api.showClipboardHistoryMenu(entry.id, entry.text)
   }
 
   const handleCreateTemplate = async (): Promise<void> => {
@@ -173,7 +186,10 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
 
   const trimmedHistoryQuery = historyQuery.trim().toLowerCase()
   const filteredHistory = trimmedHistoryQuery
-    ? history.filter((h) => h.text.toLowerCase().includes(trimmedHistoryQuery))
+    ? history.filter((h) => {
+        const searchable = h.type === 'image' ? (h.ocrText ?? '') : h.text
+        return searchable.toLowerCase().includes(trimmedHistoryQuery)
+      })
     : history
 
   const subfolders = templateFolders.filter((f) => f.parentId === currentFolderId)
@@ -291,7 +307,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
 
           {history.length === 0 ? (
             <div className="panel">
-              <p>クリップボード履歴はまだありません。テキストをコピーすると自動的に記録されます。</p>
+              <p>クリップボード履歴はまだありません。テキストや画像をコピーすると自動的に記録されます。</p>
             </div>
           ) : filteredHistory.length === 0 ? (
             <div className="panel">
@@ -303,10 +319,20 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                 <li
                   key={h.id}
                   className={`clip-item${copiedId === h.id ? ' clip-item--copied' : ''}`}
-                  onClick={() => handleCopy(h.id, h.text)}
+                  onClick={() => handleHistoryClick(h)}
                   onContextMenu={(e) => handleHistoryContextMenu(e, h)}
                 >
-                  <div className="clip-item-text">{truncate(h.text)}</div>
+                  {h.type === 'image' ? (
+                    <div className="clip-item-image-row">
+                      <img className="clip-item-thumb" src={h.imageDataUrl} alt="" />
+                      <div className="clip-item-image-meta">
+                        <span className="clip-item-image-label">画像{h.ocrText === undefined ? '(文字認識中…)' : ''}</span>
+                        {h.ocrText && <div className="clip-item-text clip-item-text--ocr">{truncate(h.ocrText)}</div>}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="clip-item-text">{truncate(h.text)}</div>
+                  )}
                   {copiedId === h.id && <span className="clip-copied-badge">コピーしました</span>}
                 </li>
               ))}

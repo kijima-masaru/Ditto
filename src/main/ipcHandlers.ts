@@ -5,6 +5,7 @@ import {
   desktopCapturer,
   shell,
   clipboard,
+  nativeImage,
   Menu,
   type BrowserWindow,
   type MenuItemConstructorOptions
@@ -200,6 +201,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     clipboard.writeText(text)
   })
 
+  ipcMain.handle(IPC.copyImageToClipboard, async (_e, dataUrl: string) => {
+    clipboard.writeImage(nativeImage.createFromDataURL(dataUrl))
+  })
+
   ipcMain.handle(IPC.showClipboardHistoryMenu, async (_e, entryId: string, text: string) => {
     const w = getWindow()
     const setClipboard = (transform: (t: string) => string): void => clipboard.writeText(transform(text))
@@ -242,6 +247,30 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
           { label: '空白→TAB', click: () => setClipboard(clipboardTransforms.spaceToTab) },
           { label: '改行コードを削除', click: () => setClipboard(clipboardTransforms.removeLineBreaks) }
         ]
+      },
+      { type: 'separator' },
+      {
+        label: '履歴から削除',
+        click: async () => {
+          await clipboardStore.deleteHistoryEntry(entryId)
+          w?.webContents.send(IPC.clipboardDataChanged)
+        }
+      }
+    ])
+    if (w) menu.popup({ window: w })
+  })
+
+  // 画像エントリはテキスト整形・定型文登録が意味を持たないため、専用の縮小メニューを出す
+  ipcMain.handle(IPC.showClipboardImageHistoryMenu, async (_e, entryId: string) => {
+    const w = getWindow()
+    const menu = Menu.buildFromTemplate([
+      {
+        label: 'コピー',
+        click: async () => {
+          const history = await clipboardStore.listHistory()
+          const entry = history.find((h) => h.id === entryId)
+          if (entry?.imageDataUrl) clipboard.writeImage(nativeImage.createFromDataURL(entry.imageDataUrl))
+        }
       },
       { type: 'separator' },
       {
