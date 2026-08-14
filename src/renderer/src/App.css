@@ -549,6 +549,30 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   min-width: 120px;
 }
 
+/* チェックボックス+ラベルの行(例: 整形ルールの「正規表現として扱う」)。
+   .field--inlineのinput { min-width: 120px } はテキスト入力向けのルールで、
+   チェックボックスに適用すると横に間延びして崩れるため、専用クラスを分けている */
+.field-checkbox-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.field-checkbox-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.field-checkbox-row input[type='checkbox'] {
+  width: auto;
+  min-width: 0;
+  padding: 0;
+}
+
 .offscreen-media {
   position: absolute;
   width: 1px;
@@ -826,6 +850,19 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   font-weight: 600;
 }
 
+/* 整形ルールへの導線。履歴・定型文と並列のタブというより「設定」寄りの位置づけのため、
+   横幅いっぱいに広がるタブボタンではなく、ヘッダーの歯車アイコンと同じ見た目の
+   正方形アイコンボタンにする(ただしヘッダー用の配色変数はここでは合わず使えないため、
+   パネル上でも視認できる配色に置き換えている) */
+.clipboard-subtabs .subtab-icon-btn {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+}
+
 .history-search {
   display: flex;
   align-items: center;
@@ -1101,6 +1138,12 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   background: var(--panel-bg-alt);
   border: 1px solid var(--border);
   border-radius: 8px;
+}
+
+/* 「スクリーンショット」「クリップボード履歴」等の親トグルの下にぶら下がる、
+   個別カテゴリ(電話番号等)の行。親子関係が見た目でも分かるよう少し右にインデントする */
+.settings-subitem-row--nested {
+  margin-left: 16px;
 }
 
 .settings-subitem-label {

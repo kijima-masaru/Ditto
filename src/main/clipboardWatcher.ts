@@ -21,10 +21,11 @@ function hashPng(png: Buffer): string {
   return createHash('sha1').update(png).digest('hex')
 }
 
-/** 保護設定を返す。項目が1つもONでなければnull(保護処理自体を省略する) */
+/** 機能自体がONかつ、いずれか1項目でも選択されていれば保護設定を返す。それ以外はnull(保護処理自体を省略する) */
 async function getPiiProtection(): Promise<ClipboardPiiProtectionSettings | null> {
   try {
     const { clipboardPiiProtection } = await settingsStore.getSettings()
+    if (!clipboardPiiProtection.enabled) return null
     return anyCategoryEnabled(clipboardPiiProtection.categories) ? clipboardPiiProtection : null
   } catch {
     return null
@@ -61,25 +62,30 @@ async function handleNewImage(
   const protection = await getPiiProtection()
 
   if (!protection) {
-    // 保護設定が無効な場合は、画像をすぐ一覧に出してからOCRを後追いで反映する(体感速度優先)
+    // OCR画像内テキスト検索機能は想定していた使い勝手と異なったため無効化している
+    // (画像のocrTextへOCR結果を書き込み検索対象にする処理をコメントアウト済み。
+    // 画像自体の履歴記録・コピーバック機能はこのまま維持する)。
+    // 詳細は下記コメントアウト部分、および ClipboardPanel.tsx の検索・表示側を参照。
     const entry = await clipboardStore.appendImageHistory(image.toDataURL())
     onNewEntry(entry)
-    runOcrOnImage(image)
-      .then(async (lines) => {
-        const ocrText = lines
-          .map((l) => l.text)
-          .join('\n')
-          .trim()
-        if (!ocrText) return
-        const updated = await clipboardStore.setHistoryEntryOcrText(entry.id, ocrText)
-        if (updated) onNewEntry(updated)
-      })
-      .catch(() => {})
+    // runOcrOnImage(image)
+    //   .then(async (lines) => {
+    //     const ocrText = lines
+    //       .map((l) => l.text)
+    //       .join('\n')
+    //       .trim()
+    //     if (!ocrText) return
+    //     const updated = await clipboardStore.setHistoryEntryOcrText(entry.id, ocrText)
+    //     if (updated) onNewEntry(updated)
+    //   })
+    //   .catch(() => {})
     return
   }
 
   // 保護設定が有効な場合は、機密情報を一瞬でも未加工のまま一覧に出さないよう、
-  // OCRとPII判定が終わってから初めて履歴に追加する(その分、一覧への反映が数秒遅れる)
+  // OCRとPII判定が終わってから初めて履歴に追加する(その分、一覧への反映が数秒遅れる)。
+  // ここでのOCRは画像内のPII領域を黒塗りするためだけに使い、OCR画像内テキスト検索機能
+  // (ocrTextへの保存)は上記と同様の理由で無効化しているため呼び出さない。
   try {
     const lines = await runOcrOnImage(image)
     const piiLines = lines.filter((l) => looksLikePii(l.text, protection.categories))
@@ -90,17 +96,17 @@ async function handleNewImage(
       const regions = piiLines.map((l) => unionRect(l.words)).filter((r): r is Rect => r !== null)
       finalImage = blackOutRegions(image, regions)
     }
-    const ocrText = lines
-      .map((l) => (looksLikePii(l.text, protection.categories) ? maskText(l.text, protection.categories) : l.text))
-      .join('\n')
-      .trim()
 
     const entry = await clipboardStore.appendImageHistory(finalImage.toDataURL())
     onNewEntry(entry)
-    if (ocrText) {
-      const updated = await clipboardStore.setHistoryEntryOcrText(entry.id, ocrText)
-      if (updated) onNewEntry(updated)
-    }
+    // const ocrText = lines
+    //   .map((l) => (looksLikePii(l.text, protection.categories) ? maskText(l.text, protection.categories) : l.text))
+    //   .join('\n')
+    //   .trim()
+    // if (ocrText) {
+    //   const updated = await clipboardStore.setHistoryEntryOcrText(entry.id, ocrText)
+    //   if (updated) onNewEntry(updated)
+    // }
   } catch {
     // OCR自体に失敗するとPIIの有無を判定できず安全に保護できないため、この画像は記録しない
   }

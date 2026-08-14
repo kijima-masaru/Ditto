@@ -16,12 +16,12 @@ import type { AutoMaskSettings } from '../shared/types'
  * PII検出・黒塗りロジックは共通処理(./piiDetect)を使う。
  */
 
-/** いずれか1項目でもONになっている設定を返す。全項目OFFならnull(OCR自体を省略する) */
+/** 機能自体がONかつ、いずれか1項目でも選択されている設定を返す。それ以外はnull(OCR自体を省略する) */
 async function getEnabledCategories(): Promise<AutoMaskSettings | null> {
   try {
-    const settings = await settingsStore.getSettings()
-    const { autoMaskSensitiveInfo } = settings
-    return anyCategoryEnabled(autoMaskSensitiveInfo) ? autoMaskSensitiveInfo : null
+    const { autoMaskSensitiveInfo } = await settingsStore.getSettings()
+    if (!autoMaskSensitiveInfo.enabled) return null
+    return anyCategoryEnabled(autoMaskSensitiveInfo.categories) ? autoMaskSensitiveInfo.categories : null
   } catch {
     return null
   }

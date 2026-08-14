@@ -360,8 +360,16 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     return settings
   })
 
+  ipcMain.handle(IPC.setAutoMaskEnabled, async (_e, enabled: boolean) => {
+    return settingsStore.setAutoMaskEnabled(enabled)
+  })
+
   ipcMain.handle(IPC.setAutoMaskSensitiveInfo, async (_e, category: AutoMaskCategory, enabled: boolean) => {
     return settingsStore.setAutoMaskCategory(category, enabled)
+  })
+
+  ipcMain.handle(IPC.setClipboardPiiProtectionEnabled, async (_e, enabled: boolean) => {
+    return settingsStore.setClipboardPiiProtectionEnabled(enabled)
   })
 
   ipcMain.handle(IPC.setClipboardPiiProtectionCategory, async (_e, category: AutoMaskCategory, enabled: boolean) => {

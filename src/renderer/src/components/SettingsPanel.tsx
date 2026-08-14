@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type {
   AutoMaskCategory,
-  AutoMaskSettings,
   ClipboardPiiProtectionMode,
   ClipboardPiiProtectionSettings,
   ClipboardTemplateFolder,
@@ -9,6 +8,7 @@ import type {
   HotkeyCombo,
   NavigationTarget,
   PreviewKind,
+  ScreenshotMaskSettings,
   TestFolder,
   ThemeMode,
   UpdateStatus
@@ -166,13 +166,12 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const [testFolders, setTestFolders] = useState<TestFolder[]>([])
   const [windowSizeLocked, setWindowSizeLocked] = useState(false)
   const [alwaysOnTop, setAlwaysOnTop] = useState(false)
-  const [autoMaskSensitiveInfo, setAutoMaskSensitiveInfo] = useState<AutoMaskSettings>({
-    phone: false,
-    postalCode: false,
-    email: false,
-    creditCard: false
+  const [autoMaskSensitiveInfo, setAutoMaskSensitiveInfo] = useState<ScreenshotMaskSettings>({
+    enabled: false,
+    categories: { phone: false, postalCode: false, email: false, creditCard: false }
   })
   const [clipboardPiiProtection, setClipboardPiiProtection] = useState<ClipboardPiiProtectionSettings>({
+    enabled: false,
     mode: 'mask',
     categories: { phone: false, postalCode: false, email: false, creditCard: false }
   })
@@ -268,9 +267,19 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     await window.api.setAlwaysOnTop(value)
   }
 
+  const handleAutoMaskEnabledChange = async (value: boolean): Promise<void> => {
+    setAutoMaskSensitiveInfo((prev) => ({ ...prev, enabled: value }))
+    await window.api.setAutoMaskEnabled(value)
+  }
+
   const handleAutoMaskCategoryChange = async (category: AutoMaskCategory, value: boolean): Promise<void> => {
-    setAutoMaskSensitiveInfo((prev) => ({ ...prev, [category]: value }))
+    setAutoMaskSensitiveInfo((prev) => ({ ...prev, categories: { ...prev.categories, [category]: value } }))
     await window.api.setAutoMaskSensitiveInfo(category, value)
+  }
+
+  const handleClipboardPiiEnabledChange = async (value: boolean): Promise<void> => {
+    setClipboardPiiProtection((prev) => ({ ...prev, enabled: value }))
+    await window.api.setClipboardPiiProtectionEnabled(value)
   }
 
   const handleClipboardPiiCategoryChange = async (category: AutoMaskCategory, value: boolean): Promise<void> => {
@@ -462,76 +471,95 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
         <div className="settings-item">
           <div className="settings-item-row">
             <span className="settings-item-label">
-              機密情報の自動マスキング
+              機密情報の保護
               <HelpIcon
                 text={
-                  'ONにした項目について、スクリーンショットや自動テスト失敗時のエビデンス画像を保存する前に、\n' +
-                  'それらしき文字列をOCRで検出し、自動で黒塗りします。\n' +
-                  '画面録画(動画)には適用されません。処理のぶん、保存に数秒かかる場合があります。'
+                  '電話番号・郵便番号・メールアドレス・クレジットカード番号らしき内容をOCR/文字列検出し、\n' +
+                  '保護する対象をON/OFFで選べます。\n' +
+                  '「スクリーンショット」: 撮影画像・自動テスト失敗時のエビデンス画像内の該当箇所を自動で黒塗りします。\n' +
+                  '「クリップボード履歴」: コピーされた内容がDittoの履歴に記録される前に、\n' +
+                  '「マスキング」(該当箇所を*に置き換えて保存。コピーした内容自体は変わりません)か\n' +
+                  '「自動消去」(履歴に一切保存しません)のどちらかで保護します。\n' +
+                  'いずれも項目ごとにON/OFFを切り替えられます。'
                 }
               />
             </span>
           </div>
-          <div className="settings-subitem-list">
-            {AUTO_MASK_CATEGORIES.map(({ key, label }) => (
-              <div className="settings-subitem-row" key={key}>
-                <span className="settings-subitem-label">{label}</span>
-                <div className="settings-item-control">
-                  <span className="toggle-state-label">{autoMaskSensitiveInfo[key] ? 'ON' : 'OFF'}</span>
-                  <label className="theme-toggle-switch">
-                    <input
-                      type="checkbox"
-                      checked={autoMaskSensitiveInfo[key]}
-                      onChange={(e) => handleAutoMaskCategoryChange(key, e.target.checked)}
-                    />
-                    <span className="theme-toggle-slider" />
-                  </label>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
 
-        <div className="settings-item">
-          <div className="settings-item-row">
-            <span className="settings-item-label">
-              クリップボード履歴の機密情報保護
-              <HelpIcon
-                text={
-                  'ONにした項目について、電話番号・メールアドレス等の機密情報らしき内容がコピーされた際、\n' +
-                  'クリップボード履歴への保存方法を選べます。\n' +
-                  '「マスキング」: 該当箇所を*に置き換えて履歴に保存します(コピーした内容自体は変わりません)。\n' +
-                  '「自動消去」: 履歴に一切保存しません。\n' +
-                  '画像(スクリーンショット等)をコピーした場合もOCRで検出し、同様に保護します。'
-                }
-              />
-            </span>
-            <select
-              className="settings-select"
-              value={clipboardPiiProtection.mode}
-              onChange={(e) => handleClipboardPiiModeChange(e.target.value as ClipboardPiiProtectionMode)}
-            >
-              <option value="mask">マスキング</option>
-              <option value="delete">自動消去</option>
-            </select>
-          </div>
           <div className="settings-subitem-list">
-            {AUTO_MASK_CATEGORIES.map(({ key, label }) => (
-              <div className="settings-subitem-row" key={key}>
-                <span className="settings-subitem-label">{label}</span>
-                <div className="settings-item-control">
-                  <span className="toggle-state-label">{clipboardPiiProtection.categories[key] ? 'ON' : 'OFF'}</span>
-                  <label className="theme-toggle-switch">
-                    <input
-                      type="checkbox"
-                      checked={clipboardPiiProtection.categories[key]}
-                      onChange={(e) => handleClipboardPiiCategoryChange(key, e.target.checked)}
-                    />
-                    <span className="theme-toggle-slider" />
-                  </label>
-                </div>
+            <div className="settings-subitem-row">
+              <span className="settings-subitem-label">スクリーンショット</span>
+              <div className="settings-item-control">
+                <span className="toggle-state-label">{autoMaskSensitiveInfo.enabled ? 'ON' : 'OFF'}</span>
+                <label className="theme-toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={autoMaskSensitiveInfo.enabled}
+                    onChange={(e) => handleAutoMaskEnabledChange(e.target.checked)}
+                  />
+                  <span className="theme-toggle-slider" />
+                </label>
               </div>
-            ))}
+            </div>
+            {autoMaskSensitiveInfo.enabled &&
+              AUTO_MASK_CATEGORIES.map(({ key, label }) => (
+                <div className="settings-subitem-row settings-subitem-row--nested" key={`screenshot-${key}`}>
+                  <span className="settings-subitem-label">{label}</span>
+                  <div className="settings-item-control">
+                    <span className="toggle-state-label">{autoMaskSensitiveInfo.categories[key] ? 'ON' : 'OFF'}</span>
+                    <label className="theme-toggle-switch">
+                      <input
+                        type="checkbox"
+                        checked={autoMaskSensitiveInfo.categories[key]}
+                        onChange={(e) => handleAutoMaskCategoryChange(key, e.target.checked)}
+                      />
+                      <span className="theme-toggle-slider" />
+                    </label>
+                  </div>
+                </div>
+              ))}
+
+            <div className="settings-subitem-row">
+              <span className="settings-subitem-label">クリップボード履歴</span>
+              <div className="settings-item-control">
+                {clipboardPiiProtection.enabled && (
+                  <select
+                    className="settings-select"
+                    value={clipboardPiiProtection.mode}
+                    onChange={(e) => handleClipboardPiiModeChange(e.target.value as ClipboardPiiProtectionMode)}
+                  >
+                    <option value="mask">マスキング</option>
+                    <option value="delete">自動消去</option>
+                  </select>
+                )}
+                <span className="toggle-state-label">{clipboardPiiProtection.enabled ? 'ON' : 'OFF'}</span>
+                <label className="theme-toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={clipboardPiiProtection.enabled}
+                    onChange={(e) => handleClipboardPiiEnabledChange(e.target.checked)}
+                  />
+                  <span className="theme-toggle-slider" />
+                </label>
+              </div>
+            </div>
+            {clipboardPiiProtection.enabled &&
+              AUTO_MASK_CATEGORIES.map(({ key, label }) => (
+                <div className="settings-subitem-row settings-subitem-row--nested" key={`clipboard-${key}`}>
+                  <span className="settings-subitem-label">{label}</span>
+                  <div className="settings-item-control">
+                    <span className="toggle-state-label">{clipboardPiiProtection.categories[key] ? 'ON' : 'OFF'}</span>
+                    <label className="theme-toggle-switch">
+                      <input
+                        type="checkbox"
+                        checked={clipboardPiiProtection.categories[key]}
+                        onChange={(e) => handleClipboardPiiCategoryChange(key, e.target.checked)}
+                      />
+                      <span className="theme-toggle-slider" />
+                    </label>
+                  </div>
+                </div>
+              ))}
           </div>
         </div>
 

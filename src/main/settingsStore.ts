@@ -1,6 +1,7 @@
 import { app } from 'electron'
 import fs from 'fs/promises'
 import path from 'path'
+import { anyCategoryEnabled } from './piiDetect'
 import type {
   AppSettings,
   AutoMaskCategory,
@@ -8,6 +9,7 @@ import type {
   ClipboardPiiProtectionMode,
   ClipboardPiiProtectionSettings,
   HotkeyBinding,
+  ScreenshotMaskSettings,
   ThemeMode
 } from '../shared/types'
 
@@ -18,7 +20,13 @@ const DEFAULT_AUTO_MASK_SETTINGS: AutoMaskSettings = {
   creditCard: false
 }
 
+const DEFAULT_SCREENSHOT_MASK_SETTINGS: ScreenshotMaskSettings = {
+  enabled: false,
+  categories: { ...DEFAULT_AUTO_MASK_SETTINGS }
+}
+
 const DEFAULT_CLIPBOARD_PII_PROTECTION: ClipboardPiiProtectionSettings = {
+  enabled: false,
   mode: 'mask',
   categories: { ...DEFAULT_AUTO_MASK_SETTINGS }
 }
@@ -36,13 +44,13 @@ const DEFAULT_SETTINGS: AppSettings = {
   theme: 'light',
   windowSizeLocked: false,
   alwaysOnTop: false,
-  autoMaskSensitiveInfo: DEFAULT_AUTO_MASK_SETTINGS,
+  autoMaskSensitiveInfo: DEFAULT_SCREENSHOT_MASK_SETTINGS,
   clipboardPiiProtection: DEFAULT_CLIPBOARD_PII_PROTECTION
 }
 
-// v1.24.9までは単一のboolean(autoMaskSensitiveInfo: true/false)だったため、
-// 旧形式の設定ファイルを読み込んだ場合は全項目に同じ値を適用して変換する
-function normalizeAutoMaskSettings(value: unknown): AutoMaskSettings {
+// v1.24.9までは単一のboolean(true/false)、v1.24.10〜v1.24.13まではカテゴリだけの
+// フラットなオブジェクトだったため、旧形式の設定ファイルを読み込んだ場合はここで変換する
+function normalizeAutoMaskCategories(value: unknown): AutoMaskSettings {
   if (typeof value === 'boolean') {
     return { phone: value, postalCode: value, email: value, creditCard: value }
   }
@@ -58,12 +66,28 @@ function normalizeAutoMaskSettings(value: unknown): AutoMaskSettings {
   return { ...DEFAULT_AUTO_MASK_SETTINGS }
 }
 
+// v1.24.13までのautoMaskSensitiveInfoは { phone, postalCode, email, creditCard } という
+// カテゴリだけのフラットな形だった。新形式は { enabled, categories } でラップし、機能全体の
+// ON/OFFをカテゴリ選択と切り離して保持する(OFFにしてもカテゴリ選択を覚えておけるように)。
+// 旧形式のデータにはenabledが存在しないため、その場合はカテゴリが1つでも選択されていれば
+// enabled相当とみなして移行する
+function normalizeScreenshotMaskSettings(value: unknown): ScreenshotMaskSettings {
+  const hasWrapper = !!value && typeof value === 'object' && ('categories' in value || 'enabled' in value)
+  const categories = normalizeAutoMaskCategories(hasWrapper ? (value as Partial<ScreenshotMaskSettings>).categories : value)
+  const enabled = hasWrapper
+    ? ((value as Partial<ScreenshotMaskSettings>).enabled ?? anyCategoryEnabled(categories))
+    : anyCategoryEnabled(categories)
+  return { enabled, categories }
+}
+
 function normalizeClipboardPiiProtection(value: unknown): ClipboardPiiProtectionSettings {
   if (value && typeof value === 'object') {
     const v = value as Partial<ClipboardPiiProtectionSettings>
+    const categories = normalizeAutoMaskCategories(v.categories)
     return {
+      enabled: v.enabled ?? anyCategoryEnabled(categories),
       mode: v.mode === 'delete' ? 'delete' : 'mask',
-      categories: normalizeAutoMaskSettings(v.categories)
+      categories
     }
   }
   return { ...DEFAULT_CLIPBOARD_PII_PROTECTION, categories: { ...DEFAULT_AUTO_MASK_SETTINGS } }
@@ -85,7 +109,7 @@ export async function getSettings(): Promise<AppSettings> {
       theme: parsed.theme ?? DEFAULT_SETTINGS.theme,
       windowSizeLocked: parsed.windowSizeLocked ?? DEFAULT_SETTINGS.windowSizeLocked,
       alwaysOnTop: parsed.alwaysOnTop ?? DEFAULT_SETTINGS.alwaysOnTop,
-      autoMaskSensitiveInfo: normalizeAutoMaskSettings(parsed.autoMaskSensitiveInfo),
+      autoMaskSensitiveInfo: normalizeScreenshotMaskSettings(parsed.autoMaskSensitiveInfo),
       clipboardPiiProtection: normalizeClipboardPiiProtection(parsed.clipboardPiiProtection)
     }
   } catch {
@@ -125,9 +149,26 @@ export async function setAlwaysOnTop(alwaysOnTop: boolean): Promise<AppSettings>
   return settings
 }
 
+export async function setAutoMaskEnabled(enabled: boolean): Promise<AppSettings> {
+  const settings = await getSettings()
+  settings.autoMaskSensitiveInfo = { ...settings.autoMaskSensitiveInfo, enabled }
+  await writeSettings(settings)
+  return settings
+}
+
 export async function setAutoMaskCategory(category: AutoMaskCategory, enabled: boolean): Promise<AppSettings> {
   const settings = await getSettings()
-  settings.autoMaskSensitiveInfo = { ...settings.autoMaskSensitiveInfo, [category]: enabled }
+  settings.autoMaskSensitiveInfo = {
+    ...settings.autoMaskSensitiveInfo,
+    categories: { ...settings.autoMaskSensitiveInfo.categories, [category]: enabled }
+  }
+  await writeSettings(settings)
+  return settings
+}
+
+export async function setClipboardPiiProtectionEnabled(enabled: boolean): Promise<AppSettings> {
+  const settings = await getSettings()
+  settings.clipboardPiiProtection = { ...settings.clipboardPiiProtection, enabled }
   await writeSettings(settings)
   return settings
 }

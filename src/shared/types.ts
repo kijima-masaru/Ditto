@@ -223,6 +223,17 @@ export type AutoMaskCategory = 'phone' | 'postalCode' | 'email' | 'creditCard'
 export type AutoMaskSettings = Record<AutoMaskCategory, boolean>
 
 /**
+ * スクリーンショット・失敗時エビデンス画像の保存前にOCRで文字を検出し、電話番号・郵便番号・
+ * メールアドレス・クレジットカード番号らしき箇所を自動で黒塗りする機能の設定。
+ * enabledは機能全体のON/OFF(OFFなら各カテゴリの選択状態を保ったまま処理自体を行わない)、
+ * categoriesは項目ごとの検出対象の選択状態
+ */
+export interface ScreenshotMaskSettings {
+  enabled: boolean
+  categories: AutoMaskSettings
+}
+
+/**
  * クリップボード履歴に機密情報らしき内容が記録される前の保護動作。
  * mask: 該当箇所を*に置き換えて履歴に保存する(実際にコピーされた内容自体は変更しない)
  * delete: 履歴に保存しない(画像の場合はOCRで検出でき次第、既に追加された履歴からも削除する)
@@ -230,6 +241,7 @@ export type AutoMaskSettings = Record<AutoMaskCategory, boolean>
 export type ClipboardPiiProtectionMode = 'mask' | 'delete'
 
 export interface ClipboardPiiProtectionSettings {
+  enabled: boolean
   mode: ClipboardPiiProtectionMode
   categories: AutoMaskSettings
 }
@@ -242,15 +254,9 @@ export interface AppSettings {
   windowSizeLocked: boolean
   /** trueならDittoのウィンドウを常に他のアプリより前面に表示する */
   alwaysOnTop: boolean
-  /**
-   * スクリーンショット・失敗時エビデンス画像の保存前にOCRで文字を検出し、電話番号・郵便番号・
-   * メールアドレス・クレジットカード番号らしき箇所を自動で黒塗りするかどうかを項目ごとに指定する
-   */
-  autoMaskSensitiveInfo: AutoMaskSettings
-  /**
-   * クリップボード履歴に電話番号・郵便番号・メールアドレス・クレジットカード番号らしき内容が
-   * 記録される前に、項目ごとにマスキングまたは自動消去で保護するかどうかを指定する
-   */
+  /** スクリーンショット・失敗時エビデンス画像に対する機密情報の自動黒塗り設定 */
+  autoMaskSensitiveInfo: ScreenshotMaskSettings
+  /** クリップボード履歴に対する機密情報の自動マスキング・自動消去設定 */
   clipboardPiiProtection: ClipboardPiiProtectionSettings
 }
 
@@ -381,7 +387,9 @@ export const IPC = {
   setTheme: 'settings:set-theme',
   setWindowSizeLocked: 'settings:set-window-size-locked',
   setAlwaysOnTop: 'settings:set-always-on-top',
+  setAutoMaskEnabled: 'settings:set-auto-mask-enabled',
   setAutoMaskSensitiveInfo: 'settings:set-auto-mask-sensitive-info',
+  setClipboardPiiProtectionEnabled: 'settings:set-clipboard-pii-protection-enabled',
   setClipboardPiiProtectionCategory: 'settings:set-clipboard-pii-protection-category',
   setClipboardPiiProtectionMode: 'settings:set-clipboard-pii-protection-mode',
   startHotkeyCapture: 'hotkey-capture:start',

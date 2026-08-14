@@ -147,8 +147,11 @@ const api = {
     ipcRenderer.invoke(IPC.setWindowSizeLocked, locked),
   setAlwaysOnTop: (alwaysOnTop: boolean): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setAlwaysOnTop, alwaysOnTop),
+  setAutoMaskEnabled: (enabled: boolean): Promise<AppSettings> => ipcRenderer.invoke(IPC.setAutoMaskEnabled, enabled),
   setAutoMaskSensitiveInfo: (category: AutoMaskCategory, enabled: boolean): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setAutoMaskSensitiveInfo, category, enabled),
+  setClipboardPiiProtectionEnabled: (enabled: boolean): Promise<AppSettings> =>
+    ipcRenderer.invoke(IPC.setClipboardPiiProtectionEnabled, enabled),
   setClipboardPiiProtectionCategory: (category: AutoMaskCategory, enabled: boolean): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setClipboardPiiProtectionCategory, category, enabled),
   setClipboardPiiProtectionMode: (mode: ClipboardPiiProtectionMode): Promise<AppSettings> =>

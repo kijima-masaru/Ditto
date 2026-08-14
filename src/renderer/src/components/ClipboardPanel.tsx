@@ -247,12 +247,11 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
     reload()
   }
 
+  // OCR画像内テキスト検索機能は無効化しているため、検索はテキストエントリのみを対象にする
+  // (画像エントリのocrTextは常に未設定になる)
   const trimmedHistoryQuery = historyQuery.trim().toLowerCase()
   const filteredHistory = trimmedHistoryQuery
-    ? history.filter((h) => {
-        const searchable = h.type === 'image' ? (h.ocrText ?? '') : h.text
-        return searchable.toLowerCase().includes(trimmedHistoryQuery)
-      })
+    ? history.filter((h) => h.type === 'text' && h.text.toLowerCase().includes(trimmedHistoryQuery))
     : history
 
   const subfolders = templateFolders.filter((f) => f.parentId === currentFolderId)
@@ -385,8 +384,12 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
         <button className={subTab === 'templates' ? 'active' : ''} onClick={() => setSubTab('templates')}>
           定型文
         </button>
-        <button className={subTab === 'rules' ? 'active' : ''} onClick={() => setSubTab('rules')}>
-          整形ルール
+        <button
+          className={`subtab-icon-btn${subTab === 'rules' ? ' active' : ''}`}
+          onClick={() => setSubTab('rules')}
+          title="整形ルール"
+        >
+          ⚙
         </button>
       </div>
 
@@ -425,8 +428,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                     <div className="clip-item-image-row">
                       <img className="clip-item-thumb" src={h.imageDataUrl} alt="" />
                       <div className="clip-item-image-meta">
-                        <span className="clip-item-image-label">画像{h.ocrText === undefined ? '(文字認識中…)' : ''}</span>
-                        {h.ocrText && <div className="clip-item-text clip-item-text--ocr">{truncate(h.ocrText)}</div>}
+                        <span className="clip-item-image-label">画像</span>
                       </div>
                     </div>
                   ) : (
@@ -657,10 +659,10 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                 <label>検索文字列</label>
                 <input value={newRuleFind} onChange={(e) => setNewRuleFind(e.target.value)} autoFocus />
               </div>
-              <div className="field field--inline">
+              <div className="field-checkbox-row">
                 <label>
                   <input type="checkbox" checked={newRuleIsRegex} onChange={(e) => setNewRuleIsRegex(e.target.checked)} />
-                  {' '}正規表現として扱う
+                  正規表現として扱う
                 </label>
               </div>
               <div className="field">
@@ -696,14 +698,14 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                       <label>検索文字列</label>
                       <input value={editRuleFind} onChange={(e) => setEditRuleFind(e.target.value)} />
                     </div>
-                    <div className="field field--inline">
+                    <div className="field-checkbox-row">
                       <label>
                         <input
                           type="checkbox"
                           checked={editRuleIsRegex}
                           onChange={(e) => setEditRuleIsRegex(e.target.checked)}
                         />
-                        {' '}正規表現として扱う
+                        正規表現として扱う
                       </label>
                     </div>
                     <div className="field">
