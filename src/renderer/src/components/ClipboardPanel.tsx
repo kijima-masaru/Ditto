@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type {
+  ClipboardFormatRule,
   ClipboardHistoryEntry,
   ClipboardTemplate,
   ClipboardTemplateFolder,
@@ -10,7 +11,7 @@ import { useHoverIntent } from '../hooks/useHoverIntent'
 import { useDragReorder } from '../hooks/useDragReorder'
 import FolderPreviewFlyout from './FolderPreviewFlyout'
 
-type SubTab = 'history' | 'templates'
+type SubTab = 'history' | 'templates' | 'rules'
 
 function truncate(text: string, max = 80): string {
   const oneLine = text.replace(/\s+/g, ' ').trim()
@@ -65,17 +66,32 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
   const [renameFolderInput, setRenameFolderInput] = useState('')
   const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null)
 
+  const [formatRules, setFormatRules] = useState<ClipboardFormatRule[]>([])
+  const [creatingRule, setCreatingRule] = useState(false)
+  const [newRuleLabel, setNewRuleLabel] = useState('')
+  const [newRuleFind, setNewRuleFind] = useState('')
+  const [newRuleReplace, setNewRuleReplace] = useState('')
+  const [newRuleIsRegex, setNewRuleIsRegex] = useState(false)
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null)
+  const [editRuleLabel, setEditRuleLabel] = useState('')
+  const [editRuleFind, setEditRuleFind] = useState('')
+  const [editRuleReplace, setEditRuleReplace] = useState('')
+  const [editRuleIsRegex, setEditRuleIsRegex] = useState(false)
+  const [deletingRuleId, setDeletingRuleId] = useState<string | null>(null)
+
   const folderPreview = useHoverIntent(300, 200, { respectPreviewWindows: true })
 
   const reload = async (): Promise<void> => {
-    const [h, t, f] = await Promise.all([
+    const [h, t, f, r] = await Promise.all([
       window.api.listClipboardHistory(),
       window.api.listClipboardTemplates(),
-      window.api.listClipboardTemplateFolders()
+      window.api.listClipboardTemplateFolders(),
+      window.api.listClipboardFormatRules()
     ])
     setHistory(h)
     setTemplates(t)
     setTemplateFolders(f)
+    setFormatRules(r)
   }
 
   useEffect(() => {
@@ -184,6 +200,53 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
     reload()
   }
 
+  const handleCreateRule = async (): Promise<void> => {
+    if (!newRuleFind) return
+    await window.api.createClipboardFormatRule(newRuleFind, newRuleIsRegex, newRuleReplace, newRuleLabel.trim() || undefined)
+    setNewRuleLabel('')
+    setNewRuleFind('')
+    setNewRuleReplace('')
+    setNewRuleIsRegex(false)
+    setCreatingRule(false)
+    reload()
+  }
+
+  const startEditRule = (r: ClipboardFormatRule): void => {
+    setEditingRuleId(r.id)
+    setEditRuleLabel(r.label ?? '')
+    setEditRuleFind(r.find)
+    setEditRuleReplace(r.replace)
+    setEditRuleIsRegex(r.isRegex)
+  }
+
+  const handleSaveEditRule = async (): Promise<void> => {
+    if (!editingRuleId || !editRuleFind) return
+    await window.api.updateClipboardFormatRule(editingRuleId, {
+      find: editRuleFind,
+      isRegex: editRuleIsRegex,
+      replace: editRuleReplace,
+      label: editRuleLabel.trim() || undefined
+    })
+    setEditingRuleId(null)
+    reload()
+  }
+
+  const handleToggleRuleEnabled = async (r: ClipboardFormatRule, enabled: boolean): Promise<void> => {
+    await window.api.setClipboardFormatRuleEnabled(r.id, enabled)
+    reload()
+  }
+
+  const handleDeleteRule = async (id: string): Promise<void> => {
+    await window.api.deleteClipboardFormatRule(id)
+    setDeletingRuleId(null)
+    reload()
+  }
+
+  const handleReorderRules = async (orderedIds: string[]): Promise<void> => {
+    await window.api.reorderClipboardFormatRules(orderedIds)
+    reload()
+  }
+
   const trimmedHistoryQuery = historyQuery.trim().toLowerCase()
   const filteredHistory = trimmedHistoryQuery
     ? history.filter((h) => {
@@ -199,6 +262,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
   const currentFolder = templateFolders.find((f) => f.id === currentFolderId) ?? null
   const folderDrag = useDragReorder(subfolders, (f) => f.id, handleReorderFolders)
   const templateDrag = useDragReorder(visibleTemplates, (t) => t.id, handleReorderTemplates)
+  const ruleDrag = useDragReorder(formatRules, (r) => r.id, handleReorderRules)
 
   const handleAreaContextMenu = async (e: React.MouseEvent): Promise<void> => {
     e.preventDefault()
@@ -280,6 +344,38 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
     }
   }
 
+  const handleRuleAreaContextMenu = async (e: React.MouseEvent): Promise<void> => {
+    e.preventDefault()
+    const result = await window.api.showContextMenu([{ id: 'create-rule', label: '新規ルールを作成' }])
+    if (result === 'create-rule') {
+      setCreatingRule(true)
+      setNewRuleLabel('')
+      setNewRuleFind('')
+      setNewRuleReplace('')
+      setNewRuleIsRegex(false)
+    }
+  }
+
+  const handleRuleContextMenu = async (e: React.MouseEvent, r: ClipboardFormatRule): Promise<void> => {
+    e.preventDefault()
+    e.stopPropagation()
+    const ids = formatRules.map((fr) => fr.id)
+    const index = ids.indexOf(r.id)
+    const result = await window.api.showContextMenu([
+      { id: 'edit', label: '編集' },
+      { id: 'move-up', label: '上に移動', enabled: index > 0 },
+      { id: 'move-down', label: '下に移動', enabled: index < ids.length - 1 },
+      { id: 'sep', type: 'separator' },
+      { id: 'delete', label: '削除' }
+    ])
+    if (result === 'edit') startEditRule(r)
+    else if (result === 'delete') setDeletingRuleId(r.id)
+    else if (result === 'move-up' || result === 'move-down') {
+      const next = swapOrder(ids, r.id, result === 'move-up' ? 'up' : 'down')
+      if (next) handleReorderRules(next)
+    }
+  }
+
   return (
     <div className="clipboard-panel">
       <div className="clipboard-subtabs">
@@ -288,6 +384,9 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
         </button>
         <button className={subTab === 'templates' ? 'active' : ''} onClick={() => setSubTab('templates')}>
           定型文
+        </button>
+        <button className={subTab === 'rules' ? 'active' : ''} onClick={() => setSubTab('rules')}>
+          整形ルール
         </button>
       </div>
 
@@ -534,6 +633,130 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                     {t.label && <div className="clip-item-label">{t.label}</div>}
                     <div className="clip-item-text">{truncate(t.text)}</div>
                     {copiedId === t.id && <span className="clip-copied-badge">コピーしました</span>}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {subTab === 'rules' && (
+        <div className="folder-browser" onContextMenu={handleRuleAreaContextMenu}>
+          <p className="hint hint--emphasis">
+            コピーしたテキストへ上から順に自動で適用される置換ルールです。実際にコピーした内容自体が書き換わります。
+          </p>
+
+          {creatingRule && (
+            <div className="panel clip-edit-form" onContextMenu={(e) => e.stopPropagation()}>
+              <div className="field">
+                <label>ラベル(任意)</label>
+                <input value={newRuleLabel} onChange={(e) => setNewRuleLabel(e.target.value)} placeholder="例: 全角スペースを削除" />
+              </div>
+              <div className="field">
+                <label>検索文字列</label>
+                <input value={newRuleFind} onChange={(e) => setNewRuleFind(e.target.value)} autoFocus />
+              </div>
+              <div className="field field--inline">
+                <label>
+                  <input type="checkbox" checked={newRuleIsRegex} onChange={(e) => setNewRuleIsRegex(e.target.checked)} />
+                  {' '}正規表現として扱う
+                </label>
+              </div>
+              <div className="field">
+                <label>置換後の文字列(空欄なら削除)</label>
+                <input value={newRuleReplace} onChange={(e) => setNewRuleReplace(e.target.value)} />
+              </div>
+              <div className="row">
+                <button className="primary" onClick={handleCreateRule} disabled={!newRuleFind}>
+                  保存
+                </button>
+                <button onClick={() => setCreatingRule(false)}>キャンセル</button>
+              </div>
+            </div>
+          )}
+
+          {formatRules.length === 0 && !creatingRule ? (
+            <div className="panel">
+              <p>整形ルールはまだありません。</p>
+              <p>右クリックして「新規ルールを作成」から追加できます。</p>
+            </div>
+          ) : (
+            <ul className="clip-list">
+              {ruleDrag.orderedItems.map((r) => {
+                const isEditingRule = editingRuleId === r.id || deletingRuleId === r.id
+                const drag = isEditingRule ? null : ruleDrag.getHandlers(r)
+                return editingRuleId === r.id ? (
+                  <li key={r.id} className="panel clip-edit-form">
+                    <div className="field">
+                      <label>ラベル(任意)</label>
+                      <input value={editRuleLabel} onChange={(e) => setEditRuleLabel(e.target.value)} />
+                    </div>
+                    <div className="field">
+                      <label>検索文字列</label>
+                      <input value={editRuleFind} onChange={(e) => setEditRuleFind(e.target.value)} />
+                    </div>
+                    <div className="field field--inline">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={editRuleIsRegex}
+                          onChange={(e) => setEditRuleIsRegex(e.target.checked)}
+                        />
+                        {' '}正規表現として扱う
+                      </label>
+                    </div>
+                    <div className="field">
+                      <label>置換後の文字列(空欄なら削除)</label>
+                      <input value={editRuleReplace} onChange={(e) => setEditRuleReplace(e.target.value)} />
+                    </div>
+                    <div className="row">
+                      <button className="primary" onClick={handleSaveEditRule} disabled={!editRuleFind}>
+                        保存
+                      </button>
+                      <button onClick={() => setEditingRuleId(null)}>キャンセル</button>
+                    </div>
+                  </li>
+                ) : deletingRuleId === r.id ? (
+                  <li key={r.id} className="row inline-form">
+                    <span className="hint">削除しますか?</span>
+                    <button className="danger" onClick={() => handleDeleteRule(r.id)}>
+                      削除する
+                    </button>
+                    <button onClick={() => setDeletingRuleId(null)}>キャンセル</button>
+                  </li>
+                ) : (
+                  <li
+                    key={r.id}
+                    className={`clip-item${drag ? ` ${drag.className}` : ''}`}
+                    onContextMenu={(e) => handleRuleContextMenu(e, r)}
+                    {...(drag
+                      ? {
+                          draggable: drag.draggable,
+                          onDragStart: drag.onDragStart,
+                          onDragEnter: drag.onDragEnter,
+                          onDragOver: drag.onDragOver,
+                          onDrop: drag.onDrop,
+                          onDragEnd: drag.onDragEnd
+                        }
+                      : {})}
+                  >
+                    <div className="clip-item-row">
+                      <div className="clip-item-rule-summary">
+                        {r.label && <div className="clip-item-label">{r.label}</div>}
+                        <div className="clip-item-text">
+                          {r.isRegex ? `/${r.find}/` : r.find} → {r.replace || '(削除)'}
+                        </div>
+                      </div>
+                      <label className="theme-toggle-switch" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={r.enabled}
+                          onChange={(e) => handleToggleRuleEnabled(r, e.target.checked)}
+                        />
+                        <span className="theme-toggle-slider" />
+                      </label>
+                    </div>
                   </li>
                 )
               })}

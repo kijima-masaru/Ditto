@@ -2,7 +2,7 @@ import { app } from 'electron'
 import { randomUUID } from 'crypto'
 import fs from 'fs/promises'
 import path from 'path'
-import type { ClipboardHistoryEntry, ClipboardTemplate, ClipboardTemplateFolder } from '../shared/types'
+import type { ClipboardFormatRule, ClipboardHistoryEntry, ClipboardTemplate, ClipboardTemplateFolder } from '../shared/types'
 
 const MAX_HISTORY = 200
 
@@ -16,6 +16,10 @@ function templatesFilePath(): string {
 
 function templateFoldersFilePath(): string {
   return path.join(app.getPath('userData'), 'clipboard-template-folders.json')
+}
+
+function formatRulesFilePath(): string {
+  return path.join(app.getPath('userData'), 'clipboard-format-rules.json')
 }
 
 async function readJson<T>(filePath: string, fallback: T): Promise<T> {
@@ -240,4 +244,82 @@ export async function deleteTemplateFolder(id: string): Promise<void> {
     }
   }
   if (changed) await fs.writeFile(templatesFilePath(), JSON.stringify(templates, null, 2), 'utf-8')
+}
+
+async function readFormatRules(): Promise<ClipboardFormatRule[]> {
+  const rules = await readJson<ClipboardFormatRule[]>(formatRulesFilePath(), [])
+  // orderが未設定の既存データ(旧バージョン)は配列の並びのまま採番する
+  let needsBackfill = false
+  rules.forEach((r, i) => {
+    if (typeof r.order !== 'number') {
+      r.order = i
+      needsBackfill = true
+    }
+  })
+  if (needsBackfill) await fs.writeFile(formatRulesFilePath(), JSON.stringify(rules, null, 2), 'utf-8')
+  return rules
+}
+
+/** enabledなルールのみを、適用順(order昇順)で返す。clipboardWatcherが自動適用する際に使う */
+export async function listEnabledFormatRules(): Promise<ClipboardFormatRule[]> {
+  const rules = await readFormatRules()
+  return rules
+    .filter((r) => r.enabled)
+    .sort((a, b) => a.order - b.order)
+}
+
+/** 設定画面での一覧表示用。enabled/disabled問わず全件を適用順で返す */
+export async function listFormatRules(): Promise<ClipboardFormatRule[]> {
+  const rules = await readFormatRules()
+  return rules.sort((a, b) => a.order - b.order)
+}
+
+export async function createFormatRule(
+  find: string,
+  isRegex: boolean,
+  replace: string,
+  label?: string
+): Promise<ClipboardFormatRule> {
+  const rules = await readFormatRules()
+  const order = rules.length === 0 ? 0 : Math.max(...rules.map((r) => r.order)) + 1
+  const rule: ClipboardFormatRule = { id: randomUUID(), label, find, isRegex, replace, enabled: true, order }
+  await fs.writeFile(formatRulesFilePath(), JSON.stringify([...rules, rule], null, 2), 'utf-8')
+  return rule
+}
+
+export async function updateFormatRule(
+  id: string,
+  fields: { find: string; isRegex: boolean; replace: string; label?: string }
+): Promise<void> {
+  const rules = await readFormatRules()
+  const rule = rules.find((r) => r.id === id)
+  if (rule) {
+    rule.find = fields.find
+    rule.isRegex = fields.isRegex
+    rule.replace = fields.replace
+    rule.label = fields.label
+  }
+  await fs.writeFile(formatRulesFilePath(), JSON.stringify(rules, null, 2), 'utf-8')
+}
+
+export async function setFormatRuleEnabled(id: string, enabled: boolean): Promise<void> {
+  const rules = await readFormatRules()
+  const rule = rules.find((r) => r.id === id)
+  if (rule) rule.enabled = enabled
+  await fs.writeFile(formatRulesFilePath(), JSON.stringify(rules, null, 2), 'utf-8')
+}
+
+export async function deleteFormatRule(id: string): Promise<void> {
+  const rules = await readFormatRules()
+  await fs.writeFile(formatRulesFilePath(), JSON.stringify(rules.filter((r) => r.id !== id), null, 2), 'utf-8')
+}
+
+/** 指定した順序(ドラッグ&ドロップ結果)通りにorderを振り直す */
+export async function reorderFormatRules(orderedIds: string[]): Promise<void> {
+  const rules = await readFormatRules()
+  orderedIds.forEach((id, index) => {
+    const rule = rules.find((r) => r.id === id)
+    if (rule) rule.order = index
+  })
+  await fs.writeFile(formatRulesFilePath(), JSON.stringify(rules, null, 2), 'utf-8')
 }

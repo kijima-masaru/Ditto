@@ -3,6 +3,7 @@ import { createHash } from 'crypto'
 import * as clipboardStore from './clipboardStore'
 import * as settingsStore from './settingsStore'
 import { runOcrOnImage } from './ocr'
+import { applyFormatRules } from './clipboardFormat'
 import { containsPii, maskText, looksLikePii, anyCategoryEnabled, unionRect, blackOutRegions, type Rect } from './piiDetect'
 import type { ClipboardHistoryEntry, ClipboardPiiProtectionSettings } from '../shared/types'
 
@@ -31,9 +32,17 @@ async function getPiiProtection(): Promise<ClipboardPiiProtectionSettings | null
 }
 
 async function handleNewText(
-  text: string,
+  rawText: string,
   onNewEntry: (entry: ClipboardHistoryEntry) => void
 ): Promise<void> {
+  // 整形・置換ルールをまず適用し、実際にコピーされた内容自体を書き換える(ペースト結果にも反映させる)。
+  // 書き換えた場合、次のポーリングでその変化自体を「新しいコピー」として誤検知しないよう
+  // lastSeenTextを書き換え後の値で更新する
+  const rules = await clipboardStore.listEnabledFormatRules().catch(() => [])
+  const text = applyFormatRules(rawText, rules)
+  if (text !== rawText) clipboard.writeText(text)
+  lastSeenText = text
+
   const protection = await getPiiProtection()
   if (protection && containsPii(text, protection.categories)) {
     if (protection.mode === 'delete') return // 履歴に一切残さない
@@ -107,7 +116,6 @@ export function startClipboardWatcher(onNewEntry: (entry: ClipboardHistoryEntry)
   timer = setInterval(async () => {
     const text = clipboard.readText()
     if (text && text !== lastSeenText) {
-      lastSeenText = text
       await handleNewText(text, onNewEntry)
       // テキストと画像が同時に変化することは通常ないため、この回はここで終える
       return

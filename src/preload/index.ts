@@ -4,6 +4,7 @@ import {
   type AppSettings,
   type AutoMaskCategory,
   type CaptureInfo,
+  type ClipboardFormatRule,
   type ClipboardHistoryEntry,
   type ClipboardPiiProtectionMode,
   type ClipboardTemplate,
@@ -109,6 +110,19 @@ const api = {
     ipcRenderer.invoke(IPC.reorderClipboardTemplateFolders, orderedIds),
   deleteClipboardTemplateFolder: (id: string): Promise<void> =>
     ipcRenderer.invoke(IPC.deleteClipboardTemplateFolder, id),
+
+  listClipboardFormatRules: (): Promise<ClipboardFormatRule[]> => ipcRenderer.invoke(IPC.listClipboardFormatRules),
+  createClipboardFormatRule: (find: string, isRegex: boolean, replace: string, label?: string): Promise<ClipboardFormatRule> =>
+    ipcRenderer.invoke(IPC.createClipboardFormatRule, find, isRegex, replace, label),
+  updateClipboardFormatRule: (
+    id: string,
+    fields: { find: string; isRegex: boolean; replace: string; label?: string }
+  ): Promise<void> => ipcRenderer.invoke(IPC.updateClipboardFormatRule, id, fields),
+  setClipboardFormatRuleEnabled: (id: string, enabled: boolean): Promise<void> =>
+    ipcRenderer.invoke(IPC.setClipboardFormatRuleEnabled, id, enabled),
+  deleteClipboardFormatRule: (id: string): Promise<void> => ipcRenderer.invoke(IPC.deleteClipboardFormatRule, id),
+  reorderClipboardFormatRules: (orderedIds: string[]): Promise<void> =>
+    ipcRenderer.invoke(IPC.reorderClipboardFormatRules, orderedIds),
 
   copyToClipboard: (text: string): Promise<void> => ipcRenderer.invoke(IPC.copyToClipboard, text),
   copyImageToClipboard: (dataUrl: string): Promise<void> => ipcRenderer.invoke(IPC.copyImageToClipboard, dataUrl),

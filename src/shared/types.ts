@@ -129,6 +129,23 @@ export interface ClipboardHistoryEntry {
   copiedAt: string
 }
 
+/**
+ * クリップボードにコピーされたテキストへ自動的に適用する整形・置換ルール。
+ * enabledなもの全てが登録順(order昇順)に、上から順にコピーの都度自動適用される
+ * (実際にコピーされた内容自体を書き換え、履歴にもその結果を保存する)
+ */
+export interface ClipboardFormatRule {
+  id: string
+  label?: string
+  /** 検索文字列。isRegexがtrueの場合は正規表現として解釈する */
+  find: string
+  isRegex: boolean
+  replace: string
+  enabled: boolean
+  /** 適用順(昇順)。ドラッグ&ドロップで並び替えた結果を保持する */
+  order: number
+}
+
 /** ユーザーが登録した定型文 */
 export interface ClipboardTemplate {
   id: string
@@ -346,6 +363,14 @@ export const IPC = {
   renameClipboardTemplateFolder: 'clipboard:rename-template-folder',
   deleteClipboardTemplateFolder: 'clipboard:delete-template-folder',
   reorderClipboardTemplateFolders: 'clipboard:reorder-template-folders',
+
+  // コピー内容へ自動適用する整形・置換ルール
+  listClipboardFormatRules: 'clipboard:list-format-rules',
+  createClipboardFormatRule: 'clipboard:create-format-rule',
+  updateClipboardFormatRule: 'clipboard:update-format-rule',
+  setClipboardFormatRuleEnabled: 'clipboard:set-format-rule-enabled',
+  deleteClipboardFormatRule: 'clipboard:delete-format-rule',
+  reorderClipboardFormatRules: 'clipboard:reorder-format-rules',
 
   // 汎用の右クリックメニュー(テスト一覧・定型文のフォルダ操作/移動サブメニュー等に使う)
   showContextMenu: 'context-menu:show',

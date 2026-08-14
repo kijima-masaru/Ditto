@@ -198,6 +198,28 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     clipboardStore.deleteTemplateFolder(id)
   )
 
+  ipcMain.handle(IPC.listClipboardFormatRules, async () => clipboardStore.listFormatRules())
+
+  ipcMain.handle(IPC.createClipboardFormatRule, async (_e, find: string, isRegex: boolean, replace: string, label?: string) =>
+    clipboardStore.createFormatRule(find, isRegex, replace, label)
+  )
+
+  ipcMain.handle(
+    IPC.updateClipboardFormatRule,
+    async (_e, id: string, fields: { find: string; isRegex: boolean; replace: string; label?: string }) =>
+      clipboardStore.updateFormatRule(id, fields)
+  )
+
+  ipcMain.handle(IPC.setClipboardFormatRuleEnabled, async (_e, id: string, enabled: boolean) =>
+    clipboardStore.setFormatRuleEnabled(id, enabled)
+  )
+
+  ipcMain.handle(IPC.deleteClipboardFormatRule, async (_e, id: string) => clipboardStore.deleteFormatRule(id))
+
+  ipcMain.handle(IPC.reorderClipboardFormatRules, async (_e, orderedIds: string[]) =>
+    clipboardStore.reorderFormatRules(orderedIds)
+  )
+
   ipcMain.handle(IPC.copyToClipboard, async (_e, text: string) => {
     clipboard.writeText(text)
   })

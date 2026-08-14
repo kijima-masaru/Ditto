@@ -884,6 +884,19 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   text-overflow: ellipsis;
 }
 
+/* 整形ルール等、1行の中でラベル・要約とON/OFFトグルを両端に配置したい場合に使う */
+.clip-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.clip-item-rule-summary {
+  min-width: 0;
+  flex: 1;
+}
+
 /* クリップボード履歴の画像エントリ。サムネイル+OCR認識テキスト(検索対象)を横並びで表示する */
 .clip-item-image-row {
   display: flex;
