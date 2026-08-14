@@ -197,6 +197,11 @@ export interface AppSettings {
   windowSizeLocked: boolean
   /** trueならDittoのウィンドウを常に他のアプリより前面に表示する */
   alwaysOnTop: boolean
+  /**
+   * trueなら、スクリーンショット・失敗時エビデンス画像の保存前にOCRで文字を検出し、
+   * 電話番号・メールアドレス等の個人情報らしき箇所を自動で黒塗りする
+   */
+  autoMaskSensitiveInfo: boolean
 }
 
 /** 設定画面の「アップデートを確認」ボタンの状態表示に使う */
@@ -316,6 +321,7 @@ export const IPC = {
   setTheme: 'settings:set-theme',
   setWindowSizeLocked: 'settings:set-window-size-locked',
   setAlwaysOnTop: 'settings:set-always-on-top',
+  setAutoMaskSensitiveInfo: 'settings:set-auto-mask-sensitive-info',
   startHotkeyCapture: 'hotkey-capture:start',
   cancelHotkeyCapture: 'hotkey-capture:cancel',
   hotkeyCapturePreview: 'hotkey-capture:preview', // main -> renderer push

@@ -307,6 +307,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     return settings
   })
 
+  ipcMain.handle(IPC.setAutoMaskSensitiveInfo, async (_e, enabled: boolean) => {
+    return settingsStore.setAutoMaskSensitiveInfo(enabled)
+  })
+
   ipcMain.handle(IPC.readDebugLog, async () => debugLog.readLog())
 
   ipcMain.handle(IPC.openDebugLogFolder, async () => debugLog.openLogFolder())

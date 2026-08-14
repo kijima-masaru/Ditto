@@ -2,6 +2,7 @@ import { BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { IPC } from '../shared/types'
+import * as piiMask from './piiMask'
 
 /**
  * スクリーンショットの確認・注釈編集画面。Ditto本体(小さなサイドバー的ウィンドウ)の中に
@@ -52,7 +53,10 @@ export function open(dataUrl: string): void {
 }
 
 export function initScreenshotEditorWindow(getMainWindow: () => BrowserWindow | null): void {
-  ipcMain.handle(IPC.openScreenshotEditor, (_e, dataUrl: string) => open(dataUrl))
+  ipcMain.handle(IPC.openScreenshotEditor, async (_e, dataUrl: string) => {
+    const masked = await piiMask.maskDataUrlIfEnabled(dataUrl)
+    open(masked)
+  })
 
   ipcMain.on(IPC.notifyScreenshotSaved, (_e, path: string) => {
     getMainWindow()?.webContents.send(IPC.screenshotEditorSaved, path)

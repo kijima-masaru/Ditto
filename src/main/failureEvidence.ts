@@ -1,6 +1,7 @@
 import { desktopCapturer, screen } from 'electron'
 import log from './logger'
 import * as screenCapture from './screenCapture'
+import * as piiMask from './piiMask'
 import type { WindowBounds } from './adapters/windowTargetBase'
 
 /**
@@ -49,8 +50,9 @@ export async function captureFailureEvidence(
     })
     if (sources.length === 0) return null
     const source = sources.find((s) => s.display_id === String(display.id)) ?? sources[0]
-    const bytes = source.thumbnail.toPNG()
+    let bytes = source.thumbnail.toPNG()
     if (bytes.length === 0) return null
+    bytes = await piiMask.maskPngIfEnabled(bytes)
 
     const stamp = new Date().toISOString().replace(/[:.]/g, '-')
     const fileName = `失敗-${sanitizeForFileName(testCaseName)}-step${stepIndex + 1}-${stamp}`

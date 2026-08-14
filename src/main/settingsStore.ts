@@ -15,7 +15,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   ],
   theme: 'light',
   windowSizeLocked: false,
-  alwaysOnTop: false
+  alwaysOnTop: false,
+  autoMaskSensitiveInfo: false
 }
 
 function settingsFilePath(): string {
@@ -33,7 +34,8 @@ export async function getSettings(): Promise<AppSettings> {
       hotkeyBindings: Array.isArray(parsed.hotkeyBindings) ? parsed.hotkeyBindings : DEFAULT_SETTINGS.hotkeyBindings,
       theme: parsed.theme ?? DEFAULT_SETTINGS.theme,
       windowSizeLocked: parsed.windowSizeLocked ?? DEFAULT_SETTINGS.windowSizeLocked,
-      alwaysOnTop: parsed.alwaysOnTop ?? DEFAULT_SETTINGS.alwaysOnTop
+      alwaysOnTop: parsed.alwaysOnTop ?? DEFAULT_SETTINGS.alwaysOnTop,
+      autoMaskSensitiveInfo: parsed.autoMaskSensitiveInfo ?? DEFAULT_SETTINGS.autoMaskSensitiveInfo
     }
   } catch {
     return { ...DEFAULT_SETTINGS }
@@ -68,6 +70,13 @@ export async function setWindowSizeLocked(locked: boolean): Promise<AppSettings>
 export async function setAlwaysOnTop(alwaysOnTop: boolean): Promise<AppSettings> {
   const settings = await getSettings()
   settings.alwaysOnTop = alwaysOnTop
+  await writeSettings(settings)
+  return settings
+}
+
+export async function setAutoMaskSensitiveInfo(enabled: boolean): Promise<AppSettings> {
+  const settings = await getSettings()
+  settings.autoMaskSensitiveInfo = enabled
   await writeSettings(settings)
   return settings
 }

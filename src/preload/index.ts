@@ -128,6 +128,8 @@ const api = {
     ipcRenderer.invoke(IPC.setWindowSizeLocked, locked),
   setAlwaysOnTop: (alwaysOnTop: boolean): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setAlwaysOnTop, alwaysOnTop),
+  setAutoMaskSensitiveInfo: (enabled: boolean): Promise<AppSettings> =>
+    ipcRenderer.invoke(IPC.setAutoMaskSensitiveInfo, enabled),
   readDebugLog: (): Promise<string> => ipcRenderer.invoke(IPC.readDebugLog),
   openDebugLogFolder: (): Promise<void> => ipcRenderer.invoke(IPC.openDebugLogFolder),
   getAppVersion: (): Promise<string> => ipcRenderer.invoke(IPC.getAppVersion),

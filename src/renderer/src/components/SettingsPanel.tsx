@@ -109,6 +109,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const [testFolders, setTestFolders] = useState<TestFolder[]>([])
   const [windowSizeLocked, setWindowSizeLocked] = useState(false)
   const [alwaysOnTop, setAlwaysOnTop] = useState(false)
+  const [autoMaskSensitiveInfo, setAutoMaskSensitiveInfo] = useState(false)
 
   const [showLog, setShowLog] = useState(false)
   const [logText, setLogText] = useState('')
@@ -124,6 +125,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
       setHotkeyBindings(s.hotkeyBindings)
       setWindowSizeLocked(s.windowSizeLocked)
       setAlwaysOnTop(s.alwaysOnTop)
+      setAutoMaskSensitiveInfo(s.autoMaskSensitiveInfo)
       setLoading(false)
     })
     window.api.getAppVersion().then(setAppVersion)
@@ -197,6 +199,11 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const handleAlwaysOnTopChange = async (value: boolean): Promise<void> => {
     setAlwaysOnTop(value)
     await window.api.setAlwaysOnTop(value)
+  }
+
+  const handleAutoMaskChange = async (value: boolean): Promise<void> => {
+    setAutoMaskSensitiveInfo(value)
+    await window.api.setAutoMaskSensitiveInfo(value)
   }
 
   const loadLog = async (): Promise<void> => {
@@ -368,6 +375,32 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
                   type="checkbox"
                   checked={alwaysOnTop}
                   onChange={(e) => handleAlwaysOnTopChange(e.target.checked)}
+                />
+                <span className="theme-toggle-slider" />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="settings-item">
+          <div className="settings-item-row">
+            <span className="settings-item-label">
+              機密情報の自動マスキング
+              <HelpIcon
+                text={
+                  'ONにすると、スクリーンショットや自動テスト失敗時のエビデンス画像を保存する前に、\n' +
+                  '電話番号・メールアドレス・郵便番号・クレジットカード番号らしき文字列をOCRで検出し、自動で黒塗りします。\n' +
+                  '画面録画(動画)には適用されません。処理のぶん、保存に数秒かかる場合があります。'
+                }
+              />
+            </span>
+            <div className="settings-item-control">
+              <span className="toggle-state-label">{autoMaskSensitiveInfo ? 'ON' : 'OFF'}</span>
+              <label className="theme-toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={autoMaskSensitiveInfo}
+                  onChange={(e) => handleAutoMaskChange(e.target.checked)}
                 />
                 <span className="theme-toggle-slider" />
               </label>
