@@ -97,6 +97,7 @@ const STROKE_WIDTH_PX = 3
 const DRAG_THRESHOLD = 3
 const LINE_HEIGHT_OPTIONS = [1, 1.15, 1.5, 2]
 const MIN_CROP_FRAC = 0.05
+const MAX_HISTORY = 50
 
 function clamp01(v: number): number {
   return Math.min(1, Math.max(0, v))
@@ -277,10 +278,37 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
     startY: number
     start: Annotation
     moved: boolean
+    beforeAnnotations: Annotation[]
   } | null>(null)
   const drawingRef = useRef<Point[] | null>(null)
   const justFinishedDrawingRef = useRef(false)
   const nextOffsetRef = useRef(0)
+
+  // --- Undo/Redoの履歴管理 ---
+  // annotationsRef: setState前後のタイミング差を気にせず「直前の確定状態」を
+  // どのハンドラーからも参照できるようにするためのミラー
+  const annotationsRef = useRef<Annotation[]>(annotations)
+  useEffect(() => {
+    annotationsRef.current = annotations
+  }, [annotations])
+  // currentImageUrlRef: トリミング適用でcurrentImageUrlが変わるため、Undoでは
+  // 注釈だけでなく画像そのものも巻き戻す必要がある。そのための最新値ミラー
+  const currentImageUrlRef = useRef<string>(currentImageUrl)
+  useEffect(() => {
+    currentImageUrlRef.current = currentImageUrl
+  }, [currentImageUrl])
+  interface HistoryEntry {
+    annotations: Annotation[]
+    imageUrl: string
+  }
+  const undoStackRef = useRef<HistoryEntry[]>([])
+  const redoStackRef = useRef<HistoryEntry[]>([])
+  // 履歴の中身自体はrefで持つが、Undo/Redoボタンのdisabled切り替えのため
+  // 履歴が変化するたびにこのstateだけインクリメントして再レンダリングを促す
+  const [historyVersion, setHistoryVersion] = useState(0)
+  // テキスト編集モードに入った時点のannotationsスナップショット。
+  // exitTextEditing時に「編集で実際に変化していれば」1回だけ履歴に積む
+  const textEditSnapshotRef = useRef<Annotation[] | null>(null)
 
   const recomputeSize = useCallback(() => {
     const img = imgRef.current
@@ -310,16 +338,75 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
     setAnnotations((prev) => prev.map((a) => (a.id === id ? ({ ...a, ...patch } as Annotation) : a)))
   }
 
+  // Undo履歴を1件積んでから更新する版。プロパティパネルのボタン類(色・線種・
+  // 矢印の向き・太字/斜体/下線・配置・行間隔・文字サイズなど)から使う。
+  // 画像URL(トリミング適用前の値)も一緒に保存し、Undo時に注釈と画像の
+  // 対応がずれないようにする
+  const pushHistory = useCallback((snapshot: Annotation[]): void => {
+    undoStackRef.current.push({ annotations: snapshot, imageUrl: currentImageUrlRef.current })
+    if (undoStackRef.current.length > MAX_HISTORY) undoStackRef.current.shift()
+    redoStackRef.current = []
+    setHistoryVersion((v) => v + 1)
+  }, [])
+
+  const updateAnnotationWithHistory = (id: string, patch: AnnotationPatch): void => {
+    pushHistory(annotationsRef.current)
+    updateAnnotation(id, patch)
+    // プロパティパネル経由の変更は種類を問わずここを通るため、記憶したい
+    // スタイル項目が含まれていれば一箇所でまとめてlocalStorageへ反映する
+    const target = annotationsRef.current.find((a) => a.id === id)
+    if (target) rememberStyle(target.kind, patch)
+  }
+
+  const undo = useCallback((): void => {
+    const entry = undoStackRef.current.pop()
+    if (!entry) return
+    redoStackRef.current.push({ annotations: annotationsRef.current, imageUrl: currentImageUrlRef.current })
+    if (redoStackRef.current.length > MAX_HISTORY) redoStackRef.current.shift()
+    setAnnotations(entry.annotations)
+    setCurrentImageUrl(entry.imageUrl)
+    setSelectedId(null)
+    setEditingTextId(null)
+    textEditSnapshotRef.current = null
+    setHistoryVersion((v) => v + 1)
+  }, [])
+
+  const redo = useCallback((): void => {
+    const entry = redoStackRef.current.pop()
+    if (!entry) return
+    undoStackRef.current.push({ annotations: annotationsRef.current, imageUrl: currentImageUrlRef.current })
+    if (undoStackRef.current.length > MAX_HISTORY) undoStackRef.current.shift()
+    setAnnotations(entry.annotations)
+    setCurrentImageUrl(entry.imageUrl)
+    setSelectedId(null)
+    setEditingTextId(null)
+    textEditSnapshotRef.current = null
+    setHistoryVersion((v) => v + 1)
+  }, [])
+
   const deleteAnnotation = (id: string): void => {
+    pushHistory(annotationsRef.current)
     setAnnotations((prev) => prev.filter((a) => a.id !== id))
     setSelectedId((cur) => (cur === id ? null : cur))
     setEditingTextId((cur) => (cur === id ? null : cur))
   }
 
-  const exitTextEditing = useCallback((id: string): void => {
-    setEditingTextId((cur) => (cur === id ? null : cur))
-    setAnnotations((prev) => prev.filter((a) => a.id !== id || a.kind !== 'text' || a.text.trim() !== ''))
-  }, [])
+  const exitTextEditing = useCallback(
+    (id: string): void => {
+      setEditingTextId((cur) => (cur === id ? null : cur))
+      const before = textEditSnapshotRef.current
+      textEditSnapshotRef.current = null
+      if (before) {
+        const beforeText = before.find((a) => a.id === id)
+        const currentText = annotationsRef.current.find((a) => a.id === id)
+        // updateAnnotationは変更のたびに新しいオブジェクトを作るため、参照が
+        // 変わっていれば編集中に実際にテキストが変化したと判定できる
+        if (beforeText !== currentText) pushHistory(before)
+      }
+      setAnnotations((prev) => prev.filter((a) => a.id !== id || a.kind !== 'text' || a.text.trim() !== ''))
+    },
+    [pushHistory]
+  )
 
   const nextId = (): string => {
     const offset = nextOffsetRef.current
@@ -330,6 +417,7 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
   const nextJitter = (): number => (nextOffsetRef.current % 5) * 0.03
 
   const addText = (): void => {
+    pushHistory(annotationsRef.current)
     const id = nextId()
     const jitter = nextJitter()
     const next: TextAnnotation = {
@@ -338,24 +426,18 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
       xFrac: 0.5 + jitter,
       yFrac: 0.5 + jitter,
       text: '',
-      fontColor: SIMPLE_COLORS_DEFAULT,
-      bgColor: null,
-      borderColor: null,
-      fontSize: DEFAULT_FONT_SIZE,
-      bold: false,
-      italic: false,
-      underline: false,
-      align: 'center',
-      lineHeight: 1.15,
-      spaceBefore: false,
-      spaceAfter: false
+      ...getLastTextStyle()
     }
+    // 追加直後にそのまま編集モードへ入るため、「編集開始前」のスナップショットは
+    // 追加後の状態(このnextを含む配列)にしておく
+    textEditSnapshotRef.current = [...annotationsRef.current, next]
     setAnnotations((prev) => [...prev, next])
     setSelectedId(id)
     setEditingTextId(id)
   }
 
   const addShape = (kind: ShapeKind): void => {
+    pushHistory(annotationsRef.current)
     const id = nextId()
     const jitter = nextJitter()
     const next: ShapeAnnotation = {
@@ -365,14 +447,14 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
       yFrac: 0.5 - DEFAULT_SHAPE_H / 2 + jitter,
       widthFrac: DEFAULT_SHAPE_W,
       heightFrac: DEFAULT_SHAPE_H,
-      borderColor: SIMPLE_COLORS_DEFAULT,
-      bgColor: null
+      ...getLastShapeStyle()
     }
     setAnnotations((prev) => [...prev, next])
     setSelectedId(id)
   }
 
   const addLine = (): void => {
+    pushHistory(annotationsRef.current)
     const id = nextId()
     const jitter = nextJitter()
     const x1 = 0.5 - DEFAULT_LINE_HALF + jitter
@@ -381,15 +463,13 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
     const next: LineAnnotation = {
       id,
       kind: 'line',
-      pathStyle: 'straight',
-      arrowEnds: 'none',
       x1Frac: x1,
       y1Frac: y,
       x2Frac: x2,
       y2Frac: y,
       auxFrac: { x: (x1 + x2) / 2, y },
       kagiPoints: [],
-      color: SIMPLE_COLORS_DEFAULT
+      ...getLastLineStyle()
     }
     setAnnotations((prev) => [...prev, next])
     setSelectedId(id)
@@ -403,6 +483,7 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
   const reshapeFreehand = (a: FreehandAnnotation, target: 'curve' | 'kagi'): void => {
     const pts = a.points
     if (pts.length < 2) return
+    pushHistory(annotationsRef.current)
     const start = pts[0]
     const end = pts[pts.length - 1]
     let aux: Point
@@ -479,8 +560,9 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
     setDrawingPoints(null)
     setDrawTool(null)
     if (!points || points.length < 2) return
+    pushHistory(annotationsRef.current)
     const id = nextId()
-    const next: FreehandAnnotation = { id, kind: 'freehand', points, color: SIMPLE_COLORS_DEFAULT }
+    const next: FreehandAnnotation = { id, kind: 'freehand', points, color: getLastFreehandColor() }
     setAnnotations((prev) => [...prev, next])
     setSelectedId(id)
     // pointerdown+upが完了すると直後にブラウザがclickイベントも発火し、それが
@@ -497,7 +579,16 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
     if (a.kind === 'text' && editingTextId === a.id) return
     if (drawTool) return
     e.stopPropagation()
-    dragRef.current = { id: a.id, mode, bendIndex, startX: e.clientX, startY: e.clientY, start: { ...a }, moved: false }
+    dragRef.current = {
+      id: a.id,
+      mode,
+      bendIndex,
+      startX: e.clientX,
+      startY: e.clientY,
+      start: { ...a },
+      moved: false,
+      beforeAnnotations: annotationsRef.current
+    }
     window.addEventListener('pointermove', handleWindowPointerMove)
     window.addEventListener('pointerup', handleWindowPointerUp)
   }
@@ -578,10 +669,14 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
     dragRef.current = null
     if (!drag.moved) {
       if (drag.start.kind === 'text' && selectedId === drag.id) {
+        textEditSnapshotRef.current = annotationsRef.current
         setEditingTextId(drag.id)
       } else {
         setSelectedId(drag.id)
       }
+    } else {
+      // 実際にドラッグで動かした場合のみ、ドラッグ開始前の状態を1回だけ履歴に積む
+      pushHistory(drag.beforeAnnotations)
     }
   }
 
@@ -696,6 +791,8 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
     const remap = (p: Point): Point => ({ x: (p.x - rect.x) / rect.w, y: (p.y - rect.y) / rect.h })
     const intersects = (x0: number, y0: number, x1: number, y1: number): boolean => x1 > 0 && x0 < 1 && y1 > 0 && y0 < 1
 
+    // 座標再マッピングで注釈が消えることもある不可逆操作なので必ず履歴に積む
+    pushHistory(annotationsRef.current)
     setAnnotations((prev) =>
       prev
         .map((a): Annotation => {
@@ -755,7 +852,27 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
-      if (!selectedId || editingTextId) return
+      // テキスト編集中はtextarea標準のUndo/Redoと衝突させないため、
+      // Ctrl+Z等のショートカットも含めてここでは一切発火させない
+      if (editingTextId) return
+
+      const isMod = e.ctrlKey || e.metaKey
+      if (isMod && !e.altKey) {
+        const key = e.key.toLowerCase()
+        if (key === 'z') {
+          e.preventDefault()
+          if (e.shiftKey) redo()
+          else undo()
+          return
+        }
+        if (key === 'y') {
+          e.preventDefault()
+          redo()
+          return
+        }
+      }
+
+      if (!selectedId) return
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault()
         deleteAnnotation(selectedId)
@@ -765,14 +882,14 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [selectedId, editingTextId])
+  }, [selectedId, editingTextId, undo, redo])
 
   const selected = annotations.find((a) => a.id === selectedId) ?? null
 
   const changeSelectedFontSize = (delta: number): void => {
     if (!selected || selected.kind !== 'text') return
     const next = Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, selected.fontSize + delta))
-    updateAnnotation(selected.id, { fontSize: next })
+    updateAnnotationWithHistory(selected.id, { fontSize: next })
   }
 
   const handleSave = async (): Promise<void> => {
@@ -908,6 +1025,14 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
 
   const W = renderedSize.width
   const H = renderedSize.height
+  // undoStackRef/redoStackRefの中身はrefなので直接は再レンダリングを起こさないが、
+  // push/undo/redoのたびにhistoryVersionが変化して再レンダリングされるため、
+  // その時点の最新の中身をここで読み直せば表示に反映される
+  const canUndo = historyVersion >= 0 && undoStackRef.current.length > 0
+  const canRedo = historyVersion >= 0 && redoStackRef.current.length > 0
+  // フリーハンド描画中のプレビュー線・新規フリーハンド注釈の初期色として
+  // 直前に使った色を反映する(handleDrawingPointerUpからも同じ値を参照する)
+  const lastFreehandColor = getLastFreehandColor()
 
   return (
     <div className="screenshot-editor-page">
@@ -925,28 +1050,43 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
           </div>
         ) : (
           <div className="se-icon-group">
-            <button className="se-icon-btn" onClick={addText} title="テキストを追加">
+            <button className="se-tool-btn" onClick={undo} disabled={!canUndo} title="元に戻す (Ctrl+Z)">
+              <UndoIcon />
+              <span className="se-tool-btn-label">戻す</span>
+            </button>
+            <button className="se-tool-btn" onClick={redo} disabled={!canRedo} title="やり直す (Ctrl+Y)">
+              <RedoIcon />
+              <span className="se-tool-btn-label">進む</span>
+            </button>
+            <span className="se-sep" />
+            <button className="se-tool-btn" onClick={addText} title="テキストを追加">
               <TextGlyph />
+              <span className="se-tool-btn-label">テキスト</span>
             </button>
-            <button className="se-icon-btn" onClick={() => addShape('rect')} title="四角形を追加">
+            <button className="se-tool-btn" onClick={() => addShape('rect')} title="四角形を追加">
               <RectIcon />
+              <span className="se-tool-btn-label">四角形</span>
             </button>
-            <button className="se-icon-btn" onClick={() => addShape('ellipse')} title="楕円を追加">
+            <button className="se-tool-btn" onClick={() => addShape('ellipse')} title="楕円を追加">
               <EllipseIcon />
+              <span className="se-tool-btn-label">楕円</span>
             </button>
-            <button className="se-icon-btn" onClick={addLine} title="線を追加">
+            <button className="se-tool-btn" onClick={addLine} title="線を追加">
               <LineIcon />
+              <span className="se-tool-btn-label">線</span>
             </button>
             <button
-              className={`se-icon-btn${drawTool === 'freehand' ? ' active' : ''}`}
+              className={`se-tool-btn${drawTool === 'freehand' ? ' active' : ''}`}
               onClick={startFreehand}
               title="フリーハンドで描く"
             >
               <PenIcon />
+              <span className="se-tool-btn-label">ペン</span>
             </button>
             <span className="se-sep" />
-            <button className="se-icon-btn" onClick={startCrop} title="トリミング">
+            <button className="se-tool-btn" onClick={startCrop} title="トリミング">
               <CropIcon />
+              <span className="se-tool-btn-label">トリミング</span>
             </button>
           </div>
         )}
@@ -954,7 +1094,7 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
         {!cropMode && selected && selected.kind === 'text' && (
           <TextProperties
             annotation={selected}
-            onChange={(patch) => updateAnnotation(selected.id, patch)}
+            onChange={(patch) => updateAnnotationWithHistory(selected.id, patch)}
             onFontSizeDelta={changeSelectedFontSize}
           />
         )}
@@ -963,14 +1103,14 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
           <div className="se-icon-group se-icon-group--divider">
             <ColorPicker
               value={selected.borderColor}
-              onChange={(c) => updateAnnotation(selected.id, { borderColor: c })}
+              onChange={(c) => updateAnnotationWithHistory(selected.id, { borderColor: c })}
               allowNone
               icon={<BorderColorIcon />}
               title="枠線の色"
             />
             <ColorPicker
               value={selected.bgColor}
-              onChange={(c) => updateAnnotation(selected.id, { bgColor: c })}
+              onChange={(c) => updateAnnotationWithHistory(selected.id, { bgColor: c })}
               allowNone
               icon={<FillColorIcon />}
               title="塗りつぶしの色"
@@ -982,14 +1122,14 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
           <div className="se-icon-group se-icon-group--divider">
             <button
               className={`se-icon-btn${selected.pathStyle === 'straight' ? ' active' : ''}`}
-              onClick={() => updateAnnotation(selected.id, { pathStyle: 'straight' })}
+              onClick={() => updateAnnotationWithHistory(selected.id, { pathStyle: 'straight' })}
               title="直線"
             >
               <LineIcon />
             </button>
             <button
               className={`se-icon-btn${selected.pathStyle === 'curve' ? ' active' : ''}`}
-              onClick={() => updateAnnotation(selected.id, { pathStyle: 'curve' })}
+              onClick={() => updateAnnotationWithHistory(selected.id, { pathStyle: 'curve' })}
               title="曲線"
             >
               <CurveIcon />
@@ -997,7 +1137,7 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
             <button
               className={`se-icon-btn${selected.pathStyle === 'kagi' ? ' active' : ''}`}
               onClick={() =>
-                updateAnnotation(selected.id, {
+                updateAnnotationWithHistory(selected.id, {
                   pathStyle: 'kagi',
                   kagiPoints: selected.kagiPoints.length > 0 ? selected.kagiPoints : [{ x: selected.x2Frac, y: selected.y1Frac }]
                 })
@@ -1009,28 +1149,28 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
             <span className="se-sep" />
             <button
               className={`se-icon-btn${selected.arrowEnds === 'none' ? ' active' : ''}`}
-              onClick={() => updateAnnotation(selected.id, { arrowEnds: 'none' })}
+              onClick={() => updateAnnotationWithHistory(selected.id, { arrowEnds: 'none' })}
               title="矢印なし"
             >
               <ArrowNoneIcon />
             </button>
             <button
               className={`se-icon-btn${selected.arrowEnds === 'start' ? ' active' : ''}`}
-              onClick={() => updateAnnotation(selected.id, { arrowEnds: 'start' })}
+              onClick={() => updateAnnotationWithHistory(selected.id, { arrowEnds: 'start' })}
               title="矢印(始点)"
             >
               <ArrowStartIcon />
             </button>
             <button
               className={`se-icon-btn${selected.arrowEnds === 'end' ? ' active' : ''}`}
-              onClick={() => updateAnnotation(selected.id, { arrowEnds: 'end' })}
+              onClick={() => updateAnnotationWithHistory(selected.id, { arrowEnds: 'end' })}
               title="矢印(終点)"
             >
               <ArrowEndIcon />
             </button>
             <button
               className={`se-icon-btn${selected.arrowEnds === 'both' ? ' active' : ''}`}
-              onClick={() => updateAnnotation(selected.id, { arrowEnds: 'both' })}
+              onClick={() => updateAnnotationWithHistory(selected.id, { arrowEnds: 'both' })}
               title="矢印(両端)"
             >
               <ArrowBothIcon />
@@ -1038,7 +1178,7 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
             <span className="se-sep" />
             <ColorPicker
               value={selected.color}
-              onChange={(c) => updateAnnotation(selected.id, { color: c ?? SIMPLE_COLORS_DEFAULT })}
+              onChange={(c) => updateAnnotationWithHistory(selected.id, { color: c ?? SIMPLE_COLORS_DEFAULT })}
               icon={<LineColorIcon />}
               title="線の色"
             />
@@ -1056,7 +1196,7 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
             <span className="se-sep" />
             <ColorPicker
               value={selected.color}
-              onChange={(c) => updateAnnotation(selected.id, { color: c ?? SIMPLE_COLORS_DEFAULT })}
+              onChange={(c) => updateAnnotationWithHistory(selected.id, { color: c ?? SIMPLE_COLORS_DEFAULT })}
               icon={<LineColorIcon />}
               title="線の色"
             />
@@ -1096,7 +1236,7 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
               style={{ pointerEvents: cropMode ? 'none' : undefined }}
             >
               {drawingPoints && drawingPoints.length > 1 && (
-                <path d={smoothPathD(drawingPoints, W, H)} fill="none" stroke={SIMPLE_COLORS_DEFAULT} strokeWidth={STROKE_WIDTH_PX} strokeLinecap="round" strokeLinejoin="round" />
+                <path d={smoothPathD(drawingPoints, W, H)} fill="none" stroke={lastFreehandColor} strokeWidth={STROKE_WIDTH_PX} strokeLinecap="round" strokeLinejoin="round" />
               )}
               {annotations.map((a) => {
                 if (a.kind === 'rect' || a.kind === 'ellipse') {
@@ -1370,6 +1510,158 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
 
 const SIMPLE_COLORS_DEFAULT = '#ff3b30'
 
+// --- 直前に使った注釈スタイルの記憶 ---
+// 種類(text/shape/line/freehand)ごとに直前使用したスタイルをlocalStorageへ
+// 永続化し、次回の新規作成時の初期値として使う。「shape」はrect/ellipse共通。
+const LAST_STYLES_KEY = 'ditto:lastAnnotationStyles'
+
+interface LastTextStyle {
+  fontColor?: string
+  bgColor?: string | null
+  borderColor?: string | null
+  fontSize?: number
+  bold?: boolean
+  italic?: boolean
+  underline?: boolean
+  align?: TextAlign
+  lineHeight?: number
+  spaceBefore?: boolean
+  spaceAfter?: boolean
+}
+interface LastShapeStyle {
+  borderColor?: string | null
+  bgColor?: string | null
+}
+interface LastLineStyle {
+  pathStyle?: LinePathStyle
+  arrowEnds?: ArrowEnds
+  color?: string
+}
+interface LastFreehandStyle {
+  color?: string
+}
+interface LastAnnotationStyles {
+  text?: LastTextStyle
+  shape?: LastShapeStyle
+  line?: LastLineStyle
+  freehand?: LastFreehandStyle
+}
+
+function loadLastStyles(): LastAnnotationStyles {
+  try {
+    const raw = window.localStorage.getItem(LAST_STYLES_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as LastAnnotationStyles
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * プロパティパネルでの変更(patch)のうち、記憶対象のフィールドだけを
+ * annotationKindに応じてlocalStorageへ書き足す。記憶対象外のフィールドしか
+ * 含まないpatch(位置やサイズなど)の場合は何もしない。
+ */
+function rememberStyle(annotationKind: Annotation['kind'], patch: AnnotationPatch): void {
+  const current = loadLastStyles()
+  let next: LastAnnotationStyles | null = null
+
+  if (annotationKind === 'text') {
+    const p: LastTextStyle = {}
+    if ('fontColor' in patch) p.fontColor = patch.fontColor
+    if ('bgColor' in patch) p.bgColor = patch.bgColor
+    if ('borderColor' in patch) p.borderColor = patch.borderColor
+    if ('fontSize' in patch) p.fontSize = patch.fontSize
+    if ('bold' in patch) p.bold = patch.bold
+    if ('italic' in patch) p.italic = patch.italic
+    if ('underline' in patch) p.underline = patch.underline
+    if ('align' in patch) p.align = patch.align
+    if ('lineHeight' in patch) p.lineHeight = patch.lineHeight
+    if ('spaceBefore' in patch) p.spaceBefore = patch.spaceBefore
+    if ('spaceAfter' in patch) p.spaceAfter = patch.spaceAfter
+    if (Object.keys(p).length > 0) next = { ...current, text: { ...current.text, ...p } }
+  } else if (annotationKind === 'rect' || annotationKind === 'ellipse') {
+    const p: LastShapeStyle = {}
+    if ('borderColor' in patch) p.borderColor = patch.borderColor
+    if ('bgColor' in patch) p.bgColor = patch.bgColor
+    if (Object.keys(p).length > 0) next = { ...current, shape: { ...current.shape, ...p } }
+  } else if (annotationKind === 'line') {
+    const p: LastLineStyle = {}
+    if ('pathStyle' in patch) p.pathStyle = patch.pathStyle
+    if ('arrowEnds' in patch) p.arrowEnds = patch.arrowEnds
+    if ('color' in patch) p.color = patch.color
+    if (Object.keys(p).length > 0) next = { ...current, line: { ...current.line, ...p } }
+  } else if (annotationKind === 'freehand') {
+    const p: LastFreehandStyle = {}
+    if ('color' in patch) p.color = patch.color
+    if (Object.keys(p).length > 0) next = { ...current, freehand: { ...current.freehand, ...p } }
+  }
+
+  if (!next) return
+  try {
+    window.localStorage.setItem(LAST_STYLES_KEY, JSON.stringify(next))
+  } catch {
+    // localStorageが使えない/容量超過の場合は記憶を諦める
+  }
+}
+
+function isTextAlign(v: unknown): v is TextAlign {
+  return v === 'left' || v === 'center' || v === 'right'
+}
+function isLinePathStyle(v: unknown): v is LinePathStyle {
+  return v === 'straight' || v === 'curve' || v === 'kagi'
+}
+function isArrowEnds(v: unknown): v is ArrowEnds {
+  return v === 'none' || v === 'start' || v === 'end' || v === 'both'
+}
+
+/** 新規テキスト注釈の初期値。記憶された値があればそれを使い、なければ既存の固定デフォルトへフォールバック */
+function getLastTextStyle(): Pick<
+  TextAnnotation,
+  'fontColor' | 'bgColor' | 'borderColor' | 'fontSize' | 'bold' | 'italic' | 'underline' | 'align' | 'lineHeight' | 'spaceBefore' | 'spaceAfter'
+> {
+  const s = loadLastStyles().text ?? {}
+  return {
+    fontColor: typeof s.fontColor === 'string' ? s.fontColor : SIMPLE_COLORS_DEFAULT,
+    bgColor: typeof s.bgColor === 'string' ? s.bgColor : null,
+    borderColor: typeof s.borderColor === 'string' ? s.borderColor : null,
+    fontSize: typeof s.fontSize === 'number' && Number.isFinite(s.fontSize) ? s.fontSize : DEFAULT_FONT_SIZE,
+    bold: typeof s.bold === 'boolean' ? s.bold : false,
+    italic: typeof s.italic === 'boolean' ? s.italic : false,
+    underline: typeof s.underline === 'boolean' ? s.underline : false,
+    align: isTextAlign(s.align) ? s.align : 'center',
+    lineHeight: typeof s.lineHeight === 'number' && Number.isFinite(s.lineHeight) ? s.lineHeight : 1.15,
+    spaceBefore: typeof s.spaceBefore === 'boolean' ? s.spaceBefore : false,
+    spaceAfter: typeof s.spaceAfter === 'boolean' ? s.spaceAfter : false
+  }
+}
+
+/** 新規図形(rect/ellipse共通)注釈の初期値 */
+function getLastShapeStyle(): Pick<ShapeAnnotation, 'borderColor' | 'bgColor'> {
+  const s = loadLastStyles().shape ?? {}
+  return {
+    borderColor: typeof s.borderColor === 'string' ? s.borderColor : SIMPLE_COLORS_DEFAULT,
+    bgColor: typeof s.bgColor === 'string' ? s.bgColor : null
+  }
+}
+
+/** 新規線注釈の初期値 */
+function getLastLineStyle(): Pick<LineAnnotation, 'pathStyle' | 'arrowEnds' | 'color'> {
+  const s = loadLastStyles().line ?? {}
+  return {
+    pathStyle: isLinePathStyle(s.pathStyle) ? s.pathStyle : 'straight',
+    arrowEnds: isArrowEnds(s.arrowEnds) ? s.arrowEnds : 'none',
+    color: typeof s.color === 'string' ? s.color : SIMPLE_COLORS_DEFAULT
+  }
+}
+
+/** 新規フリーハンド注釈(および描画中プレビュー)の初期色 */
+function getLastFreehandColor(): string {
+  const s = loadLastStyles().freehand ?? {}
+  return typeof s.color === 'string' ? s.color : SIMPLE_COLORS_DEFAULT
+}
+
 function TextProperties({
   annotation,
   onChange,
@@ -1584,6 +1876,22 @@ function iconSvg(children: React.ReactNode): React.JSX.Element {
   )
 }
 
+function UndoIcon(): React.JSX.Element {
+  return iconSvg(
+    <>
+      <path d="M3 10h10a5 5 0 0 1 0 10h-2" />
+      <polyline points="7 5 3 10 7 15" />
+    </>
+  )
+}
+function RedoIcon(): React.JSX.Element {
+  return iconSvg(
+    <>
+      <path d="M21 10H11a5 5 0 0 0 0 10h2" />
+      <polyline points="17 5 21 10 17 15" />
+    </>
+  )
+}
 function RectIcon(): React.JSX.Element {
   return iconSvg(<rect x="3" y="5" width="18" height="14" rx="1" />)
 }

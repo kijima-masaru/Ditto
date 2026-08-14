@@ -1250,6 +1250,61 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   background: var(--danger-bg);
 }
 
+.se-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ツールバー最上段の主要ツール選択ボタン(アイコンの下に短い日本語ラベルを
+   縦積みで表示する)専用のクラス。プロパティパネル内の細かいアイコンボタン
+   (.se-icon-btn、色ピッカーや矢印の向きなど)は見た目を変えたくないため、
+   .se-icon-btnとは別クラスとして定義している */
+.se-tool-btn {
+  position: relative;
+  flex-shrink: 0;
+  width: 52px;
+  min-height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 3px 2px;
+  border: 1.5px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.se-tool-btn:hover {
+  background: var(--hover-bg);
+}
+
+.se-tool-btn.active {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.se-tool-btn.active .se-tool-btn-label {
+  color: var(--accent);
+}
+
+.se-tool-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.se-tool-btn-label {
+  font-size: 9px;
+  line-height: 1.1;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
 .se-glyph {
   font-size: 22px;
   font-family: 'Segoe UI', sans-serif;
