@@ -165,11 +165,11 @@ export type ThemeMode = 'light' | 'dark'
 /** ネストしたフォルダプレビューを別ウィンドウで開く際、どちらのデータを見せるか */
 export type PreviewKind = 'test' | 'clipboard'
 
-/** ホットキー押下時にジャンプする遷移先(タブ+フォルダ)。未設定(null)ならウィンドウ表示のみでジャンプしない */
-export interface NavigationTarget {
-  kind: PreviewKind
-  folderId: string | null
-}
+/**
+ * ホットキー押下時にジャンプする遷移先。未設定(null)ならウィンドウ表示のみでジャンプしない。
+ * kindが'test'/'clipboard'ならタブ+フォルダへのジャンプ、'recording-frame'なら録画枠オーバーレイの表示を意味する
+ */
+export type NavigationTarget = { kind: PreviewKind; folderId: string | null } | { kind: 'recording-frame' }
 
 /**
  * 「ホットキー」+「押した時にジャンプする画面」の組み合わせ1件。設定画面でこれを

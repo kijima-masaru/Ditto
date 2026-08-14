@@ -40,13 +40,16 @@ function filterLogByLevel(text: string, level: string): string {
 }
 
 const NAVIGATION_TARGET_NONE = 'none'
+const RECORDING_FRAME_VALUE = 'recording-frame'
 
-function encodeNavigationTarget(kind: PreviewKind, folderId: string | null): string {
-  return `${kind}:${folderId ?? ''}`
+function encodeNavigationTarget(target: NavigationTarget): string {
+  if (target.kind === 'recording-frame') return RECORDING_FRAME_VALUE
+  return `${target.kind}:${target.folderId ?? ''}`
 }
 
 function decodeNavigationTarget(value: string): NavigationTarget | null {
   if (value === NAVIGATION_TARGET_NONE) return null
+  if (value === RECORDING_FRAME_VALUE) return { kind: 'recording-frame' }
   const [kind, folderId] = value.split(':') as [PreviewKind, string]
   return { kind, folderId: folderId === '' ? null : folderId }
 }
@@ -222,9 +225,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const flatTestFolders = flattenFolders(testFolders)
 
   const renderTargetSelect = (binding: HotkeyBinding): React.JSX.Element => {
-    const value = binding.target
-      ? encodeNavigationTarget(binding.target.kind, binding.target.folderId)
-      : NAVIGATION_TARGET_NONE
+    const value = binding.target ? encodeNavigationTarget(binding.target) : NAVIGATION_TARGET_NONE
     return (
       <select
         className="settings-select"
@@ -232,19 +233,20 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
         onChange={(e) => changeBindingTarget(binding.id, e.target.value)}
       >
         <option value={NAVIGATION_TARGET_NONE}>未設定(表示のみ)</option>
+        <option value={RECORDING_FRAME_VALUE}>録画枠を表示</option>
         <optgroup label="クリップボード">
-          <option value={encodeNavigationTarget('clipboard', null)}>home</option>
+          <option value={encodeNavigationTarget({ kind: 'clipboard', folderId: null })}>home</option>
           {flatClipboardFolders.map(({ folder, depth }) => (
-            <option key={folder.id} value={encodeNavigationTarget('clipboard', folder.id)}>
+            <option key={folder.id} value={encodeNavigationTarget({ kind: 'clipboard', folderId: folder.id })}>
               {'　'.repeat(depth + 1)}
               {folder.name}
             </option>
           ))}
         </optgroup>
         <optgroup label="テスト">
-          <option value={encodeNavigationTarget('test', null)}>home</option>
+          <option value={encodeNavigationTarget({ kind: 'test', folderId: null })}>home</option>
           {flatTestFolders.map(({ folder, depth }) => (
-            <option key={folder.id} value={encodeNavigationTarget('test', folder.id)}>
+            <option key={folder.id} value={encodeNavigationTarget({ kind: 'test', folderId: folder.id })}>
               {'　'.repeat(depth + 1)}
               {folder.name}
             </option>

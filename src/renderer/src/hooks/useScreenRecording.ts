@@ -5,6 +5,7 @@ export type ScreenRecordingState = 'idle' | 'recording' | 'paused'
 export interface ScreenRecorderApi {
   frameVisible: boolean
   toggleFrame: () => Promise<void>
+  showFrame: () => Promise<void>
   recordingState: ScreenRecordingState
   elapsedMs: number
   savedPath: string | null
@@ -48,6 +49,14 @@ export function useScreenRecording(): ScreenRecorderApi {
       await window.api.showRecordingFrame()
       setFrameVisible(true)
     }
+  }, [frameVisible])
+
+  // toggleFrameと違い、既に表示中なら何もしない(ホットキーで「録画枠を表示」を
+  // 選んだ際に、表示中の枠を誤って隠してしまわないようにするための表示専用版)
+  const showFrame = useCallback(async () => {
+    if (frameVisible) return
+    await window.api.showRecordingFrame()
+    setFrameVisible(true)
   }, [frameVisible])
 
   const drawLoop = useCallback(() => {
@@ -215,6 +224,7 @@ export function useScreenRecording(): ScreenRecorderApi {
   return {
     frameVisible,
     toggleFrame,
+    showFrame,
     recordingState,
     elapsedMs,
     savedPath,

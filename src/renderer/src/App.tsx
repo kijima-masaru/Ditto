@@ -60,13 +60,17 @@ function MainApp(): React.JSX.Element {
   }, [])
 
   useEffect(() => {
-    return window.api.onNavigateToHotkeyTarget(({ kind, folderId }) => {
-      setTopPageFolderId(folderId)
+    return window.api.onNavigateToHotkeyTarget((target) => {
+      if (target.kind === 'recording-frame') {
+        void recorder.showFrame()
+        return
+      }
+      setTopPageFolderId(target.folderId)
       setTopPageNonce((n) => n + 1)
-      if (kind === 'clipboard') setView({ name: 'clipboard' })
+      if (target.kind === 'clipboard') setView({ name: 'clipboard' })
       else setView({ name: 'test-list' })
     })
-  }, [])
+  }, [recorder.showFrame])
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
