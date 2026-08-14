@@ -111,10 +111,14 @@ body {
 
 .app-header nav button {
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
   background: var(--header-btn-bg);
   color: var(--header-text);
   border: 1px solid var(--header-btn-border);
-  padding: 7px 4px;
+  padding: 0 4px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 11px;
@@ -308,7 +312,7 @@ button.danger:hover {
   background: var(--danger-hover-bg);
 }
 
-button:not(.primary):not(.danger):not(.app-header button) {
+button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button) {
   background: var(--btn-bg);
   color: var(--text-secondary);
   border: 1.5px solid var(--border-strong);
@@ -317,12 +321,12 @@ button:not(.primary):not(.danger):not(.app-header button) {
   cursor: pointer;
 }
 
-button:not(.primary):not(.danger):not(.app-header button):hover {
+button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):hover {
   background: var(--btn-bg-hover);
   border-color: var(--border-strong);
 }
 
-button:not(.primary):not(.danger):not(.app-header button):disabled {
+button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):disabled {
   background: var(--bg);
   color: var(--text-muted);
   border-color: var(--border);
@@ -835,7 +839,11 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 
 .clipboard-subtabs button {
   flex: 1;
-  padding: 7px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 4px;
   border: 1px solid var(--border-strong);
   background: var(--panel-bg);
   color: var(--text-secondary);
