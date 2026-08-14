@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import HelpIcon from './HelpIcon'
 import type {
   ClipboardFormatRule,
   ClipboardHistoryEntry,
@@ -383,32 +384,29 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
         <button className={subTab === 'templates' ? 'active' : ''} onClick={() => setSubTab('templates')}>
           定型文
         </button>
-        <button
-          className={`subtab-icon-btn${subTab === 'rules' ? ' active' : ''}`}
-          onClick={() => setSubTab('rules')}
-          title="整形ルール"
-        >
-          ✎
-        </button>
       </div>
 
       {subTab === 'history' && (
         <>
-          <p className="hint hint--emphasis">左クリックでコピー、右クリックで定型文登録などの操作ができます。</p>
-
-          {history.length > 0 && (
-            <div className="history-search">
-              <input
-                value={historyQuery}
-                onChange={(e) => setHistoryQuery(e.target.value)}
-                placeholder="履歴を検索"
-              />
-            </div>
-          )}
+          <div className="clipboard-history-toolbar">
+            <input
+              value={historyQuery}
+              onChange={(e) => setHistoryQuery(e.target.value)}
+              placeholder="履歴を検索"
+            />
+            <HelpIcon text="左クリックでコピー、右クリックで定型文登録などの操作ができます。" />
+            <button className="subtab-icon-btn" onClick={() => setSubTab('rules')} title="整形ルール">
+              ✎
+            </button>
+          </div>
 
           {history.length === 0 ? (
             <div className="panel">
-              <p>クリップボード履歴はまだありません。テキストや画像をコピーすると自動的に記録されます。</p>
+              <p>
+                クリップボード履歴はまだありません。
+                <br />
+                テキストや画像をコピーすると自動的に記録されます。
+              </p>
             </div>
           ) : filteredHistory.length === 0 ? (
             <div className="panel">
