@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import {
   IPC,
   type AppSettings,
+  type AutoMaskCategory,
   type CaptureInfo,
   type ClipboardHistoryEntry,
   type ClipboardTemplate,
@@ -128,8 +129,8 @@ const api = {
     ipcRenderer.invoke(IPC.setWindowSizeLocked, locked),
   setAlwaysOnTop: (alwaysOnTop: boolean): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setAlwaysOnTop, alwaysOnTop),
-  setAutoMaskSensitiveInfo: (enabled: boolean): Promise<AppSettings> =>
-    ipcRenderer.invoke(IPC.setAutoMaskSensitiveInfo, enabled),
+  setAutoMaskSensitiveInfo: (category: AutoMaskCategory, enabled: boolean): Promise<AppSettings> =>
+    ipcRenderer.invoke(IPC.setAutoMaskSensitiveInfo, category, enabled),
   readDebugLog: (): Promise<string> => ipcRenderer.invoke(IPC.readDebugLog),
   openDebugLogFolder: (): Promise<void> => ipcRenderer.invoke(IPC.openDebugLogFolder),
   getAppVersion: (): Promise<string> => ipcRenderer.invoke(IPC.getAppVersion),

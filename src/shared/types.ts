@@ -189,6 +189,11 @@ export interface HotkeyBinding {
   target: NavigationTarget | null
 }
 
+/** 自動マスキング対象のPII種別。項目ごとに個別にON/OFFを切り替えられる */
+export type AutoMaskCategory = 'phone' | 'postalCode' | 'email' | 'creditCard'
+
+export type AutoMaskSettings = Record<AutoMaskCategory, boolean>
+
 export interface AppSettings {
   /** 「ホットキー→遷移先画面」の組み合わせのリスト。mainプロセスがこの数だけグローバルホットキーを登録する */
   hotkeyBindings: HotkeyBinding[]
@@ -198,10 +203,10 @@ export interface AppSettings {
   /** trueならDittoのウィンドウを常に他のアプリより前面に表示する */
   alwaysOnTop: boolean
   /**
-   * trueなら、スクリーンショット・失敗時エビデンス画像の保存前にOCRで文字を検出し、
-   * 電話番号・メールアドレス等の個人情報らしき箇所を自動で黒塗りする
+   * スクリーンショット・失敗時エビデンス画像の保存前にOCRで文字を検出し、電話番号・郵便番号・
+   * メールアドレス・クレジットカード番号らしき箇所を自動で黒塗りするかどうかを項目ごとに指定する
    */
-  autoMaskSensitiveInfo: boolean
+  autoMaskSensitiveInfo: AutoMaskSettings
 }
 
 /** 設定画面の「アップデートを確認」ボタンの状態表示に使う */

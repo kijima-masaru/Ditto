@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type {
+  AutoMaskCategory,
+  AutoMaskSettings,
   ClipboardTemplateFolder,
   HotkeyBinding,
   HotkeyCombo,
@@ -17,6 +19,14 @@ interface Props {
 }
 
 const LOG_LEVELS = ['all', 'error', 'warn', 'info', 'verbose', 'debug', 'silly'] as const
+
+/** 機密情報の自動マスキング設定画面に表示する項目一覧(表示順) */
+const AUTO_MASK_CATEGORIES: { key: AutoMaskCategory; label: string }[] = [
+  { key: 'phone', label: '電話番号' },
+  { key: 'postalCode', label: '郵便番号' },
+  { key: 'email', label: 'メールアドレス' },
+  { key: 'creditCard', label: 'クレジットカード番号・マイナンバー' }
+]
 
 const LOG_ENTRY_START = /^\[[\d-]+ [\d:.]+\] \[(\w+)\]/
 
@@ -57,12 +67,57 @@ function decodeNavigationTarget(value: string): NavigationTarget | null {
 /** リストに新規追加した直後の、まだキーが未設定のホットキー */
 const UNSET_HOTKEY: HotkeyCombo = { ctrl: false, shift: false, alt: false, meta: false, keycode: null, label: '(未設定)' }
 
+/**
+ * 設定画面はウィンドウが狭く縦スクロールもあるため、常に「アイコンの下」にツールチップを
+ * 開くCSSだけだと下端付近の項目でウィンドウ外・スクロール領域外にはみ出て見えなくなる。
+ * 表示時にアイコン位置とツールチップの実サイズを測り、画面下端に収まらなければ上に開き、
+ * 左右も画面内に収まるようposition:fixedで座標を計算し直す。
+ */
 function HelpIcon({ text }: { text: string }): React.JSX.Element {
   const lines = text.split('\n')
+  const iconRef = useRef<HTMLSpanElement>(null)
+  const tooltipRef = useRef<HTMLSpanElement>(null)
+  const [visible, setVisible] = useState(false)
+  const [style, setStyle] = useState<React.CSSProperties>({})
+
+  useLayoutEffect(() => {
+    if (!visible) return
+    const icon = iconRef.current
+    const tooltip = tooltipRef.current
+    if (!icon || !tooltip) return
+    const margin = 8
+    const gap = 6
+    const iconRect = icon.getBoundingClientRect()
+    const tooltipRect = tooltip.getBoundingClientRect()
+
+    const spaceBelow = window.innerHeight - iconRect.bottom
+    const openUp = spaceBelow < tooltipRect.height + margin + gap && iconRect.top > tooltipRect.height + margin + gap
+    const top = openUp ? iconRect.top - tooltipRect.height - gap : iconRect.bottom + gap
+
+    let left = iconRect.left
+    const maxLeft = window.innerWidth - tooltipRect.width - margin
+    left = Math.min(left, Math.max(margin, maxLeft))
+    left = Math.max(left, margin)
+
+    setStyle({ position: 'fixed', top, left })
+  }, [visible])
+
   return (
-    <span className="help-icon" tabIndex={0}>
+    <span
+      className="help-icon"
+      tabIndex={0}
+      ref={iconRef}
+      onMouseEnter={() => setVisible(true)}
+      onMouseLeave={() => setVisible(false)}
+      onFocus={() => setVisible(true)}
+      onBlur={() => setVisible(false)}
+    >
       ?
-      <span className="help-icon-tooltip">
+      <span
+        className={`help-icon-tooltip${visible ? ' help-icon-tooltip-visible' : ''}`}
+        ref={tooltipRef}
+        style={visible ? style : undefined}
+      >
         {lines.map((line, i) => (
           <span className="help-icon-tooltip-line" key={i}>
             {line}
@@ -109,7 +164,12 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const [testFolders, setTestFolders] = useState<TestFolder[]>([])
   const [windowSizeLocked, setWindowSizeLocked] = useState(false)
   const [alwaysOnTop, setAlwaysOnTop] = useState(false)
-  const [autoMaskSensitiveInfo, setAutoMaskSensitiveInfo] = useState(false)
+  const [autoMaskSensitiveInfo, setAutoMaskSensitiveInfo] = useState<AutoMaskSettings>({
+    phone: false,
+    postalCode: false,
+    email: false,
+    creditCard: false
+  })
 
   const [showLog, setShowLog] = useState(false)
   const [logText, setLogText] = useState('')
@@ -201,9 +261,9 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     await window.api.setAlwaysOnTop(value)
   }
 
-  const handleAutoMaskChange = async (value: boolean): Promise<void> => {
-    setAutoMaskSensitiveInfo(value)
-    await window.api.setAutoMaskSensitiveInfo(value)
+  const handleAutoMaskCategoryChange = async (category: AutoMaskCategory, value: boolean): Promise<void> => {
+    setAutoMaskSensitiveInfo((prev) => ({ ...prev, [category]: value }))
+    await window.api.setAutoMaskSensitiveInfo(category, value)
   }
 
   const loadLog = async (): Promise<void> => {
@@ -388,23 +448,30 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
               機密情報の自動マスキング
               <HelpIcon
                 text={
-                  'ONにすると、スクリーンショットや自動テスト失敗時のエビデンス画像を保存する前に、\n' +
-                  '電話番号・メールアドレス・郵便番号・クレジットカード番号らしき文字列をOCRで検出し、自動で黒塗りします。\n' +
+                  'ONにした項目について、スクリーンショットや自動テスト失敗時のエビデンス画像を保存する前に、\n' +
+                  'それらしき文字列をOCRで検出し、自動で黒塗りします。\n' +
                   '画面録画(動画)には適用されません。処理のぶん、保存に数秒かかる場合があります。'
                 }
               />
             </span>
-            <div className="settings-item-control">
-              <span className="toggle-state-label">{autoMaskSensitiveInfo ? 'ON' : 'OFF'}</span>
-              <label className="theme-toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={autoMaskSensitiveInfo}
-                  onChange={(e) => handleAutoMaskChange(e.target.checked)}
-                />
-                <span className="theme-toggle-slider" />
-              </label>
-            </div>
+          </div>
+          <div className="settings-subitem-list">
+            {AUTO_MASK_CATEGORIES.map(({ key, label }) => (
+              <div className="settings-subitem-row" key={key}>
+                <span className="settings-subitem-label">{label}</span>
+                <div className="settings-item-control">
+                  <span className="toggle-state-label">{autoMaskSensitiveInfo[key] ? 'ON' : 'OFF'}</span>
+                  <label className="theme-toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={autoMaskSensitiveInfo[key]}
+                      onChange={(e) => handleAutoMaskCategoryChange(key, e.target.checked)}
+                    />
+                    <span className="theme-toggle-slider" />
+                  </label>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 

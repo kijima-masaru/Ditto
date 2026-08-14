@@ -1035,6 +1035,31 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   min-width: 110px;
 }
 
+/* 機密情報の自動マスキング等、1つの設定項目の中に項目ごとのON/OFFトグルを複数並べる場合の一覧。
+   hotkey-binding-listと同様に、外側のsettings-item内にまとめて表示する */
+.settings-subitem-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.settings-subitem-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--panel-bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.settings-subitem-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 .hotkey-binding-delete-btn {
   display: inline-flex;
   align-items: center;
@@ -1126,6 +1151,9 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   cursor: help;
 }
 
+/* 初期状態(JSが位置を計算する前の1フレーム)の暫定位置。表示直後にHelpIconコンポーネントが
+   実サイズ・画面端との距離を測ってposition:fixedのtop/leftに置き換える(下端に収まらない場合は
+   アイコンの上に開く)ため、ここでのtop/leftはJS計算前の一瞬だけ使われるフォールバック */
 .help-icon-tooltip {
   display: none;
   flex-direction: column;
@@ -1133,7 +1161,6 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   position: absolute;
   top: 100%;
   left: 0;
-  margin-top: 6px;
   width: max-content;
   max-width: 200px;
   padding: 8px 10px;
@@ -1144,7 +1171,7 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   line-height: 1.5;
   border-radius: 6px;
   box-shadow: 0 4px 14px var(--shadow);
-  z-index: 20;
+  z-index: 500;
   pointer-events: none;
 }
 
@@ -1152,8 +1179,7 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   display: block;
 }
 
-.help-icon:hover .help-icon-tooltip,
-.help-icon:focus .help-icon-tooltip {
+.help-icon-tooltip-visible {
   display: flex;
 }
 

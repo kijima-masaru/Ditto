@@ -1,7 +1,14 @@
 import { app } from 'electron'
 import fs from 'fs/promises'
 import path from 'path'
-import type { AppSettings, HotkeyBinding, ThemeMode } from '../shared/types'
+import type { AppSettings, AutoMaskCategory, AutoMaskSettings, HotkeyBinding, ThemeMode } from '../shared/types'
+
+const DEFAULT_AUTO_MASK_SETTINGS: AutoMaskSettings = {
+  phone: false,
+  postalCode: false,
+  email: false,
+  creditCard: false
+}
 
 const DEFAULT_SETTINGS: AppSettings = {
   // 従来の「ウィンドウ表示ホットキー(Ctrl 2回)」+「トップページ未設定」相当の初期値。
@@ -16,7 +23,25 @@ const DEFAULT_SETTINGS: AppSettings = {
   theme: 'light',
   windowSizeLocked: false,
   alwaysOnTop: false,
-  autoMaskSensitiveInfo: false
+  autoMaskSensitiveInfo: DEFAULT_AUTO_MASK_SETTINGS
+}
+
+// v1.24.9までは単一のboolean(autoMaskSensitiveInfo: true/false)だったため、
+// 旧形式の設定ファイルを読み込んだ場合は全項目に同じ値を適用して変換する
+function normalizeAutoMaskSettings(value: unknown): AutoMaskSettings {
+  if (typeof value === 'boolean') {
+    return { phone: value, postalCode: value, email: value, creditCard: value }
+  }
+  if (value && typeof value === 'object') {
+    const v = value as Partial<AutoMaskSettings>
+    return {
+      phone: v.phone ?? false,
+      postalCode: v.postalCode ?? false,
+      email: v.email ?? false,
+      creditCard: v.creditCard ?? false
+    }
+  }
+  return { ...DEFAULT_AUTO_MASK_SETTINGS }
 }
 
 function settingsFilePath(): string {
@@ -35,7 +60,7 @@ export async function getSettings(): Promise<AppSettings> {
       theme: parsed.theme ?? DEFAULT_SETTINGS.theme,
       windowSizeLocked: parsed.windowSizeLocked ?? DEFAULT_SETTINGS.windowSizeLocked,
       alwaysOnTop: parsed.alwaysOnTop ?? DEFAULT_SETTINGS.alwaysOnTop,
-      autoMaskSensitiveInfo: parsed.autoMaskSensitiveInfo ?? DEFAULT_SETTINGS.autoMaskSensitiveInfo
+      autoMaskSensitiveInfo: normalizeAutoMaskSettings(parsed.autoMaskSensitiveInfo)
     }
   } catch {
     return { ...DEFAULT_SETTINGS }
@@ -74,9 +99,9 @@ export async function setAlwaysOnTop(alwaysOnTop: boolean): Promise<AppSettings>
   return settings
 }
 
-export async function setAutoMaskSensitiveInfo(enabled: boolean): Promise<AppSettings> {
+export async function setAutoMaskCategory(category: AutoMaskCategory, enabled: boolean): Promise<AppSettings> {
   const settings = await getSettings()
-  settings.autoMaskSensitiveInfo = enabled
+  settings.autoMaskSensitiveInfo = { ...settings.autoMaskSensitiveInfo, [category]: enabled }
   await writeSettings(settings)
   return settings
 }

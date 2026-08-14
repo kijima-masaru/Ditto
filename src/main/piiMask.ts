@@ -5,6 +5,7 @@ import { writeFile, readFile, unlink } from 'fs/promises'
 import path from 'path'
 import log from './logger'
 import * as settingsStore from './settingsStore'
+import type { AutoMaskCategory, AutoMaskSettings } from '../shared/types'
 
 /**
  * スクリーンショット・失敗時エビデンス画像を保存する前に、電話番号やメールアドレスなど
@@ -31,24 +32,28 @@ interface OcrLine {
 
 // 電話番号・郵便番号・メールアドレス・クレジットカード/マイナンバー(12桁)らしき文字列を検出する。
 // OCRは単語単位(空白区切り)で認識されることが多いため、単語全体の完全一致ではなく
-// 部分一致で判定する(「TEL:090-1234-5678」のように前置きが付いた1単語になる場合もあるため)
-const PII_PATTERNS: RegExp[] = [
-  /0\d{1,4}-?\d{1,4}-?\d{3,4}/, // 電話番号
-  /\b\d{3}-\d{4}\b/, // 郵便番号(ハイフン必須。単なる4桁数字等の誤検出を避けるため)
-  /[\w.+-]+@[\w-]+\.[\w.-]+/, // メールアドレス
-  /\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b/ // クレジットカード番号/マイナンバー(12〜16桁)
+// 部分一致で判定する(「TEL:090-1234-5678」のように前置きが付いた1単語になる場合もあるため)。
+// 項目ごとに設定でON/OFFを切り替えられるよう、カテゴリ付きで保持する。
+const PII_PATTERNS: { category: AutoMaskCategory; pattern: RegExp }[] = [
+  { category: 'phone', pattern: /0\d{1,4}-?\d{1,4}-?\d{3,4}/ },
+  // 郵便番号(ハイフン必須。単なる4桁数字等の誤検出を避けるため)
+  { category: 'postalCode', pattern: /\b\d{3}-\d{4}\b/ },
+  { category: 'email', pattern: /[\w.+-]+@[\w-]+\.[\w.-]+/ },
+  // クレジットカード番号/マイナンバー(12〜16桁)
+  { category: 'creditCard', pattern: /\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b/ }
 ]
 
 // OCRは数字やハイフンの並びを1文字ずつ別単語として認識することが多く(実機検証で確認済み)、
 // 単語単体では「090-1234-5678」のような並びにマッチしない。そのため行(Line)単位でテキストを
 // 連結してからPIIパターンを判定する。空白除去版でも判定することで、OCRが単語間に余分な
 // 空白を挟んだ場合(「0 9 0 -1234-5678」等)も拾えるようにする。
-function looksLikePii(lineText: string): boolean {
+function looksLikePii(lineText: string, categories: AutoMaskSettings): boolean {
   const trimmed = lineText.trim()
   if (trimmed.length < 4) return false
-  if (PII_PATTERNS.some((re) => re.test(trimmed))) return true
+  const activePatterns = PII_PATTERNS.filter((p) => categories[p.category]).map((p) => p.pattern)
+  if (activePatterns.some((re) => re.test(trimmed))) return true
   const noSpace = trimmed.replace(/\s+/g, '')
-  return PII_PATTERNS.some((re) => re.test(noSpace))
+  return activePatterns.some((re) => re.test(noSpace))
 }
 
 // PowerShellからWindows RuntimeのOCR APIを呼び出し、認識できた行テキストと各単語の画像内座標をJSONで返す。
@@ -194,22 +199,25 @@ function blackOutRegions(image: NativeImage, regions: Rect[]): NativeImage {
   return nativeImage.createFromBitmap(bitmap, { width, height })
 }
 
-async function isEnabled(): Promise<boolean> {
+/** いずれか1項目でもONになっている設定を返す。全項目OFFならnull(OCR自体を省略する) */
+async function getEnabledCategories(): Promise<AutoMaskSettings | null> {
   try {
     const settings = await settingsStore.getSettings()
-    return settings.autoMaskSensitiveInfo
+    const { autoMaskSensitiveInfo } = settings
+    const anyEnabled = Object.values(autoMaskSensitiveInfo).some(Boolean)
+    return anyEnabled ? autoMaskSensitiveInfo : null
   } catch {
-    return false
+    return null
   }
 }
 
-async function detectAndMask(image: NativeImage): Promise<NativeImage> {
+async function detectAndMask(image: NativeImage, categories: AutoMaskSettings): Promise<NativeImage> {
   const tmpPath = path.join(app.getPath('temp'), `ditto-ocr-${Date.now()}-${Math.random().toString(36).slice(2)}.png`)
   try {
     await writeFile(tmpPath, image.toPNG())
     const lines = await runOcr(tmpPath)
     const piiRegions = lines
-      .filter((l) => looksLikePii(l.text))
+      .filter((l) => looksLikePii(l.text, categories))
       .map((l) => unionRect(l.words))
       .filter((r): r is Rect => r !== null)
     if (piiRegions.length === 0) return image
@@ -222,12 +230,13 @@ async function detectAndMask(image: NativeImage): Promise<NativeImage> {
   }
 }
 
-/** 設定がONの場合のみ、PNGバイト列を検査してマスキング済みのPNGバイト列を返す */
+/** 項目が1つでもONの場合のみ、PNGバイト列を検査してマスキング済みのPNGバイト列を返す */
 export async function maskPngIfEnabled(png: Buffer): Promise<Buffer> {
-  if (!(await isEnabled())) return png
+  const categories = await getEnabledCategories()
+  if (!categories) return png
   try {
     const image = nativeImage.createFromBuffer(png)
-    const masked = await detectAndMask(image)
+    const masked = await detectAndMask(image, categories)
     return masked.toPNG()
   } catch (err) {
     log.warn('maskPngIfEnabled failed, using original image', err)
@@ -235,12 +244,13 @@ export async function maskPngIfEnabled(png: Buffer): Promise<Buffer> {
   }
 }
 
-/** 設定がONの場合のみ、data URL(PNG)を検査してマスキング済みのdata URLを返す */
+/** 項目が1つでもONの場合のみ、data URL(PNG)を検査してマスキング済みのdata URLを返す */
 export async function maskDataUrlIfEnabled(dataUrl: string): Promise<string> {
-  if (!(await isEnabled())) return dataUrl
+  const categories = await getEnabledCategories()
+  if (!categories) return dataUrl
   try {
     const image = nativeImage.createFromDataURL(dataUrl)
-    const masked = await detectAndMask(image)
+    const masked = await detectAndMask(image, categories)
     return masked.toDataURL()
   } catch (err) {
     log.warn('maskDataUrlIfEnabled failed, using original image', err)
