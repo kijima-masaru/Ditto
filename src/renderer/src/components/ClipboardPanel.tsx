@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import HelpIcon from './HelpIcon'
 import type {
   ClipboardFormatRule,
   ClipboardHistoryEntry,
@@ -394,7 +393,6 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
               onChange={(e) => setHistoryQuery(e.target.value)}
               placeholder="履歴を検索"
             />
-            <HelpIcon text="左クリックでコピー、右クリックで定型文登録などの操作ができます。" />
             <button className="subtab-icon-btn" onClick={() => setSubTab('rules')} title="整形ルール">
               ✎
             </button>

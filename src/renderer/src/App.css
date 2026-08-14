@@ -869,7 +869,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   font-weight: 600;
 }
 
-/* 履歴タブ専用の2段目ヘッダー(検索欄・?ツールチップ・整形ルールへの導線)。
+/* 履歴タブ専用の2段目ヘッダー(検索欄・整形ルールへの導線)。
    「履歴」「定型文」タブと同様に常に表示し、スクロール時も上部に固定する */
 .clipboard-history-toolbar {
   display: flex;
@@ -886,11 +886,6 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   flex: 1;
   padding: 7px 10px;
   font-size: 12px;
-}
-
-.clipboard-history-toolbar .help-icon {
-  margin-left: 0;
-  flex: 0 0 auto;
 }
 
 /* 整形ルールへの導線。履歴・定型文と並列のタブというより「設定」寄りの位置づけのため、
