@@ -13,6 +13,7 @@ import {
 import {
   IPC,
   type AutoMaskCategory,
+  type ClipboardPiiProtectionMode,
   type ContextMenuItem,
   type HotkeyBinding,
   type ThemeMode,
@@ -339,6 +340,14 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.setAutoMaskSensitiveInfo, async (_e, category: AutoMaskCategory, enabled: boolean) => {
     return settingsStore.setAutoMaskCategory(category, enabled)
+  })
+
+  ipcMain.handle(IPC.setClipboardPiiProtectionCategory, async (_e, category: AutoMaskCategory, enabled: boolean) => {
+    return settingsStore.setClipboardPiiProtectionCategory(category, enabled)
+  })
+
+  ipcMain.handle(IPC.setClipboardPiiProtectionMode, async (_e, mode: ClipboardPiiProtectionMode) => {
+    return settingsStore.setClipboardPiiProtectionMode(mode)
   })
 
   ipcMain.handle(IPC.readDebugLog, async () => debugLog.readLog())

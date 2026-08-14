@@ -205,6 +205,18 @@ export type AutoMaskCategory = 'phone' | 'postalCode' | 'email' | 'creditCard'
 
 export type AutoMaskSettings = Record<AutoMaskCategory, boolean>
 
+/**
+ * クリップボード履歴に機密情報らしき内容が記録される前の保護動作。
+ * mask: 該当箇所を*に置き換えて履歴に保存する(実際にコピーされた内容自体は変更しない)
+ * delete: 履歴に保存しない(画像の場合はOCRで検出でき次第、既に追加された履歴からも削除する)
+ */
+export type ClipboardPiiProtectionMode = 'mask' | 'delete'
+
+export interface ClipboardPiiProtectionSettings {
+  mode: ClipboardPiiProtectionMode
+  categories: AutoMaskSettings
+}
+
 export interface AppSettings {
   /** 「ホットキー→遷移先画面」の組み合わせのリスト。mainプロセスがこの数だけグローバルホットキーを登録する */
   hotkeyBindings: HotkeyBinding[]
@@ -218,6 +230,11 @@ export interface AppSettings {
    * メールアドレス・クレジットカード番号らしき箇所を自動で黒塗りするかどうかを項目ごとに指定する
    */
   autoMaskSensitiveInfo: AutoMaskSettings
+  /**
+   * クリップボード履歴に電話番号・郵便番号・メールアドレス・クレジットカード番号らしき内容が
+   * 記録される前に、項目ごとにマスキングまたは自動消去で保護するかどうかを指定する
+   */
+  clipboardPiiProtection: ClipboardPiiProtectionSettings
 }
 
 /** 設定画面の「アップデートを確認」ボタンの状態表示に使う */
@@ -340,6 +357,8 @@ export const IPC = {
   setWindowSizeLocked: 'settings:set-window-size-locked',
   setAlwaysOnTop: 'settings:set-always-on-top',
   setAutoMaskSensitiveInfo: 'settings:set-auto-mask-sensitive-info',
+  setClipboardPiiProtectionCategory: 'settings:set-clipboard-pii-protection-category',
+  setClipboardPiiProtectionMode: 'settings:set-clipboard-pii-protection-mode',
   startHotkeyCapture: 'hotkey-capture:start',
   cancelHotkeyCapture: 'hotkey-capture:cancel',
   hotkeyCapturePreview: 'hotkey-capture:preview', // main -> renderer push

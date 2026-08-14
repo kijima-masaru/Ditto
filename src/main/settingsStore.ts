@@ -1,13 +1,26 @@
 import { app } from 'electron'
 import fs from 'fs/promises'
 import path from 'path'
-import type { AppSettings, AutoMaskCategory, AutoMaskSettings, HotkeyBinding, ThemeMode } from '../shared/types'
+import type {
+  AppSettings,
+  AutoMaskCategory,
+  AutoMaskSettings,
+  ClipboardPiiProtectionMode,
+  ClipboardPiiProtectionSettings,
+  HotkeyBinding,
+  ThemeMode
+} from '../shared/types'
 
 const DEFAULT_AUTO_MASK_SETTINGS: AutoMaskSettings = {
   phone: false,
   postalCode: false,
   email: false,
   creditCard: false
+}
+
+const DEFAULT_CLIPBOARD_PII_PROTECTION: ClipboardPiiProtectionSettings = {
+  mode: 'mask',
+  categories: { ...DEFAULT_AUTO_MASK_SETTINGS }
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -23,7 +36,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   theme: 'light',
   windowSizeLocked: false,
   alwaysOnTop: false,
-  autoMaskSensitiveInfo: DEFAULT_AUTO_MASK_SETTINGS
+  autoMaskSensitiveInfo: DEFAULT_AUTO_MASK_SETTINGS,
+  clipboardPiiProtection: DEFAULT_CLIPBOARD_PII_PROTECTION
 }
 
 // v1.24.9までは単一のboolean(autoMaskSensitiveInfo: true/false)だったため、
@@ -44,6 +58,17 @@ function normalizeAutoMaskSettings(value: unknown): AutoMaskSettings {
   return { ...DEFAULT_AUTO_MASK_SETTINGS }
 }
 
+function normalizeClipboardPiiProtection(value: unknown): ClipboardPiiProtectionSettings {
+  if (value && typeof value === 'object') {
+    const v = value as Partial<ClipboardPiiProtectionSettings>
+    return {
+      mode: v.mode === 'delete' ? 'delete' : 'mask',
+      categories: normalizeAutoMaskSettings(v.categories)
+    }
+  }
+  return { ...DEFAULT_CLIPBOARD_PII_PROTECTION, categories: { ...DEFAULT_AUTO_MASK_SETTINGS } }
+}
+
 function settingsFilePath(): string {
   return path.join(app.getPath('userData'), 'settings.json')
 }
@@ -60,7 +85,8 @@ export async function getSettings(): Promise<AppSettings> {
       theme: parsed.theme ?? DEFAULT_SETTINGS.theme,
       windowSizeLocked: parsed.windowSizeLocked ?? DEFAULT_SETTINGS.windowSizeLocked,
       alwaysOnTop: parsed.alwaysOnTop ?? DEFAULT_SETTINGS.alwaysOnTop,
-      autoMaskSensitiveInfo: normalizeAutoMaskSettings(parsed.autoMaskSensitiveInfo)
+      autoMaskSensitiveInfo: normalizeAutoMaskSettings(parsed.autoMaskSensitiveInfo),
+      clipboardPiiProtection: normalizeClipboardPiiProtection(parsed.clipboardPiiProtection)
     }
   } catch {
     return { ...DEFAULT_SETTINGS }
@@ -102,6 +128,26 @@ export async function setAlwaysOnTop(alwaysOnTop: boolean): Promise<AppSettings>
 export async function setAutoMaskCategory(category: AutoMaskCategory, enabled: boolean): Promise<AppSettings> {
   const settings = await getSettings()
   settings.autoMaskSensitiveInfo = { ...settings.autoMaskSensitiveInfo, [category]: enabled }
+  await writeSettings(settings)
+  return settings
+}
+
+export async function setClipboardPiiProtectionCategory(
+  category: AutoMaskCategory,
+  enabled: boolean
+): Promise<AppSettings> {
+  const settings = await getSettings()
+  settings.clipboardPiiProtection = {
+    ...settings.clipboardPiiProtection,
+    categories: { ...settings.clipboardPiiProtection.categories, [category]: enabled }
+  }
+  await writeSettings(settings)
+  return settings
+}
+
+export async function setClipboardPiiProtectionMode(mode: ClipboardPiiProtectionMode): Promise<AppSettings> {
+  const settings = await getSettings()
+  settings.clipboardPiiProtection = { ...settings.clipboardPiiProtection, mode }
   await writeSettings(settings)
   return settings
 }

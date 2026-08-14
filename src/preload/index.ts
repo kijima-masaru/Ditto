@@ -5,6 +5,7 @@ import {
   type AutoMaskCategory,
   type CaptureInfo,
   type ClipboardHistoryEntry,
+  type ClipboardPiiProtectionMode,
   type ClipboardTemplate,
   type ClipboardTemplateFolder,
   type ContextMenuItem,
@@ -134,6 +135,10 @@ const api = {
     ipcRenderer.invoke(IPC.setAlwaysOnTop, alwaysOnTop),
   setAutoMaskSensitiveInfo: (category: AutoMaskCategory, enabled: boolean): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setAutoMaskSensitiveInfo, category, enabled),
+  setClipboardPiiProtectionCategory: (category: AutoMaskCategory, enabled: boolean): Promise<AppSettings> =>
+    ipcRenderer.invoke(IPC.setClipboardPiiProtectionCategory, category, enabled),
+  setClipboardPiiProtectionMode: (mode: ClipboardPiiProtectionMode): Promise<AppSettings> =>
+    ipcRenderer.invoke(IPC.setClipboardPiiProtectionMode, mode),
   readDebugLog: (): Promise<string> => ipcRenderer.invoke(IPC.readDebugLog),
   openDebugLogFolder: (): Promise<void> => ipcRenderer.invoke(IPC.openDebugLogFolder),
   getAppVersion: (): Promise<string> => ipcRenderer.invoke(IPC.getAppVersion),

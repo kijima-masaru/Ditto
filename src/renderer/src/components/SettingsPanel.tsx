@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type {
   AutoMaskCategory,
   AutoMaskSettings,
+  ClipboardPiiProtectionMode,
+  ClipboardPiiProtectionSettings,
   ClipboardTemplateFolder,
   HotkeyBinding,
   HotkeyCombo,
@@ -170,6 +172,10 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     email: false,
     creditCard: false
   })
+  const [clipboardPiiProtection, setClipboardPiiProtection] = useState<ClipboardPiiProtectionSettings>({
+    mode: 'mask',
+    categories: { phone: false, postalCode: false, email: false, creditCard: false }
+  })
 
   const [showLog, setShowLog] = useState(false)
   const [logText, setLogText] = useState('')
@@ -186,6 +192,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
       setWindowSizeLocked(s.windowSizeLocked)
       setAlwaysOnTop(s.alwaysOnTop)
       setAutoMaskSensitiveInfo(s.autoMaskSensitiveInfo)
+      setClipboardPiiProtection(s.clipboardPiiProtection)
       setLoading(false)
     })
     window.api.getAppVersion().then(setAppVersion)
@@ -264,6 +271,16 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const handleAutoMaskCategoryChange = async (category: AutoMaskCategory, value: boolean): Promise<void> => {
     setAutoMaskSensitiveInfo((prev) => ({ ...prev, [category]: value }))
     await window.api.setAutoMaskSensitiveInfo(category, value)
+  }
+
+  const handleClipboardPiiCategoryChange = async (category: AutoMaskCategory, value: boolean): Promise<void> => {
+    setClipboardPiiProtection((prev) => ({ ...prev, categories: { ...prev.categories, [category]: value } }))
+    await window.api.setClipboardPiiProtectionCategory(category, value)
+  }
+
+  const handleClipboardPiiModeChange = async (mode: ClipboardPiiProtectionMode): Promise<void> => {
+    setClipboardPiiProtection((prev) => ({ ...prev, mode }))
+    await window.api.setClipboardPiiProtectionMode(mode)
   }
 
   const loadLog = async (): Promise<void> => {
@@ -466,6 +483,49 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
                       type="checkbox"
                       checked={autoMaskSensitiveInfo[key]}
                       onChange={(e) => handleAutoMaskCategoryChange(key, e.target.checked)}
+                    />
+                    <span className="theme-toggle-slider" />
+                  </label>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="settings-item">
+          <div className="settings-item-row">
+            <span className="settings-item-label">
+              クリップボード履歴の機密情報保護
+              <HelpIcon
+                text={
+                  'ONにした項目について、電話番号・メールアドレス等の機密情報らしき内容がコピーされた際、\n' +
+                  'クリップボード履歴への保存方法を選べます。\n' +
+                  '「マスキング」: 該当箇所を*に置き換えて履歴に保存します(コピーした内容自体は変わりません)。\n' +
+                  '「自動消去」: 履歴に一切保存しません。\n' +
+                  '画像(スクリーンショット等)をコピーした場合もOCRで検出し、同様に保護します。'
+                }
+              />
+            </span>
+            <select
+              className="settings-select"
+              value={clipboardPiiProtection.mode}
+              onChange={(e) => handleClipboardPiiModeChange(e.target.value as ClipboardPiiProtectionMode)}
+            >
+              <option value="mask">マスキング</option>
+              <option value="delete">自動消去</option>
+            </select>
+          </div>
+          <div className="settings-subitem-list">
+            {AUTO_MASK_CATEGORIES.map(({ key, label }) => (
+              <div className="settings-subitem-row" key={key}>
+                <span className="settings-subitem-label">{label}</span>
+                <div className="settings-item-control">
+                  <span className="toggle-state-label">{clipboardPiiProtection.categories[key] ? 'ON' : 'OFF'}</span>
+                  <label className="theme-toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={clipboardPiiProtection.categories[key]}
+                      onChange={(e) => handleClipboardPiiCategoryChange(key, e.target.checked)}
                     />
                     <span className="theme-toggle-slider" />
                   </label>
