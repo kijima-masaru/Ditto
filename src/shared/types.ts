@@ -209,6 +209,8 @@ export interface PlaybackProgress {
   message?: string
   /** このステップの実行時点でアクティブな対象 */
   targetId?: string
+  /** ステップ失敗時に自動保存されたエビデンス画像のファイルパス(取得できなければ未設定) */
+  evidencePath?: string
 }
 
 export interface PlaybackResult {

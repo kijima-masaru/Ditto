@@ -10,6 +10,7 @@ import type {
 import { createBrowserAdapter } from './adapters/browserTargetAdapter'
 import { createDesktopAdapter } from './adapters/desktopTargetAdapter'
 import { sleep, stopGlobalHook } from './adapters/windowTargetBase'
+import { captureFailureEvidence } from './failureEvidence'
 
 /** abortされたら即座に抜けられるよう、短い間隔に分けて待機する */
 async function interruptibleSleep(ms: number, isAborted: () => boolean): Promise<void> {
@@ -129,7 +130,8 @@ export class TargetManager {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      push({ stepIndex: 0, status: 'fail', message })
+      const evidencePath = (await captureFailureEvidence(testCase.name, 0)) ?? undefined
+      push({ stepIndex: 0, status: 'fail', message, evidencePath })
       await this.disposeAll()
       return { success: false, finishedAt: new Date().toISOString(), log }
     }
@@ -170,11 +172,13 @@ export class TargetManager {
         push({ stepIndex: i, status: 'ok', targetId: step.targetId })
       } catch (err) {
         success = false
+        const evidencePath = (await captureFailureEvidence(testCase.name, i)) ?? undefined
         push({
           stepIndex: i,
           status: 'fail',
           message: err instanceof Error ? err.message : String(err),
-          targetId: step.targetId
+          targetId: step.targetId,
+          evidencePath
         })
         break
       }

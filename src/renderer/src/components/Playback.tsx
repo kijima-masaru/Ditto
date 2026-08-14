@@ -79,6 +79,16 @@ export default function Playback({ testCase, onDone }: Props): React.JSX.Element
                   {labelFor(s.targetId)}: {s.key ?? `(${s.winX},${s.winY})`}
                 </span>
                 {p?.message && <span className="step-message">{p.message}</span>}
+                {p?.evidencePath && (
+                  <button
+                    type="button"
+                    className="step-evidence-link"
+                    onClick={() => window.api.openRecordingFolder(p.evidencePath as string)}
+                    title="失敗時点の画面を保存したエビデンス画像を開きます"
+                  >
+                    エビデンス画像を開く
+                  </button>
+                )}
               </li>
             )
           })}

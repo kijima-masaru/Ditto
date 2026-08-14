@@ -397,6 +397,21 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   font-size: 11px;
 }
 
+.step-evidence-link {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.step-evidence-link:hover {
+  opacity: 0.8;
+}
+
 .status-running {
   background: var(--warning-bg);
 }
