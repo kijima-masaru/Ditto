@@ -11,6 +11,7 @@ import log from './logger'
  */
 
 export interface OcrWord {
+  text: string
   x: number
   y: number
   width: number
@@ -62,6 +63,7 @@ try {
     foreach ($word in $line.Words) {
       $rect = $word.BoundingRect
       $words.Add([PSCustomObject]@{
+        text = $word.Text
         x = [math]::Round($rect.X, 0)
         y = [math]::Round($rect.Y, 0)
         width = [math]::Round($rect.Width, 0)
@@ -80,6 +82,29 @@ try {
   [System.IO.File]::WriteAllText($outPath, '[]', (New-Object System.Text.UTF8Encoding($false)))
 }
 `
+
+/**
+ * Windows OCR(Windows.Media.Ocr)の`OcrLine.Text`は、単語(Words)をASCIIの半角スペース区切りで
+ * 連結しただけの値になる。英語のような分かち書き言語ではこれで自然な文になるが、日本語は
+ * 文字単位・短い文字列単位で「単語」として区切られることが多く、そのまま使うと
+ * 「ご 利 用 者 各 位」のように文字ごとに不自然な空白が入ってしまう。
+ * そこで単語のバウンディングボックス(画像内の隙間)を見て、隙間が文字の高さに対して
+ * 十分小さい場合はスペースを入れずに連結し、実際に離れている場合のみスペースを入れる。
+ * 日本語の文字送りはもちろん、電話番号やメールアドレスのように本来ひと続きの英数字列が
+ * 複数の単語に分割された場合も、隙間がほぼ0になるためこの判定で正しく連結される。
+ */
+function joinWordsAsLineText(words: OcrWord[]): string {
+  if (words.length === 0) return ''
+  let result = words[0].text ?? ''
+  for (let i = 1; i < words.length; i++) {
+    const prev = words[i - 1]
+    const curr = words[i]
+    const gap = curr.x - (prev.x + prev.width)
+    const threshold = Math.max(prev.height, curr.height) * 0.4
+    result += (gap > threshold ? ' ' : '') + (curr.text ?? '')
+  }
+  return result
+}
 
 // -Commandに続けて画像パス等を渡すとPowerShell 5.1側の$args束縛が不安定になり
 // (実機検証でパス引数が空扱いになる不具合を確認済み)、スクリプト本体を毎回一時.ps1ファイルに
@@ -107,7 +132,10 @@ async function runOcrOnPath(imagePath: string): Promise<OcrLine[]> {
     const lines = Array.isArray(parsed) ? parsed : [parsed]
     // PowerShellの単一要素配列はConvertTo-Jsonでオブジェクト直書きになる場合があるため、
     // wordsが単一オブジェクトになっているケースも配列に正規化する
-    return lines.map((l) => ({ text: l.text ?? '', words: Array.isArray(l.words) ? l.words : l.words ? [l.words] : [] }))
+    return lines.map((l) => {
+      const words = Array.isArray(l.words) ? l.words : l.words ? [l.words] : []
+      return { text: joinWordsAsLineText(words), words }
+    })
   } catch (err) {
     log.warn('ocr runOcrOnPath output read/parse failed', err)
     return []
