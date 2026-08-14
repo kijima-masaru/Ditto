@@ -3,6 +3,8 @@ import { mouse, keyboard, Point, Key as NutKey } from '@nut-tree-fork/nut-js'
 import activeWin from 'active-win'
 import * as win32 from '../win32'
 import type { RecordedStep, TargetAdapter } from '../../shared/types'
+import { captureTemplateAt, findTemplateMatch } from '../imageMatch'
+import log from '../logger'
 
 /**
  * デスクトップアプリ対象・WEBアプリ対象(ユーザーの既定ブラウザ)に共通する、
@@ -143,10 +145,12 @@ export abstract class WindowTargetAdapterBase implements TargetAdapter {
     const bounds = await currentBounds(this.windowId)
     if (!bounds) return
     if (!isInsideBounds(e.x, e.y, bounds)) return
+    const targetImage = (await captureTemplateAt(e.x, e.y)) ?? undefined
     this.emit({
       type: e.clicks >= 2 ? 'dblclick' : 'click',
       winX: e.x - bounds.x,
-      winY: e.y - bounds.y
+      winY: e.y - bounds.y,
+      targetImage
     })
   }
 
@@ -185,7 +189,21 @@ export abstract class WindowTargetAdapterBase implements TargetAdapter {
         if (step.winX === undefined || step.winY === undefined) throw new Error('座標情報がありません')
         const bounds = await currentBounds(this.windowId)
         if (!bounds) throw new Error('対象ウィンドウが見つかりません')
-        await mouse.setPosition(new Point(bounds.x + step.winX, bounds.y + step.winY))
+        const expectedX = bounds.x + step.winX
+        const expectedY = bounds.y + step.winY
+        // 記録時の画像があれば期待座標付近を画像認識で探索し、レイアウトのずれを補正する。
+        // 十分一致する場所が見つからなければ記録した座標のままクリックする(フォールバック)
+        const match = step.targetImage ? await findTemplateMatch(step.targetImage, expectedX, expectedY) : null
+        if (step.targetImage) {
+          log.info(
+            match
+              ? `image match: score=${match.score.toFixed(1)} offset=(${(match.x - expectedX).toFixed(1)},${(match.y - expectedY).toFixed(1)})`
+              : 'image match: no confident match, falling back to coordinates'
+          )
+        }
+        const clickX = match ? match.x : expectedX
+        const clickY = match ? match.y : expectedY
+        await mouse.setPosition(new Point(clickX, clickY))
         await mouse.leftClick()
         if (step.type === 'dblclick') await mouse.leftClick()
         return

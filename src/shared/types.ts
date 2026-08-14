@@ -53,6 +53,13 @@ export interface RecordedStep {
   winY?: number
   /** キー入力 (keypress時) */
   key?: string
+  /**
+   * click/dblclick時、クリック位置を中心に記録した小さな画像(base64 PNG data URI)。
+   * 再生時はこの画像を期待座標付近で画像認識マッチングし、UIのレイアウトが多少
+   * ずれていてもクリック位置を補正する。マッチに失敗した場合はwinX/winYの座標に
+   * フォールバックする
+   */
+  targetImage?: string
 
   /** UI表示用の説明ラベル */
   label?: string
