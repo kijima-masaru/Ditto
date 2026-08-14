@@ -108,12 +108,8 @@ export interface CaptureInfo {
   displayBounds: { x: number; y: number; width: number; height: number }
 }
 
-/**
- * 録画枠フッターのボタン操作。'screenshot'は静止画1枚を撮影する(録画状態には遷移しない)。
- * 'text-recognition'は枠内をOCRし、認識結果をテキスト認識確認ウィンドウで表示する
- * (同じく録画状態には遷移しない)
- */
-export type RecordingFrameFooterAction = 'start' | 'pause' | 'resume' | 'stop' | 'screenshot' | 'text-recognition'
+/** 録画枠フッターのボタン操作。'screenshot'は静止画1枚を撮影する(録画状態には遷移しない) */
+export type RecordingFrameFooterAction = 'start' | 'pause' | 'resume' | 'stop' | 'screenshot'
 
 export type ClipboardEntryType = 'text' | 'image'
 
@@ -125,11 +121,6 @@ export interface ClipboardHistoryEntry {
   text: string
   /** type:'image'の場合のみ有効。data URL(PNG) */
   imageDataUrl?: string
-  /**
-   * type:'image'の場合、OCRで認識したテキスト(履歴検索用)。OCRは非同期で行うため、
-   * コピー直後の一瞬は未設定のことがある
-   */
-  ocrText?: string
   copiedAt: string
 }
 
@@ -432,10 +423,5 @@ export const IPC = {
   openScreenshotEditor: 'screenshot-editor:open', // メインウィンドウ -> main
   screenshotEditorImage: 'screenshot-editor:image', // main -> 編集ウィンドウ push
   notifyScreenshotSaved: 'screenshot-editor:notify-saved', // 編集ウィンドウ -> main
-  screenshotEditorSaved: 'screenshot-editor:saved-push', // main -> メインウィンドウ push
-
-  // テキスト認識(OCR)結果の確認・編集用の別ウィンドウ
-  openTextRecognitionEditor: 'text-recognition-editor:open', // メインウィンドウ -> main
-  textRecognitionEditorText: 'text-recognition-editor:text', // main -> 編集ウィンドウ push(OCR完了時。認識中はnull)
-  saveTextRecognitionEntry: 'text-recognition-editor:save' // 編集ウィンドウ -> main(クリップボード履歴へ追加)
+  screenshotEditorSaved: 'screenshot-editor:saved-push' // main -> メインウィンドウ push
 } as const

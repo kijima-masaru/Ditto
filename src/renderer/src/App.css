@@ -1412,68 +1412,6 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   color: var(--text-muted);
 }
 
-/* テキスト認識(OCR)結果の確認・編集画面。スクリーンショット確認画面と同様、
-   Ditto本体とは別のOSウィンドウとして表示するためページ全体のレイアウトにする */
-.text-recognition-editor-page {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  background: var(--bg);
-}
-
-.text-recognition-editor-header {
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border);
-  background: var(--panel-bg);
-}
-
-.text-recognition-editor-header h2 {
-  margin: 0;
-  font-size: 15px;
-  color: var(--text);
-}
-
-.text-recognition-editor-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 16px 20px;
-  min-height: 0;
-}
-
-.text-recognition-editor-loading {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.text-recognition-editor-textarea {
-  flex: 1;
-  min-height: 0;
-  resize: none;
-  padding: 12px;
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  background: var(--panel-bg);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.text-recognition-editor-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 14px 20px;
-  border-top: 1px solid var(--border);
-  background: var(--panel-bg);
-}
-
 .screenshot-editor-toolbar {
   display: flex;
   flex-wrap: wrap;

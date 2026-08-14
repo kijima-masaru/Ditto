@@ -8,10 +8,8 @@ import ClipboardPanel from './components/ClipboardPanel'
 import SettingsPanel from './components/SettingsPanel'
 import PreviewWindowRoot from './components/PreviewWindowRoot'
 import ScreenshotEditorWindowRoot from './components/ScreenshotEditorWindowRoot'
-import TextRecognitionEditorWindowRoot from './components/TextRecognitionEditorWindowRoot'
 import { useScreenRecording } from './hooks/useScreenRecording'
 import { useScreenshot } from './hooks/useScreenshot'
-import { useTextRecognition } from './hooks/useTextRecognition'
 
 // ネストしたフォルダプレビュー用の別ウィンドウは、同じrenderer bundleを
 // ?preview=1付きで読み込んで判別する(previewWindow.ts参照)
@@ -19,10 +17,6 @@ const isPreviewWindow = new URLSearchParams(window.location.search).get('preview
 // スクリーンショット確認・注釈編集用の別ウィンドウも同様に?screenshotEditor=1で判別する
 // (screenshotEditorWindow.ts参照)
 const isScreenshotEditorWindow = new URLSearchParams(window.location.search).get('screenshotEditor') === '1'
-// テキスト認識結果の確認・編集用の別ウィンドウも同様に?textRecognitionEditor=1で判別する
-// (textRecognitionWindow.ts参照)
-const isTextRecognitionEditorWindow =
-  new URLSearchParams(window.location.search).get('textRecognitionEditor') === '1'
 
 type View =
   | { name: 'target-select'; folderId: string | null }
@@ -44,7 +38,6 @@ export default function App(): React.JSX.Element {
   // PreviewWindowRootだけを描画する(以降のフックは通常のメインウィンドウ専用)
   if (isPreviewWindow) return <PreviewWindowRoot />
   if (isScreenshotEditorWindow) return <ScreenshotEditorWindowRoot />
-  if (isTextRecognitionEditorWindow) return <TextRecognitionEditorWindowRoot />
   return <MainApp />
 }
 
@@ -60,7 +53,6 @@ function MainApp(): React.JSX.Element {
   const [topPageNonce, setTopPageNonce] = useState(0)
   const recorder = useScreenRecording()
   const screenshot = useScreenshot()
-  const textRecognition = useTextRecognition()
   const [screenshotSavedPath, setScreenshotSavedPath] = useState<string | null>(null)
 
   useEffect(() => {
@@ -93,9 +85,8 @@ function MainApp(): React.JSX.Element {
       else if (action === 'resume') recorder.resume()
       else if (action === 'stop') recorder.stop()
       else if (action === 'screenshot') screenshot.capture()
-      else if (action === 'text-recognition') textRecognition.capture()
     })
-  }, [recorder.start, recorder.pause, recorder.resume, recorder.stop, screenshot.capture, textRecognition.capture])
+  }, [recorder.start, recorder.pause, recorder.resume, recorder.stop, screenshot.capture])
 
   useEffect(() => {
     window.api.setRecordingFrameFooterState(recorder.recordingState)
@@ -118,8 +109,6 @@ function MainApp(): React.JSX.Element {
       <canvas ref={recorder.canvasRef} className="offscreen-media" />
       <video ref={screenshot.videoRef} className="offscreen-media" muted playsInline />
       <canvas ref={screenshot.canvasRef} className="offscreen-media" />
-      <video ref={textRecognition.videoRef} className="offscreen-media" muted playsInline />
-      <canvas ref={textRecognition.canvasRef} className="offscreen-media" />
 
       <header className="app-header">
         <nav>
@@ -190,13 +179,6 @@ function MainApp(): React.JSX.Element {
         <div className="error recording-error">
           スクリーンショットエラー: {screenshot.errorMessage}
           <button onClick={screenshot.dismissError}>閉じる</button>
-        </div>
-      )}
-
-      {textRecognition.errorMessage && (
-        <div className="error recording-error">
-          テキスト認識エラー: {textRecognition.errorMessage}
-          <button onClick={textRecognition.dismissError}>閉じる</button>
         </div>
       )}
 

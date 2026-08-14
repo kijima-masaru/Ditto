@@ -247,8 +247,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
     reload()
   }
 
-  // OCR画像内テキスト検索機能は無効化しているため、検索はテキストエントリのみを対象にする
-  // (画像エントリのocrTextは常に未設定になる)
+  // 画像エントリはテキストを持たないため、検索はテキストエントリのみを対象にする
   const trimmedHistoryQuery = historyQuery.trim().toLowerCase()
   const filteredHistory = trimmedHistoryQuery
     ? history.filter((h) => h.type === 'text' && h.text.toLowerCase().includes(trimmedHistoryQuery))
