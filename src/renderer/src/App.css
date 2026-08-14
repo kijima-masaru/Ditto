@@ -861,7 +861,7 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
+  font-size: 20px;
   line-height: 1;
 }
 
