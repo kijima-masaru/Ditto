@@ -835,12 +835,12 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 
 .clipboard-subtabs button {
   flex: 1;
-  padding: 7px;
-  border: 1.5px solid var(--border-strong);
+  padding: 7px 4px;
+  border: 1px solid var(--border-strong);
   background: var(--panel-bg);
   color: var(--text-secondary);
-  border-radius: 8px;
-  font-size: 12px;
+  border-radius: 6px;
+  font-size: 11px;
 }
 
 .clipboard-subtabs button.active {
