@@ -1096,6 +1096,14 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   font-size: 13px;
 }
 
+/* 「保護方法」等、幅の基準になるsibling(トグル等)を持たない行の中に単独で置かれるselect。
+   親のsettings-item-controlがcontentサイズ基準(auto)のため、max-width:60%が不定な基準に対して
+   計算され不当に狭くなり文字が見切れるので、この文脈では固定のmin-widthで確保する */
+.settings-subitem-row .settings-select {
+  min-width: 110px;
+  max-width: none;
+}
+
 /* ホットキー設定リスト(「ホットキー→遷移先画面」の組み合わせを複数登録できるリスト)。
    1組=1行とし、遷移先セレクト・ホットキー変更ボタン・削除ボタンを横並びにする */
 .hotkey-binding-list {

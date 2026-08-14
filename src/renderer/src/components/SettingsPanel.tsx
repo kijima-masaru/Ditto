@@ -488,38 +488,6 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
 
           <div className="settings-subitem-list">
             <div className="settings-subitem-row">
-              <span className="settings-subitem-label">スクリーンショット</span>
-              <div className="settings-item-control">
-                <span className="toggle-state-label">{autoMaskSensitiveInfo.enabled ? 'ON' : 'OFF'}</span>
-                <label className="theme-toggle-switch">
-                  <input
-                    type="checkbox"
-                    checked={autoMaskSensitiveInfo.enabled}
-                    onChange={(e) => handleAutoMaskEnabledChange(e.target.checked)}
-                  />
-                  <span className="theme-toggle-slider" />
-                </label>
-              </div>
-            </div>
-            {autoMaskSensitiveInfo.enabled &&
-              AUTO_MASK_CATEGORIES.map(({ key, label }) => (
-                <div className="settings-subitem-row settings-subitem-row--nested" key={`screenshot-${key}`}>
-                  <span className="settings-subitem-label">{label}</span>
-                  <div className="settings-item-control">
-                    <span className="toggle-state-label">{autoMaskSensitiveInfo.categories[key] ? 'ON' : 'OFF'}</span>
-                    <label className="theme-toggle-switch">
-                      <input
-                        type="checkbox"
-                        checked={autoMaskSensitiveInfo.categories[key]}
-                        onChange={(e) => handleAutoMaskCategoryChange(key, e.target.checked)}
-                      />
-                      <span className="theme-toggle-slider" />
-                    </label>
-                  </div>
-                </div>
-              ))}
-
-            <div className="settings-subitem-row">
               <span className="settings-subitem-label">クリップボード履歴</span>
               <div className="settings-item-control">
                 <span className="toggle-state-label">{clipboardPiiProtection.enabled ? 'ON' : 'OFF'}</span>
@@ -559,6 +527,38 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
                         type="checkbox"
                         checked={clipboardPiiProtection.categories[key]}
                         onChange={(e) => handleClipboardPiiCategoryChange(key, e.target.checked)}
+                      />
+                      <span className="theme-toggle-slider" />
+                    </label>
+                  </div>
+                </div>
+              ))}
+
+            <div className="settings-subitem-row">
+              <span className="settings-subitem-label">スクリーンショット</span>
+              <div className="settings-item-control">
+                <span className="toggle-state-label">{autoMaskSensitiveInfo.enabled ? 'ON' : 'OFF'}</span>
+                <label className="theme-toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={autoMaskSensitiveInfo.enabled}
+                    onChange={(e) => handleAutoMaskEnabledChange(e.target.checked)}
+                  />
+                  <span className="theme-toggle-slider" />
+                </label>
+              </div>
+            </div>
+            {autoMaskSensitiveInfo.enabled &&
+              AUTO_MASK_CATEGORIES.map(({ key, label }) => (
+                <div className="settings-subitem-row settings-subitem-row--nested" key={`screenshot-${key}`}>
+                  <span className="settings-subitem-label">{label}</span>
+                  <div className="settings-item-control">
+                    <span className="toggle-state-label">{autoMaskSensitiveInfo.categories[key] ? 'ON' : 'OFF'}</span>
+                    <label className="theme-toggle-switch">
+                      <input
+                        type="checkbox"
+                        checked={autoMaskSensitiveInfo.categories[key]}
+                        onChange={(e) => handleAutoMaskCategoryChange(key, e.target.checked)}
                       />
                       <span className="theme-toggle-slider" />
                     </label>
