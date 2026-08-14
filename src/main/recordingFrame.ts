@@ -191,16 +191,12 @@ function buildHtml(): string {
   .size-fields { display:flex; align-items:center; gap:4px; color:#aeb2ba; font-size:11px; }
   .size-fields input { width:52px; background:#262a33; color:#e8e8ea; border:1px solid #454b57; border-radius:4px; padding:4px 5px; font-size:11px; }
   .size-fields input:disabled { color:#6b6f78; cursor:not-allowed; }
-  .toolbar-right { display:flex; align-items:center; gap:14px; }
-  .mode-toggle-wrap { display:flex; align-items:center; gap:6px; min-width:0; }
-  .mode-toggle-wrap[data-locked="true"] { pointer-events:none; opacity:0.4; }
-  .mode-switch { position:relative; display:inline-block; flex-shrink:0; width:32px; height:18px; cursor:pointer; }
-  .mode-switch input { position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; }
-  .mode-switch-slider { position:absolute; inset:0; background:#3a3f4b; border-radius:999px; transition:background-color .15s ease; }
-  .mode-switch-slider::before { content:''; position:absolute; top:2px; left:2px; width:14px; height:14px; background:#fff; border-radius:50%; transition:transform .15s ease; }
-  .mode-switch input:checked + .mode-switch-slider { background:#ff4d4f; }
-  .mode-switch input:checked + .mode-switch-slider::before { transform:translateX(14px); }
-  .mode-label { color:#cfd2d8; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .toolbar-right { display:flex; align-items:center; gap:10px; }
+  .mode-buttons { display:flex; align-items:center; gap:4px; }
+  .mode-buttons[data-locked="true"] { pointer-events:none; opacity:0.4; }
+  .mode-btn { width:26px; height:26px; border-radius:6px; border:1px solid transparent; background:transparent; color:#9aa0aa; font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .mode-btn:hover { background:rgba(255,255,255,0.1); color:#e8e8ea; }
+  .mode-btn.active { background:rgba(255,77,79,0.16); border-color:#ff4d4f; color:#ff4d4f; }
 
   .toolbar-actions { display:flex; align-items:center; gap:6px; }
   .toolbar-actions button { display:none; border:none; cursor:pointer; color:#fff; align-items:center; justify-content:center; }
@@ -208,17 +204,25 @@ function buildHtml(): string {
   .tool-btn { width:26px; height:26px; border-radius:50%; background:#3a3f4b; font-size:11px; }
   .tool-btn.stop { background:#e0453f; }
   .capture-btn { width:22px; height:22px; border-radius:50%; background:#ff4d4f; border:2px solid #fff; }
+  .ocr-btn { background:#2f80ed; font-size:10px; font-weight:700; }
   .toolbar-actions[data-state="idle"] #btn-start { display:flex; }
   .toolbar-actions[data-state="recording"] #btn-pause,
   .toolbar-actions[data-state="recording"] #btn-stop { display:flex; }
   .toolbar-actions[data-state="paused"] #btn-resume,
   .toolbar-actions[data-state="paused"] #btn-stop { display:flex; }
   .toolbar-actions[data-state="idle"][data-mode="photo"] #btn-capture { display:flex; }
+  .toolbar-actions[data-state="idle"][data-mode="ocr"] #btn-ocr-capture { display:flex; }
   .toolbar-actions[data-mode="photo"] #btn-start,
   .toolbar-actions[data-mode="photo"] #btn-pause,
   .toolbar-actions[data-mode="photo"] #btn-resume,
   .toolbar-actions[data-mode="photo"] #btn-stop { display:none; }
+  .toolbar-actions[data-mode="ocr"] #btn-start,
+  .toolbar-actions[data-mode="ocr"] #btn-pause,
+  .toolbar-actions[data-mode="ocr"] #btn-resume,
+  .toolbar-actions[data-mode="ocr"] #btn-stop { display:none; }
   .toolbar-actions[data-mode="video"] #btn-capture { display:none; }
+  .toolbar-actions[data-mode="video"] #btn-ocr-capture,
+  .toolbar-actions[data-mode="photo"] #btn-ocr-capture { display:none; }
 </style></head>
 <body>
   <div class="titlebar">
@@ -242,12 +246,10 @@ function buildHtml(): string {
       <span>px</span>
     </div>
     <div class="toolbar-right">
-      <div class="mode-toggle-wrap" id="mode-toggle-wrap" data-locked="false">
-        <label class="mode-switch">
-          <input type="checkbox" id="mode-switch-input" />
-          <span class="mode-switch-slider"></span>
-        </label>
-        <span class="mode-label" id="mode-label">画面録画</span>
+      <div class="mode-buttons" id="mode-buttons" data-locked="false">
+        <button class="mode-btn active" id="mode-btn-video" title="画面録画">●</button>
+        <button class="mode-btn" id="mode-btn-photo" title="スクリーンショット">撮</button>
+        <button class="mode-btn" id="mode-btn-ocr" title="テキスト認識">Aa</button>
       </div>
       <div class="toolbar-actions" id="actions" data-state="idle" data-mode="video">
         <button class="rec-btn" id="btn-start" title="録画開始"></button>
@@ -255,6 +257,7 @@ function buildHtml(): string {
         <button class="tool-btn" id="btn-resume" title="再開">▶</button>
         <button class="tool-btn stop" id="btn-stop" title="停止">■</button>
         <button class="capture-btn" id="btn-capture" title="撮影"></button>
+        <button class="capture-btn ocr-btn" id="btn-ocr-capture" title="テキストを認識">Aa</button>
       </div>
     </div>
   </div>
@@ -315,20 +318,22 @@ function buildHtml(): string {
       wInput.disabled = v
       hInput.disabled = v
     })
-    const modeToggleWrap = document.getElementById('mode-toggle-wrap')
-    const modeSwitchInput = document.getElementById('mode-switch-input')
-    const modeLabel = document.getElementById('mode-label')
+    const modeButtonsWrap = document.getElementById('mode-buttons')
+    const modeButtons = {
+      video: document.getElementById('mode-btn-video'),
+      photo: document.getElementById('mode-btn-photo'),
+      ocr: document.getElementById('mode-btn-ocr')
+    }
     function setMode(mode) {
       document.getElementById('actions').dataset.mode = mode
-      modeSwitchInput.checked = mode === 'photo'
-      modeLabel.textContent = mode === 'photo' ? 'スクリーンショット' : '画面録画'
+      Object.keys(modeButtons).forEach((m) => modeButtons[m].classList.toggle('active', m === mode))
     }
-    modeSwitchInput.addEventListener('change', () => setMode(modeSwitchInput.checked ? 'photo' : 'video'))
+    Object.keys(modeButtons).forEach((m) => modeButtons[m].addEventListener('click', () => setMode(m)))
 
     ipcRenderer.on('set-footer-state', (_e, state) => {
       document.getElementById('actions').dataset.state = state
-      // 動画録画/一時停止中はモード切替できないようにする(静止画には録画中の概念が無いため対象外)
-      modeToggleWrap.dataset.locked = state !== 'idle' ? 'true' : 'false'
+      // 動画録画/一時停止中はモード切替できないようにする(静止画・テキスト認識には録画中の概念が無いため対象外)
+      modeButtonsWrap.dataset.locked = state !== 'idle' ? 'true' : 'false'
     })
 
     document.getElementById('btn-start').addEventListener('click', () => ipcRenderer.send('recording-frame:footer-action', 'start'))
@@ -336,6 +341,7 @@ function buildHtml(): string {
     document.getElementById('btn-resume').addEventListener('click', () => ipcRenderer.send('recording-frame:footer-action', 'resume'))
     document.getElementById('btn-stop').addEventListener('click', () => ipcRenderer.send('recording-frame:footer-action', 'stop'))
     document.getElementById('btn-capture').addEventListener('click', () => ipcRenderer.send('recording-frame:footer-action', 'screenshot'))
+    document.getElementById('btn-ocr-capture').addEventListener('click', () => ipcRenderer.send('recording-frame:footer-action', 'text-recognition'))
   </script>
 </body></html>`
 }

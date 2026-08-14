@@ -232,7 +232,17 @@ const api = {
     const listener = (_e: unknown, path: string): void => cb(path)
     ipcRenderer.on(IPC.screenshotEditorSaved, listener)
     return () => ipcRenderer.removeListener(IPC.screenshotEditorSaved, listener)
-  }
+  },
+
+  openTextRecognitionEditor: (dataUrl: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.openTextRecognitionEditor, dataUrl),
+  onTextRecognitionEditorText: (cb: (text: string | null) => void): (() => void) => {
+    const listener = (_e: unknown, text: string | null): void => cb(text)
+    ipcRenderer.on(IPC.textRecognitionEditorText, listener)
+    return () => ipcRenderer.removeListener(IPC.textRecognitionEditorText, listener)
+  },
+  saveTextRecognitionEntry: (text: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.saveTextRecognitionEntry, text)
 }
 
 contextBridge.exposeInMainWorld('api', api)

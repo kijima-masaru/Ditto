@@ -12,6 +12,7 @@ import { startClipboardWatcher } from './clipboardWatcher'
 import * as settingsStore from './settingsStore'
 import { initPreviewWindows } from './previewWindow'
 import { initScreenshotEditorWindow } from './screenshotEditorWindow'
+import { initTextRecognitionWindow } from './textRecognitionWindow'
 import log from './logger'
 import { pruneOldLogs } from './debugLog'
 
@@ -142,6 +143,7 @@ app.whenReady().then(async () => {
   registerIpcHandlers(() => mainWindow)
   initPreviewWindows(() => mainWindow)
   initScreenshotEditorWindow(() => mainWindow)
+  initTextRecognitionWindow(() => mainWindow)
 
   setupAutoUpdater(() => mainWindow)
   if (app.isPackaged) {
