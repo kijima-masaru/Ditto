@@ -20,6 +20,7 @@ import {
 import * as store from './store'
 import { TargetManager } from './targetManager'
 import * as recordingFrame from './recordingFrame'
+import * as clickHighlight from './clickHighlight'
 import * as screenCapture from './screenCapture'
 import * as clipboardStore from './clipboardStore'
 import * as clipboardTransforms from './clipboardTransforms'
@@ -128,6 +129,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.screenRecordingStart, async (_e, testName: string) => {
     recordingFrame.setInteractive(false)
+    clickHighlight.start()
     return screenCapture.startRecording(testName)
   })
 
@@ -137,6 +139,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.screenRecordingFinish, async () => {
     recordingFrame.setInteractive(true)
+    clickHighlight.stop()
     return screenCapture.finishRecording()
   })
 

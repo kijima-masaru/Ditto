@@ -5,6 +5,7 @@ import { IPC, type NavigationTarget } from '../shared/types'
 import { registerIpcHandlers } from './ipcHandlers'
 import { setupAutoUpdater, checkForUpdates } from './autoUpdater'
 import * as recordingFrame from './recordingFrame'
+import * as clickHighlight from './clickHighlight'
 import { createTray } from './tray'
 import { setupGlobalHotkeys } from './hotkey'
 import { startClipboardWatcher } from './clipboardWatcher'
@@ -177,4 +178,5 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   isQuitting = true
   recordingFrame.destroy()
+  clickHighlight.stop()
 })
