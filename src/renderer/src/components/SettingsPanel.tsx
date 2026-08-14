@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import type {
   ClipboardTemplateFolder,
+  HotkeyBinding,
   HotkeyCombo,
+  NavigationTarget,
   PreviewKind,
   TestFolder,
   ThemeMode,
-  TopPage,
   UpdateStatus
 } from '../../../shared/types'
 import { flattenFolders } from '../folderTree'
@@ -38,17 +39,20 @@ function filterLogByLevel(text: string, level: string): string {
   return kept.join('\n')
 }
 
-const TOP_PAGE_NONE = 'none'
+const NAVIGATION_TARGET_NONE = 'none'
 
-function encodeTopPage(kind: PreviewKind, folderId: string | null): string {
+function encodeNavigationTarget(kind: PreviewKind, folderId: string | null): string {
   return `${kind}:${folderId ?? ''}`
 }
 
-function decodeTopPage(value: string): TopPage | null {
-  if (value === TOP_PAGE_NONE) return null
+function decodeNavigationTarget(value: string): NavigationTarget | null {
+  if (value === NAVIGATION_TARGET_NONE) return null
   const [kind, folderId] = value.split(':') as [PreviewKind, string]
   return { kind, folderId: folderId === '' ? null : folderId }
 }
+
+/** リストに新規追加した直後の、まだキーが未設定のホットキー */
+const UNSET_HOTKEY: HotkeyCombo = { ctrl: false, shift: false, alt: false, meta: false, keycode: null, label: '(未設定)' }
 
 function HelpIcon({ text }: { text: string }): React.JSX.Element {
   return (
@@ -79,12 +83,17 @@ function updateStatusLabel(status: UpdateStatus | null): string {
 }
 
 export default function SettingsPanel({ theme, onThemeChange }: Props): React.JSX.Element {
-  const [hotkey, setHotkey] = useState<HotkeyCombo | null>(null)
+  const [hotkeyBindings, setHotkeyBindings] = useState<HotkeyBinding[] | null>(null)
   const [loading, setLoading] = useState(true)
-  const [capturing, setCapturing] = useState(false)
+  // どのバインディング行(binding.id)がキーキャプチャ中か。同時に1行のみキャプチャ可能
+  const [capturingId, setCapturingId] = useState<string | null>(null)
   const [previewLabel, setPreviewLabel] = useState('')
+  // onHotkeyCaptureResultのリスナー(マウント時に1度だけ購読)から現在の値を参照するためのref
+  const capturingIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    capturingIdRef.current = capturingId
+  }, [capturingId])
 
-  const [topPage, setTopPage] = useState<TopPage | null>(null)
   const [clipboardFolders, setClipboardFolders] = useState<ClipboardTemplateFolder[]>([])
   const [testFolders, setTestFolders] = useState<TestFolder[]>([])
   const [windowSizeLocked, setWindowSizeLocked] = useState(false)
@@ -101,8 +110,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
 
   useEffect(() => {
     window.api.getSettings().then((s) => {
-      setHotkey(s.hotkey)
-      setTopPage(s.topPage)
+      setHotkeyBindings(s.hotkeyBindings)
       setWindowSizeLocked(s.windowSizeLocked)
       setAlwaysOnTop(s.alwaysOnTop)
       setLoading(false)
@@ -116,12 +124,22 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     return window.api.onUpdateStatus(setUpdateStatus)
   }, [])
 
+  // ホットキーの組み合わせをbindingId分だけ更新して保存する共通ヘルパー
+  const updateBindings = (updater: (prev: HotkeyBinding[]) => HotkeyBinding[]): void => {
+    setHotkeyBindings((prev) => {
+      const next = updater(prev ?? [])
+      window.api.setHotkeyBindings(next)
+      return next
+    })
+  }
+
   useEffect(() => {
     const unsubPreview = window.api.onHotkeyCapturePreview((label) => setPreviewLabel(label))
     const unsubResult = window.api.onHotkeyCaptureResult((combo) => {
-      setHotkey(combo)
-      setCapturing(false)
-      window.api.setHotkey(combo)
+      const id = capturingIdRef.current
+      setCapturingId(null)
+      if (!id) return
+      updateBindings((prev) => prev.map((b) => (b.id === id ? { ...b, hotkey: combo } : b)))
     })
     return () => {
       unsubPreview()
@@ -129,26 +147,35 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     }
   }, [])
 
-  const startCapture = async (): Promise<void> => {
+  const startCapture = async (id: string): Promise<void> => {
     setPreviewLabel('キーを押してください...')
-    setCapturing(true)
+    setCapturingId(id)
     await window.api.startHotkeyCapture()
   }
 
   const cancelCapture = async (): Promise<void> => {
     await window.api.cancelHotkeyCapture()
-    setCapturing(false)
+    setCapturingId(null)
+  }
+
+  const addBinding = (): void => {
+    const newBinding: HotkeyBinding = { id: crypto.randomUUID(), hotkey: UNSET_HOTKEY, target: null }
+    updateBindings((prev) => [...prev, newBinding])
+  }
+
+  const removeBinding = (id: string): void => {
+    if (capturingId === id) void cancelCapture()
+    updateBindings((prev) => prev.filter((b) => b.id !== id))
+  }
+
+  const changeBindingTarget = (id: string, value: string): void => {
+    const target = decodeNavigationTarget(value)
+    updateBindings((prev) => prev.map((b) => (b.id === id ? { ...b, target } : b)))
   }
 
   const handleThemeChange = async (value: ThemeMode): Promise<void> => {
     onThemeChange(value)
     await window.api.setTheme(value)
-  }
-
-  const handleTopPageChange = async (value: string): Promise<void> => {
-    const next = decodeTopPage(value)
-    setTopPage(next)
-    await window.api.setTopPage(next)
   }
 
   const handleWindowSizeLockedChange = async (locked: boolean): Promise<void> => {
@@ -189,11 +216,43 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     await window.api.checkForUpdates()
   }
 
-  if (loading || !hotkey) return <div className="settings-page">読み込み中...</div>
+  if (loading || !hotkeyBindings) return <div className="settings-page">読み込み中...</div>
 
   const flatClipboardFolders = flattenFolders(clipboardFolders)
   const flatTestFolders = flattenFolders(testFolders)
-  const topPageValue = topPage ? encodeTopPage(topPage.kind, topPage.folderId) : TOP_PAGE_NONE
+
+  const renderTargetSelect = (binding: HotkeyBinding): React.JSX.Element => {
+    const value = binding.target
+      ? encodeNavigationTarget(binding.target.kind, binding.target.folderId)
+      : NAVIGATION_TARGET_NONE
+    return (
+      <select
+        className="settings-select"
+        value={value}
+        onChange={(e) => changeBindingTarget(binding.id, e.target.value)}
+      >
+        <option value={NAVIGATION_TARGET_NONE}>未設定(表示のみ)</option>
+        <optgroup label="クリップボード">
+          <option value={encodeNavigationTarget('clipboard', null)}>home</option>
+          {flatClipboardFolders.map(({ folder, depth }) => (
+            <option key={folder.id} value={encodeNavigationTarget('clipboard', folder.id)}>
+              {'　'.repeat(depth + 1)}
+              {folder.name}
+            </option>
+          ))}
+        </optgroup>
+        <optgroup label="テスト">
+          <option value={encodeNavigationTarget('test', null)}>home</option>
+          {flatTestFolders.map(({ folder, depth }) => (
+            <option key={folder.id} value={encodeNavigationTarget('test', folder.id)}>
+              {'　'.repeat(depth + 1)}
+              {folder.name}
+            </option>
+          ))}
+        </optgroup>
+      </select>
+    )
+  }
 
   return (
     <div className="settings-page">
@@ -204,51 +263,49 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
           <div className="settings-item-row">
             <span className="settings-item-label">
               ウィンドウ表示ホットキー
-              <HelpIcon text={'「変更」を押してからキーを押してください。\n修飾キー(Ctrl/Shift/Alt/Win)単体なら素早く2回、修飾キーを押しながら別のキーを押せば1回押しで発火します。'} />
+              <HelpIcon
+                text={
+                  'ホットキーを押すとDittoのウィンドウを表示します。「遷移先」を指定すると、表示と同時にその画面へ切り替えます。\n' +
+                  '「+ 追加」で複数のホットキーを登録できます(画面ごとに別々のホットキーを割り当てる等)。\n' +
+                  'ホットキーの変更は「変更」を押してからキーを押してください。修飾キー(Ctrl/Shift/Alt/Win)単体なら素早く2回、修飾キーを押しながら別のキーを押せば1回押しで発火します。'
+                }
+              />
             </span>
-            {capturing ? (
-              <div className="settings-item-control">
-                <span className="hotkey-preview">{previewLabel}</span>
-                <button className="settings-action-btn" onClick={cancelCapture}>
-                  キャンセル
-                </button>
-              </div>
-            ) : (
-              <button className="settings-action-btn" onClick={startCapture}>
-                {hotkey.label}
-              </button>
-            )}
+            <button className="settings-action-btn" onClick={addBinding}>
+              + 追加
+            </button>
           </div>
-        </div>
 
-        <div className="settings-item">
-          <div className="settings-item-row">
-            <span className="settings-item-label">
-              トップページ
-              <HelpIcon text={'ウィンドウ表示ホットキーでDittoを表示した際に開く画面を指定します。'} />
-            </span>
-            <select className="settings-select" value={topPageValue} onChange={(e) => handleTopPageChange(e.target.value)}>
-              <option value={TOP_PAGE_NONE}>未設定</option>
-              <optgroup label="クリップボード">
-                <option value={encodeTopPage('clipboard', null)}>home</option>
-                {flatClipboardFolders.map(({ folder, depth }) => (
-                  <option key={folder.id} value={encodeTopPage('clipboard', folder.id)}>
-                    {'　'.repeat(depth + 1)}
-                    {folder.name}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="テスト">
-                <option value={encodeTopPage('test', null)}>home</option>
-                {flatTestFolders.map(({ folder, depth }) => (
-                  <option key={folder.id} value={encodeTopPage('test', folder.id)}>
-                    {'　'.repeat(depth + 1)}
-                    {folder.name}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          </div>
+          {hotkeyBindings.length === 0 ? (
+            <p className="hint">登録されたホットキーはありません。「+ 追加」から追加してください。</p>
+          ) : (
+            <div className="hotkey-binding-list">
+              {hotkeyBindings.map((binding) => (
+                <div className="hotkey-binding-row" key={binding.id}>
+                  {renderTargetSelect(binding)}
+                  {capturingId === binding.id ? (
+                    <div className="settings-item-control">
+                      <span className="hotkey-preview">{previewLabel}</span>
+                      <button className="settings-action-btn" onClick={cancelCapture}>
+                        キャンセル
+                      </button>
+                    </div>
+                  ) : (
+                    <button className="settings-action-btn" onClick={() => startCapture(binding.id)}>
+                      {binding.hotkey.label}
+                    </button>
+                  )}
+                  <button
+                    className="hotkey-binding-delete-btn"
+                    onClick={() => removeBinding(binding.id)}
+                    title="このホットキーを削除"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="settings-item">

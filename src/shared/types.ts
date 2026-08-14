@@ -162,24 +162,34 @@ export interface HotkeyCombo {
 
 export type ThemeMode = 'light' | 'dark'
 
-export interface AppSettings {
+/** ネストしたフォルダプレビューを別ウィンドウで開く際、どちらのデータを見せるか */
+export type PreviewKind = 'test' | 'clipboard'
+
+/** ホットキー押下時にジャンプする遷移先(タブ+フォルダ)。未設定(null)ならウィンドウ表示のみでジャンプしない */
+export interface NavigationTarget {
+  kind: PreviewKind
+  folderId: string | null
+}
+
+/**
+ * 「ホットキー」+「押した時にジャンプする画面」の組み合わせ1件。設定画面でこれを
+ * 複数登録でき(旧: 単一のウィンドウ表示ホットキー+単一のトップページ設定を一般化したもの)、
+ * 押された時にウィンドウを表示した上でtargetへジャンプする(targetがnullならウィンドウ表示のみ)。
+ */
+export interface HotkeyBinding {
+  id: string
   hotkey: HotkeyCombo
+  target: NavigationTarget | null
+}
+
+export interface AppSettings {
+  /** 「ホットキー→遷移先画面」の組み合わせのリスト。mainプロセスがこの数だけグローバルホットキーを登録する */
+  hotkeyBindings: HotkeyBinding[]
   theme: ThemeMode
-  /** ウィンドウ表示ホットキーでDittoを表示した際に開く画面。未設定(null)なら従来通り */
-  topPage: TopPage | null
   /** trueならウィンドウのリサイズ・最大化を禁止し、現在の大きさに固定する */
   windowSizeLocked: boolean
   /** trueならDittoのウィンドウを常に他のアプリより前面に表示する */
   alwaysOnTop: boolean
-}
-
-/** ネストしたフォルダプレビューを別ウィンドウで開く際、どちらのデータを見せるか */
-export type PreviewKind = 'test' | 'clipboard'
-
-/** 設定画面の「トップページ」。ホットキー表示時にジャンプする対象(タブ+フォルダ) */
-export interface TopPage {
-  kind: PreviewKind
-  folderId: string | null
 }
 
 /** 設定画面の「アップデートを確認」ボタンの状態表示に使う */
@@ -293,9 +303,8 @@ export const IPC = {
 
   // アプリ設定(ホットキー・テーマ等)
   getSettings: 'settings:get',
-  setHotkey: 'settings:set-hotkey',
+  setHotkeyBindings: 'settings:set-hotkey-bindings',
   setTheme: 'settings:set-theme',
-  setTopPage: 'settings:set-top-page',
   setWindowSizeLocked: 'settings:set-window-size-locked',
   setAlwaysOnTop: 'settings:set-always-on-top',
   startHotkeyCapture: 'hotkey-capture:start',
@@ -328,7 +337,7 @@ export const IPC = {
   isCursorOverPreviewWindow: 'preview-window:is-cursor-over',
   navigateToFolder: 'preview-window:navigate', // preview window -> main
   navigateToFolderPush: 'preview-window:navigate-push', // main -> メインウィンドウ push
-  showTopPage: 'window:show-top-page', // main -> メインウィンドウ push(ホットキー表示時)
+  navigateToHotkeyTarget: 'window:navigate-to-hotkey-target', // main -> メインウィンドウ push(ホットキー表示時)
 
   // スクリーンショット確認・注釈編集用の別ウィンドウ(PC画面いっぱいに最大化して表示する)
   openScreenshotEditor: 'screenshot-editor:open', // メインウィンドウ -> main

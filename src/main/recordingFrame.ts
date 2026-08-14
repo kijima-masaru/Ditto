@@ -191,6 +191,7 @@ function buildHtml(): string {
   .size-fields { display:flex; align-items:center; gap:4px; color:#aeb2ba; font-size:11px; }
   .size-fields input { width:52px; background:#262a33; color:#e8e8ea; border:1px solid #454b57; border-radius:4px; padding:4px 5px; font-size:11px; }
   .size-fields input:disabled { color:#6b6f78; cursor:not-allowed; }
+  .toolbar-right { display:flex; align-items:center; gap:14px; }
   .mode-toggle-wrap { display:flex; align-items:center; gap:6px; min-width:0; }
   .mode-toggle-wrap[data-locked="true"] { pointer-events:none; opacity:0.4; }
   .mode-switch { position:relative; display:inline-block; flex-shrink:0; width:32px; height:18px; cursor:pointer; }
@@ -240,19 +241,21 @@ function buildHtml(): string {
       <input type="number" id="h-input" min="${MIN_H}" />
       <span>px</span>
     </div>
-    <div class="mode-toggle-wrap" id="mode-toggle-wrap" data-locked="false">
-      <label class="mode-switch">
-        <input type="checkbox" id="mode-switch-input" />
-        <span class="mode-switch-slider"></span>
-      </label>
-      <span class="mode-label" id="mode-label">画面録画</span>
-    </div>
-    <div class="toolbar-actions" id="actions" data-state="idle" data-mode="video">
-      <button class="rec-btn" id="btn-start" title="録画開始"></button>
-      <button class="tool-btn" id="btn-pause" title="一時停止">⏸</button>
-      <button class="tool-btn" id="btn-resume" title="再開">▶</button>
-      <button class="tool-btn stop" id="btn-stop" title="停止">■</button>
-      <button class="capture-btn" id="btn-capture" title="撮影"></button>
+    <div class="toolbar-right">
+      <div class="mode-toggle-wrap" id="mode-toggle-wrap" data-locked="false">
+        <label class="mode-switch">
+          <input type="checkbox" id="mode-switch-input" />
+          <span class="mode-switch-slider"></span>
+        </label>
+        <span class="mode-label" id="mode-label">画面録画</span>
+      </div>
+      <div class="toolbar-actions" id="actions" data-state="idle" data-mode="video">
+        <button class="rec-btn" id="btn-start" title="録画開始"></button>
+        <button class="tool-btn" id="btn-pause" title="一時停止">⏸</button>
+        <button class="tool-btn" id="btn-resume" title="再開">▶</button>
+        <button class="tool-btn stop" id="btn-stop" title="停止">■</button>
+        <button class="capture-btn" id="btn-capture" title="撮影"></button>
+      </div>
     </div>
   </div>
   <script>

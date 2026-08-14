@@ -1,13 +1,14 @@
 import { uIOhook, UiohookKey, type UiohookKeyboardEvent } from 'uiohook-napi'
 import { ensureGlobalHookStarted, keepGlobalHookAlive } from './adapters/windowTargetBase'
-import type { HotkeyCombo } from '../shared/types'
+import type { HotkeyBinding, HotkeyCombo, NavigationTarget } from '../shared/types'
 
 /**
- * ウィンドウ表示ホットキー。任意のキー組み合わせを設定できる。
+ * ウィンドウ表示ホットキー。任意のキー組み合わせを、複数組(HotkeyBinding)登録できる。
  * - keycodeがnull: 修飾キー(Ctrl/Shift/Alt/Win)単体を一定時間内に2回押すと発火
  * - keycodeがある: 修飾キーを押しながらそのキーを1回押すと即座に発火(通常のショートカットと同じ)
  * アプリ全体で使うグローバルフック(uiohook-napi)にリスナーを追加する形で実装し、
  * 記録セッションの有無に関わらず常時有効にする(そのためフックはアプリ終了まで維持する)。
+ * 各バインディングのダブルタップ判定(lastPressAt)は互いに独立して管理する。
  */
 const DOUBLE_PRESS_WINDOW_MS = 400
 
@@ -63,9 +64,20 @@ export function formatComboLabel(combo: Omit<HotkeyCombo, 'label'>): string {
   return parts.join('+')
 }
 
-let currentCombo: HotkeyCombo | null = null
-let lastPressAt = 0
-let onTriggerCb: (() => void) | null = null
+/** 実行時に保持するバインディング。ダブルタップ判定用の状態(lastPressAt)を各バインディングごとに持つ */
+interface RuntimeBinding {
+  id: string
+  combo: HotkeyCombo
+  target: NavigationTarget | null
+  lastPressAt: number
+}
+
+function toRuntimeBinding(b: HotkeyBinding): RuntimeBinding {
+  return { id: b.id, combo: b.hotkey, target: b.target, lastPressAt: 0 }
+}
+
+let runtimeBindings: RuntimeBinding[] = []
+let onTriggerCb: ((target: NavigationTarget | null) => void) | null = null
 // OSのキーリピート(長押し中に連続して届くkeydown)を、素早い2回押しと誤検知しないための
 // 押下中キー集合。keydownで追加・keyupで削除し、「すでに押されているキー」からのkeydownは
 // リピートとみなして無視する(離して押し直した場合のみ新しい1回の押下として扱う)
@@ -88,33 +100,40 @@ function handleTriggerKeyup(e: UiohookKeyboardEvent): void {
 }
 
 function handleTriggerKeydown(e: UiohookKeyboardEvent): void {
-  if (!currentCombo) return
+  if (runtimeBindings.length === 0) return
   const isRepeat = heldKeycodes.has(e.keycode)
   heldKeycodes.add(e.keycode)
   if (isRepeat) return
-  if (currentCombo.keycode === null) {
-    const watched = watchedKeycodesForModifierOnly(currentCombo)
-    if (watched.includes(e.keycode)) {
-      const now = Date.now()
-      if (now - lastPressAt <= DOUBLE_PRESS_WINDOW_MS) {
-        lastPressAt = 0
-        onTriggerCb?.()
+
+  for (const binding of runtimeBindings) {
+    if (binding.combo.keycode === null) {
+      const watched = watchedKeycodesForModifierOnly(binding.combo)
+      if (watched.length === 0) continue // 未設定(修飾キーなし)のバインディングは発火しない
+      if (watched.includes(e.keycode)) {
+        const now = Date.now()
+        if (now - binding.lastPressAt <= DOUBLE_PRESS_WINDOW_MS) {
+          binding.lastPressAt = 0
+          onTriggerCb?.(binding.target)
+        } else {
+          binding.lastPressAt = now
+        }
       } else {
-        lastPressAt = now
+        // 選択中のキーを押した状態で他のキーが押された場合はショートカット操作とみなし、連打判定をリセットする
+        binding.lastPressAt = 0
       }
-      return
-    }
-    // 選択中のキーを押した状態で他のキーが押された場合はショートカット操作とみなし、連打判定をリセットする
-    lastPressAt = 0
-  } else {
-    if (e.keycode === currentCombo.keycode && matchesModifiers(e, currentCombo)) {
-      onTriggerCb?.()
+    } else {
+      if (e.keycode === binding.combo.keycode && matchesModifiers(e, binding.combo)) {
+        onTriggerCb?.(binding.target)
+      }
     }
   }
 }
 
-export function setupGlobalHotkey(initialCombo: HotkeyCombo, onTrigger: () => void): void {
-  currentCombo = initialCombo
+export function setupGlobalHotkeys(
+  initialBindings: HotkeyBinding[],
+  onTrigger: (target: NavigationTarget | null) => void
+): void {
+  runtimeBindings = initialBindings.map(toRuntimeBinding)
   onTriggerCb = onTrigger
   ensureGlobalHookStarted()
   keepGlobalHookAlive()
@@ -123,9 +142,8 @@ export function setupGlobalHotkey(initialCombo: HotkeyCombo, onTrigger: () => vo
 }
 
 /** 設定画面での変更を即座に反映する */
-export function setHotkeyCombo(combo: HotkeyCombo): void {
-  currentCombo = combo
-  lastPressAt = 0
+export function setHotkeyBindingsRuntime(bindings: HotkeyBinding[]): void {
+  runtimeBindings = bindings.map(toRuntimeBinding)
 }
 
 // --- ホットキーのキャプチャ(設定画面で「キーを押して設定」した際に使う) ---

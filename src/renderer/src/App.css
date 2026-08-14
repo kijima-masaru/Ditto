@@ -950,8 +950,13 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   gap: 8px;
 }
 
-/* ホットキー変更・アップデート確認・ログ表示ボタン。全項目でサイズを統一する */
+/* ホットキー変更・アップデート確認・ログ表示ボタン。全項目でサイズを統一する。
+   display:inline-flex + align-items:centerを明示し、フォーム要素のデフォルトの
+   ベースライン基準の縦位置合わせに頼らず、確実にテキストを垂直中央に揃える */
 .settings-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
   height: 32px;
   padding: 0 14px;
@@ -969,6 +974,9 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
 }
 
 .settings-select {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 1;
   min-width: 0;
   max-width: 60%;
@@ -979,6 +987,53 @@ button:not(.primary):not(.danger):not(.app-header button):disabled {
   color: var(--text-secondary);
   border-radius: 8px;
   font-size: 13px;
+}
+
+/* ホットキー設定リスト(「ホットキー→遷移先画面」の組み合わせを複数登録できるリスト)。
+   1組=1行とし、遷移先セレクト・ホットキー変更ボタン・削除ボタンを横並びにする */
+.hotkey-binding-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.hotkey-binding-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: var(--panel-bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.hotkey-binding-row .settings-select {
+  flex: 1;
+  max-width: none;
+  min-width: 110px;
+}
+
+.hotkey-binding-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1.5px solid var(--danger-border);
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-radius: 8px;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hotkey-binding-delete-btn:hover {
+  background: var(--danger-hover-bg);
 }
 
 .toggle-state-label {

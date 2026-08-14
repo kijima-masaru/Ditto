@@ -45,7 +45,7 @@ function MainApp(): React.JSX.Element {
   const [view, setView] = useState<View>({ name: 'clipboard' })
   const [refreshKey, setRefreshKey] = useState(0)
   const [theme, setTheme] = useState<ThemeMode>('light')
-  // ウィンドウ表示ホットキーで「トップページ」に指定したフォルダへジャンプするための状態。
+  // 設定画面で登録したホットキーの遷移先(タブ+フォルダ)へジャンプするための状態。
   // topPageNonceが変わるたびにClipboardPanel/TestListをkey経由で強制的に作り直し、
   // その時点のtopPageFolderIdを初期フォルダとして渡す(通常のタブ切替では変化しないため
   // 手動ナビゲーション中の状態を壊さない)
@@ -60,7 +60,7 @@ function MainApp(): React.JSX.Element {
   }, [])
 
   useEffect(() => {
-    return window.api.onShowTopPage(({ kind, folderId }) => {
+    return window.api.onNavigateToHotkeyTarget(({ kind, folderId }) => {
       setTopPageFolderId(folderId)
       setTopPageNonce((n) => n + 1)
       if (kind === 'clipboard') setView({ name: 'clipboard' })
@@ -120,7 +120,7 @@ function MainApp(): React.JSX.Element {
           onClick={recorder.toggleFrame}
           title="録画枠を表示/非表示"
         >
-          ●
+          ◎
         </button>
         <button
           className={`settings-icon-btn${view.name === 'settings' ? ' active' : ''}`}

@@ -1,12 +1,12 @@
 import { app, shell, BrowserWindow, screen } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { IPC } from '../shared/types'
+import { IPC, type NavigationTarget } from '../shared/types'
 import { registerIpcHandlers } from './ipcHandlers'
 import { setupAutoUpdater, checkForUpdates } from './autoUpdater'
 import * as recordingFrame from './recordingFrame'
 import { createTray } from './tray'
-import { setupGlobalHotkey } from './hotkey'
+import { setupGlobalHotkeys } from './hotkey'
 import { startClipboardWatcher } from './clipboardWatcher'
 import * as settingsStore from './settingsStore'
 import { initPreviewWindows } from './previewWindow'
@@ -60,17 +60,15 @@ function showMainWindow(): void {
   mainWindow.focus()
 }
 
-// ウィンドウ表示ホットキーで表示した際、設定画面で指定した「トップページ」
-// (クリップボード/テストの特定フォルダ)へジャンプする。ウィンドウ生成直後で
-// レンダラーの読み込みが終わっていない場合は、読み込み完了を待ってから送る
-async function showMainWindowAtTopPage(): Promise<void> {
+// ウィンドウ表示ホットキーで表示した際、そのホットキーに紐づく遷移先
+// (クリップボード/テストの特定フォルダ)へジャンプする。targetがnull(未設定)の場合は
+// ウィンドウ表示のみ行う。ウィンドウ生成直後でレンダラーの読み込みが終わっていない
+// 場合は、読み込み完了を待ってから送る
+function showMainWindowAndNavigate(target: NavigationTarget | null): void {
   showMainWindow()
   const win = mainWindow
-  if (!win) return
-  const settings = await settingsStore.getSettings()
-  if (!settings.topPage) return
-  const topPage = settings.topPage
-  const send = (): void => win.webContents.send(IPC.showTopPage, topPage)
+  if (!win || !target) return
+  const send = (): void => win.webContents.send(IPC.navigateToHotkeyTarget, target)
   if (win.webContents.isLoading()) {
     win.webContents.once('did-finish-load', send)
   } else {
@@ -157,8 +155,8 @@ app.whenReady().then(async () => {
     app.quit()
   })
   const settings = await settingsStore.getSettings()
-  setupGlobalHotkey(settings.hotkey, () => {
-    void showMainWindowAtTopPage()
+  setupGlobalHotkeys(settings.hotkeyBindings, (target) => {
+    showMainWindowAndNavigate(target)
   })
 
   // ウィンドウが閉じられていてもクリップボード履歴を記録し続けるため、常時監視する

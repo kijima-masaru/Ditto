@@ -12,9 +12,8 @@ import {
 import {
   IPC,
   type ContextMenuItem,
-  type HotkeyCombo,
+  type HotkeyBinding,
   type ThemeMode,
-  type TopPage,
   type TestCase,
   type TestTarget
 } from '../shared/types'
@@ -26,7 +25,7 @@ import * as clipboardStore from './clipboardStore'
 import * as clipboardTransforms from './clipboardTransforms'
 import * as settingsStore from './settingsStore'
 import * as targetHistoryStore from './targetHistoryStore'
-import { setHotkeyCombo, startHotkeyCapture, cancelHotkeyCapture } from './hotkey'
+import { setHotkeyBindingsRuntime, startHotkeyCapture, cancelHotkeyCapture } from './hotkey'
 import * as debugLog from './debugLog'
 import { checkForUpdates } from './autoUpdater'
 
@@ -283,15 +282,13 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.getSettings, async () => settingsStore.getSettings())
 
-  ipcMain.handle(IPC.setHotkey, async (_e, hotkey: HotkeyCombo) => {
-    const settings = await settingsStore.setHotkey(hotkey)
-    setHotkeyCombo(hotkey)
+  ipcMain.handle(IPC.setHotkeyBindings, async (_e, hotkeyBindings: HotkeyBinding[]) => {
+    const settings = await settingsStore.setHotkeyBindings(hotkeyBindings)
+    setHotkeyBindingsRuntime(hotkeyBindings)
     return settings
   })
 
   ipcMain.handle(IPC.setTheme, async (_e, theme: ThemeMode) => settingsStore.setTheme(theme))
-
-  ipcMain.handle(IPC.setTopPage, async (_e, topPage: TopPage | null) => settingsStore.setTopPage(topPage))
 
   ipcMain.handle(IPC.setWindowSizeLocked, async (_e, locked: boolean) => {
     const settings = await settingsStore.setWindowSizeLocked(locked)

@@ -7,7 +7,9 @@ import {
   type ClipboardTemplate,
   type ClipboardTemplateFolder,
   type ContextMenuItem,
+  type HotkeyBinding,
   type HotkeyCombo,
+  type NavigationTarget,
   type RecordedStep,
   type RecordingFrameBounds,
   type RecordingFrameFooterAction,
@@ -19,7 +21,6 @@ import {
   type TestFolder,
   type TestTarget,
   type ThemeMode,
-  type TopPage,
   type UpdateStatus
 } from '../shared/types'
 
@@ -120,9 +121,9 @@ const api = {
     ipcRenderer.invoke(IPC.showContextMenu, items),
 
   getSettings: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.getSettings),
-  setHotkey: (hotkey: HotkeyCombo): Promise<AppSettings> => ipcRenderer.invoke(IPC.setHotkey, hotkey),
+  setHotkeyBindings: (hotkeyBindings: HotkeyBinding[]): Promise<AppSettings> =>
+    ipcRenderer.invoke(IPC.setHotkeyBindings, hotkeyBindings),
   setTheme: (theme: ThemeMode): Promise<AppSettings> => ipcRenderer.invoke(IPC.setTheme, theme),
-  setTopPage: (topPage: TopPage | null): Promise<AppSettings> => ipcRenderer.invoke(IPC.setTopPage, topPage),
   setWindowSizeLocked: (locked: boolean): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setWindowSizeLocked, locked),
   setAlwaysOnTop: (alwaysOnTop: boolean): Promise<AppSettings> =>
@@ -186,10 +187,10 @@ const api = {
     ipcRenderer.on(IPC.navigateToFolderPush, listener)
     return () => ipcRenderer.removeListener(IPC.navigateToFolderPush, listener)
   },
-  onShowTopPage: (cb: (payload: TopPage) => void): (() => void) => {
-    const listener = (_e: unknown, payload: TopPage): void => cb(payload)
-    ipcRenderer.on(IPC.showTopPage, listener)
-    return () => ipcRenderer.removeListener(IPC.showTopPage, listener)
+  onNavigateToHotkeyTarget: (cb: (payload: NavigationTarget) => void): (() => void) => {
+    const listener = (_e: unknown, payload: NavigationTarget): void => cb(payload)
+    ipcRenderer.on(IPC.navigateToHotkeyTarget, listener)
+    return () => ipcRenderer.removeListener(IPC.navigateToHotkeyTarget, listener)
   },
 
   openScreenshotEditor: (dataUrl: string): Promise<void> => ipcRenderer.invoke(IPC.openScreenshotEditor, dataUrl),

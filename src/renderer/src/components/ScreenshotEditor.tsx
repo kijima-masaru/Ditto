@@ -1865,7 +1865,12 @@ function ColorPicker({
 }
 
 function TextGlyph(): React.JSX.Element {
-  return <span className="se-glyph">T</span>
+  return iconSvg(
+    <>
+      <line x1="5" y1="6" x2="19" y2="6" />
+      <line x1="12" y1="6" x2="12" y2="19" />
+    </>
+  )
 }
 
 function iconSvg(children: React.ReactNode): React.JSX.Element {
