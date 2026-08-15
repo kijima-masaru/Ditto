@@ -31,7 +31,7 @@ if (!app.requestSingleInstanceLock()) {
   process.exit(0)
 }
 app.on('second-instance', () => {
-  showMainWindow()
+  void showMainWindow()
 })
 
 let mainWindow: BrowserWindow | null = null
@@ -50,25 +50,38 @@ function positionAtCursor(win: BrowserWindow): void {
   win.setPosition(x, y)
 }
 
-function showMainWindow(): void {
+async function showMainWindow(): Promise<BrowserWindow | undefined> {
   if (!mainWindow || mainWindow.isDestroyed()) {
-    createWindow()
-    return
+    await createWindow()
   }
+  if (!mainWindow || mainWindow.isDestroyed()) return undefined
   if (mainWindow.isMinimized()) mainWindow.restore()
   positionAtCursor(mainWindow)
   mainWindow.show()
   mainWindow.focus()
+  return mainWindow
 }
 
 // ウィンドウ表示ホットキーで表示した際、そのホットキーに紐づく遷移先
 // (クリップボード/テストの特定フォルダ)へジャンプする。targetがnull(未設定)の場合は
 // ウィンドウ表示のみ行う。ウィンドウ生成直後でレンダラーの読み込みが終わっていない
 // 場合は、読み込み完了を待ってから送る
-function showMainWindowAndNavigate(target: NavigationTarget | null): void {
-  showMainWindow()
-  const win = mainWindow
-  if (!win || !target) return
+async function showMainWindowAndNavigate(target: NavigationTarget | null): Promise<void> {
+  const win = await showMainWindow()
+  if (!win) return
+
+  // ホットキーでの自動表示は「常に最前面に表示」設定がOFFでも確実に最前面へ出したいため、
+  // 一時的にscreen-saverレベルのalwaysOnTopへ切り替えて強制的に最前面へ出し、
+  // 直後に元の設定値へ戻す(設定がONの場合はそのまま維持される)
+  const settings = await settingsStore.getSettings()
+  win.setAlwaysOnTop(true, 'screen-saver')
+  win.moveTop()
+  win.focus()
+  setTimeout(() => {
+    if (!win.isDestroyed()) win.setAlwaysOnTop(settings.alwaysOnTop)
+  }, 250)
+
+  if (!target) return
   const send = (): void => win.webContents.send(IPC.navigateToHotkeyTarget, target)
   if (win.webContents.isLoading()) {
     win.webContents.once('did-finish-load', send)
@@ -151,13 +164,16 @@ app.whenReady().then(async () => {
     app.setLoginItemSettings({ openAtLogin: true })
   }
 
-  createTray(showMainWindow, () => {
-    isQuitting = true
-    app.quit()
-  })
+  createTray(
+    () => void showMainWindow(),
+    () => {
+      isQuitting = true
+      app.quit()
+    }
+  )
   const settings = await settingsStore.getSettings()
   setupGlobalHotkeys(settings.hotkeyBindings, (target) => {
-    showMainWindowAndNavigate(target)
+    void showMainWindowAndNavigate(target)
   })
 
   // ウィンドウが閉じられていてもクリップボード履歴を記録し続けるため、常時監視する
@@ -166,8 +182,8 @@ app.whenReady().then(async () => {
   })
 
   app.on('activate', function () {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
-    else showMainWindow()
+    if (BrowserWindow.getAllWindows().length === 0) void createWindow()
+    else void showMainWindow()
   })
 })
 
