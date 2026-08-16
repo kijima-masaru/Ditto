@@ -1,7 +1,7 @@
 import { uIOhook, UiohookKey, type UiohookKeyboardEvent } from 'uiohook-napi'
-import { keyboard, Key as NutKey } from '@nut-tree-fork/nut-js'
 import { ensureGlobalHookStarted, keepGlobalHookAlive } from './adapters/windowTargetBase'
 import * as clipboardStore from './clipboardStore'
+import { backspaceKeys, typeUnicodeText } from './win32'
 import log from './logger'
 
 /**
@@ -54,14 +54,27 @@ let expanding = false
 
 async function expand(trigger: string, text: string): Promise<void> {
   expanding = true
+  // 展開中はグローバルフックを一時停止する。稼働させたままSendInputで大量のキー
+  // イベントを注入すると、自プロセス自身のフックがそれらを拾って処理する分だけ
+  // Nodeメインスレッドの処理が割り込み、フック配送側でのタイムアウト・順序崩壊が
+  // 起こり文字化けや欠落につながるため、注入中はフック自体を外して競合を断つ
+  uIOhook.stop()
   try {
+    // Backspaceを1つずつ、短い間隔を空けて送出する。同一キーのdown/upを
+    // 間隔なしで連続送出すると、キーリピート判定を行うアプリ側で一部が
+    // 取りこぼされることがあるため、1回ずつ確実に処理させる
     for (let i = 0; i < trigger.length; i++) {
-      await keyboard.type(NutKey.Backspace)
+      backspaceKeys(1)
+      await new Promise((resolve) => setTimeout(resolve, 15))
     }
-    await keyboard.type(text)
+    // nut-jsのkeyboard.type()はキーボードレイアウトの仮想キー変換に依存し、
+    // レイアウト上にない文字(日本語等)は文字化けするため、SendInput+
+    // KEYEVENTF_UNICODEで直接注入するwin32.typeUnicodeTextを使う
+    typeUnicodeText(text)
   } catch (err) {
     log.error('[textExpansion] expand failed', err)
   } finally {
+    uIOhook.start()
     expanding = false
   }
 }
