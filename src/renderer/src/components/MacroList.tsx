@@ -387,8 +387,8 @@ export default function MacroList({ onRun, onCreateMacro, initialFolderId = null
                     </div>
                   ) : (
                     <div className="macro-name-item" onContextMenu={(e) => handleMacroContextMenu(e, t)}>
-                      {t.pinned && <span className="clip-item-pin" title="コマンドパレットに固定">📌</span>}
                       {t.name}
+                      {t.pinned && <span className="clip-item-pin" title="コマンドパレットに固定">📌</span>}
                     </div>
                   )}
                 </li>

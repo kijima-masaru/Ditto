@@ -35,6 +35,10 @@
   --header-btn-border: rgba(255, 255, 255, 0.18);
 
   --shadow: rgba(0, 0, 0, 0.08);
+
+  /* ピン留めバッジ(📌)の色。ライトテーマでは元のカラー絵文字のまま
+     (白背景カード上では白に変換すると見えなくなるため) */
+  --pin-filter: none;
 }
 
 :root[data-theme='dark'] {
@@ -74,6 +78,10 @@
   --header-btn-border: rgba(255, 255, 255, 0.14);
 
   --shadow: rgba(0, 0, 0, 0.4);
+
+  /* ダークテーマのカード背景上ではカラー絵文字のままだと視認しづらいため白に変換する
+     (brightness(0)で黒化 → invert(1)で白に反転、というカラー絵文字の定番の単色化手法) */
+  --pin-filter: brightness(0) invert(1);
 }
 
 * {
@@ -951,10 +959,14 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   color: var(--accent);
 }
 
-/* コマンドパレットの初期表示に固定指定されていることを示す絵文字バッジ */
+/* コマンドパレットの初期表示に固定指定されていることを示す絵文字バッジ。
+   絵文字自体はカラーフォントでcolorプロパティが効かないため、
+   --pin-filter(テーマごとに定義)で色を調整する */
 .clip-item-pin {
   font-size: 11px;
   line-height: 1;
+  margin-left: 4px;
+  filter: var(--pin-filter);
 }
 
 /* 定型文のトリガー展開用バッジ。ラベルと区別するため等幅フォント・ニュートラルな配色にする */
