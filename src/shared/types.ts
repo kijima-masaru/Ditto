@@ -78,6 +78,8 @@ export interface MacroCase {
   folderId?: string | null
   /** 同じフォルダ内での並び順(昇順)。ドラッグ&ドロップで並び替えた結果を保持する */
   order: number
+  /** trueなら、コマンドパレットの初期表示(未入力時)にこのマクロを表示する */
+  pinned?: boolean
 }
 
 /** マクロ一覧を整理するための階層フォルダ */
@@ -157,6 +159,8 @@ export interface ClipboardTemplate {
    * 全アプリで唯一である必要がある(未設定なら従来通りクリックでのコピー貼り付けのみ)
    */
   trigger?: string
+  /** trueなら、コマンドパレットの初期表示(未入力時)にこの定型文を表示する */
+  pinned?: boolean
 }
 
 /**
@@ -267,9 +271,12 @@ export interface AppSettings {
   clipboardPiiProtection: ClipboardPiiProtectionSettings
   /** trueなら、定型文に設定したトリガー文字列をどのアプリでも直接入力するだけで本文へ自動展開する */
   textExpansionEnabled: boolean
-  /** trueなら、固定ホットキー(Ctrl+Shift+Space)でクリップボード履歴・定型文・マクロを
+  /** trueなら、commandPaletteHotkeyでクリップボード履歴・定型文・マクロを
    *  横断検索できるコマンドパレットをどのアプリからでも呼び出せる */
   commandPaletteEnabled: boolean
+  /** コマンドパレットを開くホットキー。ウィンドウ表示ホットキーと同じ形式(HotkeyCombo)で
+   *  自由に設定できる。既定値はCtrl+Shift+Space */
+  commandPaletteHotkey: HotkeyCombo
 }
 
 /** 設定画面の「アップデートを確認」ボタンの状態表示に使う */
@@ -443,13 +450,18 @@ export const IPC = {
   notifyScreenshotSaved: 'screenshot-editor:notify-saved', // 編集ウィンドウ -> main
   screenshotEditorSaved: 'screenshot-editor:saved-push', // main -> メインウィンドウ push
 
-  // コマンドパレット(固定ホットキーで呼び出す、クリップボード履歴・定型文・マクロを
+  // コマンドパレット(ホットキーで呼び出す、クリップボード履歴・定型文・マクロを
   // 横断検索できる別ウィンドウ)。検索対象データ自体は既存のlistClipboardHistory等を
   // パレット側から直接呼び出して取得するため、検索専用のIPCは持たない
   setCommandPaletteEnabled: 'settings:set-command-palette-enabled',
+  setCommandPaletteHotkey: 'settings:set-command-palette-hotkey',
   commandPaletteShown: 'command-palette:shown', // main -> パレットウィンドウ push(表示するたびに検索状態をリセットさせる)
   hideCommandPalette: 'command-palette:hide', // パレットウィンドウ -> main
   commandPaletteInsertText: 'command-palette:insert-text', // パレットウィンドウ -> main(選択項目を元のウィンドウへ入力する)
   commandPaletteOpenMacro: 'command-palette:open-macro', // パレットウィンドウ -> main(選択したマクロの再生画面をメインウィンドウで開く)
-  openMacroForPlayback: 'window:open-macro-for-playback' // main -> メインウィンドウ push
+  openMacroForPlayback: 'window:open-macro-for-playback', // main -> メインウィンドウ push
+
+  // コマンドパレットの初期表示(未入力時)に出す定型文・マクロの固定指定
+  setClipboardTemplatePinned: 'clipboard:set-template-pinned',
+  setMacroPinned: 'macros:set-pinned'
 } as const

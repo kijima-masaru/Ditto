@@ -70,6 +70,10 @@ function decodeNavigationTarget(value: string): NavigationTarget | null {
 /** リストに新規追加した直後の、まだキーが未設定のホットキー */
 const UNSET_HOTKEY: HotkeyCombo = { ctrl: false, shift: false, alt: false, meta: false, keycode: null, label: '(未設定)' }
 
+/** capturingIdに使う特別な値。ウィンドウ表示ホットキーの各バインディングid(UUID)とは
+ *  衝突しないユニークな文字列で、コマンドパレットのホットキーをキャプチャ中であることを表す */
+const COMMAND_PALETTE_CAPTURE_ID = '__command-palette-hotkey__'
+
 function updateStatusLabel(status: UpdateStatus | null): string {
   if (!status) return ''
   switch (status.state) {
@@ -108,6 +112,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const [alwaysOnTop, setAlwaysOnTop] = useState(false)
   const [textExpansionEnabled, setTextExpansionEnabled] = useState(false)
   const [commandPaletteEnabled, setCommandPaletteEnabled] = useState(false)
+  const [commandPaletteHotkey, setCommandPaletteHotkey] = useState<HotkeyCombo | null>(null)
   const [autoMaskSensitiveInfo, setAutoMaskSensitiveInfo] = useState<ScreenshotMaskSettings>({
     enabled: false,
     categories: { phone: false, postalCode: false, email: false, creditCard: false }
@@ -134,6 +139,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
       setAlwaysOnTop(s.alwaysOnTop)
       setTextExpansionEnabled(s.textExpansionEnabled)
       setCommandPaletteEnabled(s.commandPaletteEnabled)
+      setCommandPaletteHotkey(s.commandPaletteHotkey)
       setAutoMaskSensitiveInfo(s.autoMaskSensitiveInfo)
       setClipboardPiiProtection(s.clipboardPiiProtection)
       setLoading(false)
@@ -162,6 +168,11 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
       const id = capturingIdRef.current
       setCapturingId(null)
       if (!id) return
+      if (id === COMMAND_PALETTE_CAPTURE_ID) {
+        setCommandPaletteHotkey(combo)
+        window.api.setCommandPaletteHotkey(combo)
+        return
+      }
       updateBindings((prev) => prev.map((b) => (b.id === id ? { ...b, hotkey: combo } : b)))
     })
     return () => {
@@ -455,10 +466,11 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
               コマンドパレット
               <HelpIcon
                 text={
-                  'ONにすると、固定ホットキー(Ctrl+Shift+Space)でDitto以外のどのアプリからでも\n' +
-                  '小さな検索窓を呼び出せます。クリップボード履歴・定型文・マクロを横断的に\n' +
-                  'あいまい検索でき、履歴/定型文はEnterで元のウィンドウへ直接入力、\n' +
-                  'マクロはEnterでその再生画面を開きます(実行はボタンを押すまで開始しません)。'
+                  'ONにすると、下のホットキーでDitto以外のどのアプリからでも小さな検索窓を\n' +
+                  '呼び出せます。未入力時はコマンドパレットに固定指定した定型文・マクロのみを表示し、\n' +
+                  '文字を入力するとクリップボード履歴・定型文・マクロすべてをあいまい検索できます。\n' +
+                  '履歴/定型文はEnterで元のウィンドウへ直接入力、マクロはEnterでその再生画面を\n' +
+                  '開きます(実行はボタンを押すまで開始しません)。'
                 }
               />
             </span>
@@ -474,6 +486,23 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
               </label>
             </div>
           </div>
+          {commandPaletteHotkey && (
+            <div className="settings-item-row">
+              <span className="settings-item-label">コマンドパレットのホットキー</span>
+              {capturingId === COMMAND_PALETTE_CAPTURE_ID ? (
+                <div className="settings-item-control">
+                  <span className="hotkey-preview">{previewLabel}</span>
+                  <button className="settings-action-btn" onClick={cancelCapture}>
+                    キャンセル
+                  </button>
+                </div>
+              ) : (
+                <button className="settings-action-btn" onClick={() => startCapture(COMMAND_PALETTE_CAPTURE_ID)}>
+                  {commandPaletteHotkey.label}
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="settings-item">

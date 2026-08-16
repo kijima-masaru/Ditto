@@ -353,6 +353,11 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
     }
   }
 
+  const handleTogglePinTemplate = async (t: ClipboardTemplate): Promise<void> => {
+    await window.api.setClipboardTemplatePinned(t.id, !t.pinned)
+    reload()
+  }
+
   const handleTemplateContextMenu = async (e: React.MouseEvent, t: ClipboardTemplate): Promise<void> => {
     e.preventDefault()
     e.stopPropagation()
@@ -360,6 +365,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
     const index = ids.indexOf(t.id)
     const result = await window.api.showContextMenu([
       { id: 'edit', label: '編集' },
+      { id: 'pin', label: t.pinned ? 'コマンドパレットの固定を解除' : 'コマンドパレットに固定' },
       { id: 'move', label: '移動', submenu: buildMoveSubmenu(flatFolders) },
       { id: 'move-up', label: '上に移動', enabled: index > 0 },
       { id: 'move-down', label: '下に移動', enabled: index < ids.length - 1 },
@@ -367,6 +373,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
       { id: 'delete', label: '削除' }
     ])
     if (result === 'edit') startEdit(t)
+    else if (result === 'pin') void handleTogglePinTemplate(t)
     else if (result === 'delete') setDeletingTemplateId(t.id)
     else if (result?.startsWith('move:')) {
       const dest = result.slice('move:'.length)
@@ -680,8 +687,9 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                         }
                       : {})}
                   >
-                    {(t.label || t.trigger) && (
+                    {(t.label || t.trigger || t.pinned) && (
                       <div className="clip-item-header">
+                        {t.pinned && <span className="clip-item-pin" title="コマンドパレットに固定">📌</span>}
                         {t.label && <div className="clip-item-label">{t.label}</div>}
                         {t.trigger && <div className="clip-item-trigger">{t.trigger}</div>}
                       </div>

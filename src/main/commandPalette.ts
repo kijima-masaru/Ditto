@@ -6,11 +6,12 @@ import activeWin from 'active-win'
 import { ensureGlobalHookStarted, keepGlobalHookAlive } from './adapters/windowTargetBase'
 import * as win32 from './win32'
 import * as settingsStore from './settingsStore'
-import { IPC } from '../shared/types'
+import { IPC, type HotkeyCombo } from '../shared/types'
 
 /**
- * コマンドパレット。固定ホットキー(Ctrl+Shift+Space)でどのアプリからでも呼び出せる、
- * クリップボード履歴・定型文・マクロを横断検索する小さなオーバーレイウィンドウ。
+ * コマンドパレット。ホットキー(既定はCtrl+Shift+Space、設定画面のウィンドウ表示ホットキーと
+ * 同じ形式で自由に変更できる)でどのアプリからでも呼び出せる、クリップボード履歴・定型文・
+ * マクロを横断検索する小さなオーバーレイウィンドウ。
  * 検索対象データ自体は既存のlistClipboardHistory等をパレット側のrendererから直接
  * 呼び出して取得し、絞り込みもrenderer側で行う(このモジュールはウィンドウの表示制御と、
  * 選択項目の実行(元のウィンドウへの入力・マクロ再生画面を開く)のみを担当する)。
@@ -93,6 +94,11 @@ function toggle(): void {
   else show()
 }
 
+// 1回のSendInputで送るUnicode文字数。長文を1回にまとめて送出すると、対象アプリの
+// メッセージループが処理しきれず一部の文字が欠落・入れ替わることがあるため、
+// 適度な塊に分けて少し間隔を空けながら送る(textExpansion.tsのexpand()と同じ対策)
+const TYPE_CHUNK_SIZE = 15
+
 /** パレットで選択した履歴/定型文のテキストを、パレットを開く前にフォーカスされていた
  *  ウィンドウへ直接入力する。文字化けを避けるためSendInput+KEYEVENTF_UNICODEで
  *  直接注入する(textExpansion.tsと同じ方式)。自プロセスのグローバルフックが自ら
@@ -109,29 +115,88 @@ async function insertText(text: string): Promise<void> {
   await wait(150)
   uIOhook.stop()
   try {
-    win32.typeUnicodeText(text)
+    for (let i = 0; i < text.length; i += TYPE_CHUNK_SIZE) {
+      win32.typeUnicodeText(text.slice(i, i + TYPE_CHUNK_SIZE))
+      await wait(20)
+    }
     await wait(100)
   } finally {
     uIOhook.start()
   }
 }
 
-let spaceHeld = false
+// --- ホットキー検知(設定画面のウィンドウ表示ホットキーと同じHotkeyCombo形式で1つだけ保持する) ---
+
+const DOUBLE_PRESS_WINDOW_MS = 400
+
+const MODIFIER_ONLY_KEYCODES: Record<'ctrl' | 'shift' | 'alt' | 'meta', number[]> = {
+  ctrl: [UiohookKey.Ctrl, UiohookKey.CtrlRight],
+  shift: [UiohookKey.Shift, UiohookKey.ShiftRight],
+  alt: [UiohookKey.Alt, UiohookKey.AltRight],
+  meta: [UiohookKey.Meta, UiohookKey.MetaRight]
+}
+
+function watchedKeycodesForModifierOnly(combo: HotkeyCombo): number[] {
+  if (combo.ctrl) return MODIFIER_ONLY_KEYCODES.ctrl
+  if (combo.shift) return MODIFIER_ONLY_KEYCODES.shift
+  if (combo.alt) return MODIFIER_ONLY_KEYCODES.alt
+  if (combo.meta) return MODIFIER_ONLY_KEYCODES.meta
+  return []
+}
+
+function matchesModifiers(e: UiohookKeyboardEvent, combo: HotkeyCombo): boolean {
+  return e.ctrlKey === combo.ctrl && e.shiftKey === combo.shift && e.altKey === combo.alt && e.metaKey === combo.meta
+}
+
+let hotkey: HotkeyCombo = {
+  ctrl: true,
+  shift: true,
+  alt: false,
+  meta: false,
+  keycode: UiohookKey.Space,
+  label: 'Ctrl+Shift+Space'
+}
+let lastModifierPressAt = 0
+// OSのキーリピート(長押し中に連続して届くkeydown)を素早い2回押しと誤検知しないための
+// 押下中キー集合。ホットキー検知(hotkey.ts)と同じ考え方
+const heldKeycodes = new Set<number>()
+
 function handleKeydown(e: UiohookKeyboardEvent): void {
-  if (e.keycode !== UiohookKey.Space) return
-  const isRepeat = spaceHeld
-  spaceHeld = true
-  if (isRepeat) return
-  if (enabled && e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey) toggle()
+  const isRepeat = heldKeycodes.has(e.keycode)
+  heldKeycodes.add(e.keycode)
+  if (isRepeat || !enabled) return
+
+  if (hotkey.keycode === null) {
+    const watched = watchedKeycodesForModifierOnly(hotkey)
+    if (watched.length === 0) return
+    if (watched.includes(e.keycode)) {
+      const now = Date.now()
+      if (now - lastModifierPressAt <= DOUBLE_PRESS_WINDOW_MS) {
+        lastModifierPressAt = 0
+        toggle()
+      } else {
+        lastModifierPressAt = now
+      }
+    } else {
+      lastModifierPressAt = 0
+    }
+  } else if (e.keycode === hotkey.keycode && matchesModifiers(e, hotkey)) {
+    toggle()
+  }
 }
 
 function handleKeyup(e: UiohookKeyboardEvent): void {
-  if (e.keycode === UiohookKey.Space) spaceHeld = false
+  heldKeycodes.delete(e.keycode)
 }
 
 export function setEnabled(value: boolean): void {
   enabled = value
   if (!enabled) hide()
+}
+
+export function setHotkey(combo: HotkeyCombo): void {
+  hotkey = combo
+  lastModifierPressAt = 0
 }
 
 export function initCommandPalette(openMacroForPlayback: (macroId: string) => void): void {
@@ -154,6 +219,12 @@ export function initCommandPalette(openMacroForPlayback: (macroId: string) => vo
   ipcMain.handle(IPC.setCommandPaletteEnabled, async (_e, value: boolean) => {
     const settings = await settingsStore.setCommandPaletteEnabled(value)
     setEnabled(value)
+    return settings
+  })
+
+  ipcMain.handle(IPC.setCommandPaletteHotkey, async (_e, combo: HotkeyCombo) => {
+    const settings = await settingsStore.setCommandPaletteHotkey(combo)
+    setHotkey(combo)
     return settings
   })
 }

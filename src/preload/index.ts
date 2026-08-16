@@ -35,6 +35,8 @@ const api = {
   renameMacro: (id: string, name: string): Promise<MacroCase> => ipcRenderer.invoke(IPC.renameMacro, id, name),
   moveMacro: (id: string, folderId: string | null): Promise<MacroCase> =>
     ipcRenderer.invoke(IPC.moveMacro, id, folderId),
+  setMacroPinned: (id: string, pinned: boolean): Promise<MacroCase> =>
+    ipcRenderer.invoke(IPC.setMacroPinned, id, pinned),
   reorderMacros: (orderedIds: string[]): Promise<void> => ipcRenderer.invoke(IPC.reorderMacros, orderedIds),
 
   listFolders: (): Promise<MacroFolder[]> => ipcRenderer.invoke(IPC.listFolders),
@@ -101,6 +103,8 @@ const api = {
   deleteClipboardTemplate: (id: string): Promise<void> => ipcRenderer.invoke(IPC.deleteClipboardTemplate, id),
   moveClipboardTemplate: (id: string, folderId: string | null): Promise<void> =>
     ipcRenderer.invoke(IPC.moveClipboardTemplate, id, folderId),
+  setClipboardTemplatePinned: (id: string, pinned: boolean): Promise<void> =>
+    ipcRenderer.invoke(IPC.setClipboardTemplatePinned, id, pinned),
   reorderClipboardTemplates: (orderedIds: string[]): Promise<void> =>
     ipcRenderer.invoke(IPC.reorderClipboardTemplates, orderedIds),
 
@@ -155,6 +159,8 @@ const api = {
     ipcRenderer.invoke(IPC.setTextExpansionEnabled, enabled),
   setCommandPaletteEnabled: (enabled: boolean): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setCommandPaletteEnabled, enabled),
+  setCommandPaletteHotkey: (hotkey: HotkeyCombo): Promise<AppSettings> =>
+    ipcRenderer.invoke(IPC.setCommandPaletteHotkey, hotkey),
   setAutoMaskEnabled: (enabled: boolean): Promise<AppSettings> => ipcRenderer.invoke(IPC.setAutoMaskEnabled, enabled),
   setAutoMaskSensitiveInfo: (category: AutoMaskCategory, enabled: boolean): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setAutoMaskSensitiveInfo, category, enabled),

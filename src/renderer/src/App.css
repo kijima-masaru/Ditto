@@ -951,6 +951,12 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   color: var(--accent);
 }
 
+/* コマンドパレットの初期表示に固定指定されていることを示す絵文字バッジ */
+.clip-item-pin {
+  font-size: 11px;
+  line-height: 1;
+}
+
 /* 定型文のトリガー展開用バッジ。ラベルと区別するため等幅フォント・ニュートラルな配色にする */
 .clip-item-trigger {
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -1991,6 +1997,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   text-align: center;
   color: var(--text-muted);
   font-size: 13px;
+  white-space: pre-line;
 }
 
 .command-palette-section + .command-palette-section {

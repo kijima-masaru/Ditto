@@ -174,6 +174,14 @@ export async function updateTemplate(id: string, text: string, label?: string, t
   await fs.writeFile(templatesFilePath(), JSON.stringify(templates, null, 2), 'utf-8')
 }
 
+/** コマンドパレットの初期表示(未入力時)にこの定型文を出すかどうかを切り替える */
+export async function setTemplatePinned(id: string, pinned: boolean): Promise<void> {
+  const templates = await listTemplates()
+  const template = templates.find((t) => t.id === id)
+  if (template) template.pinned = pinned
+  await fs.writeFile(templatesFilePath(), JSON.stringify(templates, null, 2), 'utf-8')
+}
+
 export async function deleteTemplate(id: string): Promise<void> {
   const templates = await listTemplates()
   await fs.writeFile(templatesFilePath(), JSON.stringify(templates.filter((t) => t.id !== id), null, 2), 'utf-8')

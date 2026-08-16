@@ -157,6 +157,15 @@ export async function moveMacro(id: string, folderId: string | null): Promise<Ma
   return macroCase
 }
 
+/** コマンドパレットの初期表示(未入力時)にこのマクロを出すかどうかを切り替える */
+export async function setPinned(id: string, pinned: boolean): Promise<MacroCase> {
+  const raw = await fs.readFile(filePathFor(id), 'utf-8')
+  const macroCase = JSON.parse(raw) as MacroCase
+  macroCase.pinned = pinned
+  await fs.writeFile(filePathFor(id), JSON.stringify(macroCase, null, 2), 'utf-8')
+  return macroCase
+}
+
 export async function listFolders(): Promise<MacroFolder[]> {
   const folders = await readFolders()
   return folders.sort((a, b) => a.order - b.order)

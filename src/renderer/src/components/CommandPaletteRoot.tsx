@@ -73,14 +73,21 @@ export default function CommandPaletteRoot(): React.JSX.Element {
     })
   }, [reload])
 
+  // 未入力時は自分でコマンドパレットに固定指定した定型文・マクロのみを表示する
+  // (履歴は「固定指定」という概念がないため未入力時は常に表示しない)。
+  // 何か入力した場合のみ、Ditto内の履歴・定型文・マクロすべてを検索対象にする
+  const isSearching = query.trim().length > 0
+
   const results = useMemo<PaletteResult[]>(() => {
-    const historyResults: PaletteResult[] = history
-      .filter((h) => h.type === 'text' && matches(query, h.text))
-      .slice(0, MAX_PER_SECTION)
-      .map((h) => ({ kind: 'history', id: h.id, primary: truncate(h.text), insertText: h.text }))
+    const historyResults: PaletteResult[] = isSearching
+      ? history
+          .filter((h) => h.type === 'text' && matches(query, h.text))
+          .slice(0, MAX_PER_SECTION)
+          .map((h) => ({ kind: 'history', id: h.id, primary: truncate(h.text), insertText: h.text }))
+      : []
 
     const templateResults: PaletteResult[] = templates
-      .filter((t) => matches(query, t.label, t.text, t.trigger))
+      .filter((t) => (isSearching ? matches(query, t.label, t.text, t.trigger) : t.pinned))
       .slice(0, MAX_PER_SECTION)
       .map((t) => ({
         kind: 'template',
@@ -91,12 +98,12 @@ export default function CommandPaletteRoot(): React.JSX.Element {
       }))
 
     const macroResults: PaletteResult[] = macros
-      .filter((m) => matches(query, m.name))
+      .filter((m) => (isSearching ? matches(query, m.name) : m.pinned))
       .slice(0, MAX_PER_SECTION)
       .map((m) => ({ kind: 'macro', id: m.id, primary: m.name }))
 
     return [...historyResults, ...templateResults, ...macroResults]
-  }, [query, history, templates, macros])
+  }, [isSearching, query, history, templates, macros])
 
   useEffect(() => {
     setSelectedIndex((i) => Math.min(i, Math.max(results.length - 1, 0)))
@@ -171,7 +178,11 @@ export default function CommandPaletteRoot(): React.JSX.Element {
       />
       <div className="command-palette-results">
         {results.length === 0 ? (
-          <div className="command-palette-empty">一致する項目がありません</div>
+          <div className="command-palette-empty">
+            {isSearching
+              ? '一致する項目がありません'
+              : 'コマンドパレットに固定した定型文・マクロがありません。\n入力すると履歴・定型文・マクロすべてから検索できます。'}
+          </div>
         ) : (
           <>
             {renderSection('history')}

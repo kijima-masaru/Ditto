@@ -178,6 +178,11 @@ export default function MacroList({ onRun, onCreateMacro, initialFolderId = null
     }
   }
 
+  const handleTogglePinMacro = async (t: MacroCase): Promise<void> => {
+    await window.api.setMacroPinned(t.id, !t.pinned)
+    reload()
+  }
+
   const handleMacroContextMenu = async (e: React.MouseEvent, t: MacroCase): Promise<void> => {
     e.preventDefault()
     e.stopPropagation()
@@ -186,6 +191,7 @@ export default function MacroList({ onRun, onCreateMacro, initialFolderId = null
     const result = await window.api.showContextMenu([
       { id: 'run', label: '実行' },
       { id: 'rename', label: '名前変更' },
+      { id: 'pin', label: t.pinned ? 'コマンドパレットの固定を解除' : 'コマンドパレットに固定' },
       { id: 'move', label: '移動', submenu: buildMoveSubmenu(flatFolders) },
       { id: 'move-up', label: '上に移動', enabled: index > 0 },
       { id: 'move-down', label: '下に移動', enabled: index < ids.length - 1 },
@@ -194,6 +200,7 @@ export default function MacroList({ onRun, onCreateMacro, initialFolderId = null
     ])
     if (result === 'run') onRun(t)
     else if (result === 'rename') startRenameMacro(t)
+    else if (result === 'pin') void handleTogglePinMacro(t)
     else if (result === 'delete') setDeletingMacroId(t.id)
     else if (result?.startsWith('move:')) {
       const dest = result.slice('move:'.length)
@@ -380,6 +387,7 @@ export default function MacroList({ onRun, onCreateMacro, initialFolderId = null
                     </div>
                   ) : (
                     <div className="macro-name-item" onContextMenu={(e) => handleMacroContextMenu(e, t)}>
+                      {t.pinned && <span className="clip-item-pin" title="コマンドパレットに固定">📌</span>}
                       {t.name}
                     </div>
                   )}
