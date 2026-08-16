@@ -463,6 +463,8 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   box-shadow: 0 1px 3px var(--shadow);
   font-size: 13px;
   cursor: default;
+  display: flex;
+  align-items: center;
 }
 
 .macro-name-item:hover {
@@ -961,11 +963,13 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 
 /* コマンドパレットの初期表示に固定指定されていることを示す絵文字バッジ。
    絵文字自体はカラーフォントでcolorプロパティが効かないため、
-   --pin-filter(テーマごとに定義)で色を調整する */
+   --pin-filter(テーマごとに定義)で色を調整する。margin-left: autoで
+   親のflex行の右端に押し出す(clip-item-header・macro-name-itemどちらもflex) */
 .clip-item-pin {
   font-size: 11px;
   line-height: 1;
-  margin-left: 4px;
+  margin-left: auto;
+  padding-left: 4px;
   filter: var(--pin-filter);
 }
 

@@ -690,8 +690,8 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                     {(t.label || t.trigger || t.pinned) && (
                       <div className="clip-item-header">
                         {t.label && <div className="clip-item-label">{t.label}</div>}
-                        {t.pinned && <span className="clip-item-pin" title="コマンドパレットに固定">📌</span>}
                         {t.trigger && <div className="clip-item-trigger">{t.trigger}</div>}
+                        {t.pinned && <span className="clip-item-pin" title="コマンドパレットに固定">📌</span>}
                       </div>
                     )}
                     <div className="clip-item-text">{truncate(t.text)}</div>
