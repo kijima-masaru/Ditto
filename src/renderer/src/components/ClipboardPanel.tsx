@@ -19,26 +19,25 @@ function truncate(text: string, max = 80): string {
 }
 
 // 定型文の本文に埋め込める動的変数(main/templateVariables.tsで解決する記法と対応)
-const TEMPLATE_VARIABLES: { token: string; desc: string }[] = [
-  { token: '{{date}}', desc: '今日の日付' },
-  { token: '{{seq}}', desc: '使うたびに増える連番' },
-  { token: '{{clipboard}}', desc: '直前のクリップボード内容' }
+const TEMPLATE_VARIABLES: { token: string; label: string }[] = [
+  { token: '{{date}}', label: '日付' },
+  { token: '{{seq}}', label: '連番' },
+  { token: '{{clipboard}}', label: '直前のクリップボード' }
 ]
 
 /** 本文入力欄の下に表示する、動的変数を挿入するためのボタン列 */
 function TemplateVariableHint({ onInsert }: { onInsert: (token: string) => void }): React.JSX.Element {
   return (
     <div className="template-variable-hint">
-      <span className="hint">動的変数(コピー・入力の直前に置き換わります): </span>
       {TEMPLATE_VARIABLES.map((v) => (
         <button
           key={v.token}
           type="button"
           className="variable-chip"
-          title={v.desc}
+          title={v.token}
           onClick={() => onInsert(v.token)}
         >
-          {v.token}
+          {v.label}
         </button>
       ))}
     </div>
