@@ -8,6 +8,7 @@ import ClipboardPanel from './components/ClipboardPanel'
 import SettingsPanel from './components/SettingsPanel'
 import PreviewWindowRoot from './components/PreviewWindowRoot'
 import ScreenshotEditorWindowRoot from './components/ScreenshotEditorWindowRoot'
+import CommandPaletteRoot from './components/CommandPaletteRoot'
 import { useScreenRecording } from './hooks/useScreenRecording'
 import { useScreenshot } from './hooks/useScreenshot'
 
@@ -17,6 +18,8 @@ const isPreviewWindow = new URLSearchParams(window.location.search).get('preview
 // スクリーンショット確認・注釈編集用の別ウィンドウも同様に?screenshotEditor=1で判別する
 // (screenshotEditorWindow.ts参照)
 const isScreenshotEditorWindow = new URLSearchParams(window.location.search).get('screenshotEditor') === '1'
+// コマンドパレット用の別ウィンドウも同様に?commandPalette=1で判別する(commandPalette.ts参照)
+const isCommandPaletteWindow = new URLSearchParams(window.location.search).get('commandPalette') === '1'
 
 type View =
   | { name: 'target-select'; folderId: string | null }
@@ -38,6 +41,7 @@ export default function App(): React.JSX.Element {
   // PreviewWindowRootだけを描画する(以降のフックは通常のメインウィンドウ専用)
   if (isPreviewWindow) return <PreviewWindowRoot />
   if (isScreenshotEditorWindow) return <ScreenshotEditorWindowRoot />
+  if (isCommandPaletteWindow) return <CommandPaletteRoot />
   return <MainApp />
 }
 
@@ -71,6 +75,18 @@ function MainApp(): React.JSX.Element {
       else setView({ name: 'macro-list' })
     })
   }, [recorder.showFrame])
+
+  // コマンドパレットでマクロを選択した際、その再生画面(idle状態、実行はユーザーが
+  // ボタンを押すまで開始しない)を開く。パレット側からはmacroIdのみ渡ってくるため
+  // ここで最新の一覧から該当のマクロを取得する
+  useEffect(() => {
+    return window.api.onOpenMacroForPlayback((macroId) => {
+      window.api.listMacros().then((list) => {
+        const macroCase = list.find((m) => m.id === macroId)
+        if (macroCase) setView({ name: 'playback', macroCase })
+      })
+    })
+  }, [])
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)

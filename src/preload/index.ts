@@ -153,6 +153,8 @@ const api = {
     ipcRenderer.invoke(IPC.setAlwaysOnTop, alwaysOnTop),
   setTextExpansionEnabled: (enabled: boolean): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setTextExpansionEnabled, enabled),
+  setCommandPaletteEnabled: (enabled: boolean): Promise<AppSettings> =>
+    ipcRenderer.invoke(IPC.setCommandPaletteEnabled, enabled),
   setAutoMaskEnabled: (enabled: boolean): Promise<AppSettings> => ipcRenderer.invoke(IPC.setAutoMaskEnabled, enabled),
   setAutoMaskSensitiveInfo: (category: AutoMaskCategory, enabled: boolean): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setAutoMaskSensitiveInfo, category, enabled),
@@ -238,6 +240,22 @@ const api = {
     const listener = (_e: unknown, path: string): void => cb(path)
     ipcRenderer.on(IPC.screenshotEditorSaved, listener)
     return () => ipcRenderer.removeListener(IPC.screenshotEditorSaved, listener)
+  },
+
+  onCommandPaletteShown: (cb: () => void): (() => void) => {
+    const listener = (): void => cb()
+    ipcRenderer.on(IPC.commandPaletteShown, listener)
+    return () => ipcRenderer.removeListener(IPC.commandPaletteShown, listener)
+  },
+  hideCommandPalette: (): void => ipcRenderer.send(IPC.hideCommandPalette),
+  insertViaCommandPalette: (text: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.commandPaletteInsertText, text),
+  openMacroViaCommandPalette: (macroId: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.commandPaletteOpenMacro, macroId),
+  onOpenMacroForPlayback: (cb: (macroId: string) => void): (() => void) => {
+    const listener = (_e: unknown, macroId: string): void => cb(macroId)
+    ipcRenderer.on(IPC.openMacroForPlayback, listener)
+    return () => ipcRenderer.removeListener(IPC.openMacroForPlayback, listener)
   }
 }
 

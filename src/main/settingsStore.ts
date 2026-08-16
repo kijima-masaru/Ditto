@@ -46,7 +46,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   alwaysOnTop: false,
   autoMaskSensitiveInfo: DEFAULT_SCREENSHOT_MASK_SETTINGS,
   clipboardPiiProtection: DEFAULT_CLIPBOARD_PII_PROTECTION,
-  textExpansionEnabled: false
+  textExpansionEnabled: false,
+  commandPaletteEnabled: false
 }
 
 // v1.24.9までは単一のboolean(true/false)、v1.24.10〜v1.24.13まではカテゴリだけの
@@ -112,7 +113,8 @@ export async function getSettings(): Promise<AppSettings> {
       alwaysOnTop: parsed.alwaysOnTop ?? DEFAULT_SETTINGS.alwaysOnTop,
       autoMaskSensitiveInfo: normalizeScreenshotMaskSettings(parsed.autoMaskSensitiveInfo),
       clipboardPiiProtection: normalizeClipboardPiiProtection(parsed.clipboardPiiProtection),
-      textExpansionEnabled: parsed.textExpansionEnabled ?? DEFAULT_SETTINGS.textExpansionEnabled
+      textExpansionEnabled: parsed.textExpansionEnabled ?? DEFAULT_SETTINGS.textExpansionEnabled,
+      commandPaletteEnabled: parsed.commandPaletteEnabled ?? DEFAULT_SETTINGS.commandPaletteEnabled
     }
   } catch {
     return { ...DEFAULT_SETTINGS }
@@ -154,6 +156,13 @@ export async function setAlwaysOnTop(alwaysOnTop: boolean): Promise<AppSettings>
 export async function setTextExpansionEnabled(enabled: boolean): Promise<AppSettings> {
   const settings = await getSettings()
   settings.textExpansionEnabled = enabled
+  await writeSettings(settings)
+  return settings
+}
+
+export async function setCommandPaletteEnabled(enabled: boolean): Promise<AppSettings> {
+  const settings = await getSettings()
+  settings.commandPaletteEnabled = enabled
   await writeSettings(settings)
   return settings
 }

@@ -107,6 +107,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const [windowSizeLocked, setWindowSizeLocked] = useState(false)
   const [alwaysOnTop, setAlwaysOnTop] = useState(false)
   const [textExpansionEnabled, setTextExpansionEnabled] = useState(false)
+  const [commandPaletteEnabled, setCommandPaletteEnabled] = useState(false)
   const [autoMaskSensitiveInfo, setAutoMaskSensitiveInfo] = useState<ScreenshotMaskSettings>({
     enabled: false,
     categories: { phone: false, postalCode: false, email: false, creditCard: false }
@@ -132,6 +133,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
       setWindowSizeLocked(s.windowSizeLocked)
       setAlwaysOnTop(s.alwaysOnTop)
       setTextExpansionEnabled(s.textExpansionEnabled)
+      setCommandPaletteEnabled(s.commandPaletteEnabled)
       setAutoMaskSensitiveInfo(s.autoMaskSensitiveInfo)
       setClipboardPiiProtection(s.clipboardPiiProtection)
       setLoading(false)
@@ -212,6 +214,11 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const handleTextExpansionEnabledChange = async (value: boolean): Promise<void> => {
     setTextExpansionEnabled(value)
     await window.api.setTextExpansionEnabled(value)
+  }
+
+  const handleCommandPaletteEnabledChange = async (value: boolean): Promise<void> => {
+    setCommandPaletteEnabled(value)
+    await window.api.setCommandPaletteEnabled(value)
   }
 
   const handleAutoMaskEnabledChange = async (value: boolean): Promise<void> => {
@@ -435,6 +442,33 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
                   type="checkbox"
                   checked={textExpansionEnabled}
                   onChange={(e) => handleTextExpansionEnabledChange(e.target.checked)}
+                />
+                <span className="theme-toggle-slider" />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="settings-item">
+          <div className="settings-item-row">
+            <span className="settings-item-label">
+              コマンドパレット
+              <HelpIcon
+                text={
+                  'ONにすると、固定ホットキー(Ctrl+Shift+Space)でDitto以外のどのアプリからでも\n' +
+                  '小さな検索窓を呼び出せます。クリップボード履歴・定型文・マクロを横断的に\n' +
+                  'あいまい検索でき、履歴/定型文はEnterで元のウィンドウへ直接入力、\n' +
+                  'マクロはEnterでその再生画面を開きます(実行はボタンを押すまで開始しません)。'
+                }
+              />
+            </span>
+            <div className="settings-item-control">
+              <span className="toggle-state-label">{commandPaletteEnabled ? 'ON' : 'OFF'}</span>
+              <label className="theme-toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={commandPaletteEnabled}
+                  onChange={(e) => handleCommandPaletteEnabledChange(e.target.checked)}
                 />
                 <span className="theme-toggle-slider" />
               </label>

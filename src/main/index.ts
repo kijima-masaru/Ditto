@@ -13,6 +13,7 @@ import * as settingsStore from './settingsStore'
 import { initPreviewWindows } from './previewWindow'
 import { initScreenshotEditorWindow } from './screenshotEditorWindow'
 import * as textExpansion from './textExpansion'
+import { initCommandPalette, setEnabled as setCommandPaletteEnabled } from './commandPalette'
 import log from './logger'
 import { pruneOldLogs } from './debugLog'
 
@@ -63,17 +64,10 @@ async function showMainWindow(): Promise<BrowserWindow | undefined> {
   return mainWindow
 }
 
-// ウィンドウ表示ホットキーで表示した際、そのホットキーに紐づく遷移先
-// (クリップボード/マクロの特定フォルダ)へジャンプする。targetがnull(未設定)の場合は
-// ウィンドウ表示のみ行う。ウィンドウ生成直後でレンダラーの読み込みが終わっていない
-// 場合は、読み込み完了を待ってから送る
-async function showMainWindowAndNavigate(target: NavigationTarget | null): Promise<void> {
-  const win = await showMainWindow()
-  if (!win) return
-
-  // ホットキーでの自動表示は「常に最前面に表示」設定がOFFでも確実に最前面へ出したいため、
-  // 一時的にscreen-saverレベルのalwaysOnTopへ切り替えて強制的に最前面へ出し、
-  // 直後に元の設定値へ戻す(設定がONの場合はそのまま維持される)
+// ホットキーでの自動表示は「常に最前面に表示」設定がOFFでも確実に最前面へ出したいため、
+// 一時的にscreen-saverレベルのalwaysOnTopへ切り替えて強制的に最前面へ出し、
+// 直後に元の設定値へ戻す(設定がONの場合はそのまま維持される)
+async function forceToFront(win: BrowserWindow): Promise<void> {
   const settings = await settingsStore.getSettings()
   win.setAlwaysOnTop(true, 'screen-saver')
   win.moveTop()
@@ -81,9 +75,33 @@ async function showMainWindowAndNavigate(target: NavigationTarget | null): Promi
   setTimeout(() => {
     if (!win.isDestroyed()) win.setAlwaysOnTop(settings.alwaysOnTop)
   }, 250)
+}
+
+// ウィンドウ表示ホットキーで表示した際、そのホットキーに紐づく遷移先
+// (クリップボード/マクロの特定フォルダ)へジャンプする。targetがnull(未設定)の場合は
+// ウィンドウ表示のみ行う。ウィンドウ生成直後でレンダラーの読み込みが終わっていない
+// 場合は、読み込み完了を待ってから送る
+async function showMainWindowAndNavigate(target: NavigationTarget | null): Promise<void> {
+  const win = await showMainWindow()
+  if (!win) return
+  await forceToFront(win)
 
   if (!target) return
   const send = (): void => win.webContents.send(IPC.navigateToHotkeyTarget, target)
+  if (win.webContents.isLoading()) {
+    win.webContents.once('did-finish-load', send)
+  } else {
+    send()
+  }
+}
+
+// コマンドパレットでマクロを選択した際、メインウィンドウを表示してその再生画面(idle状態、
+// 実行はユーザーがボタンを押すまで開始しない)を開く
+async function openMacroForPlayback(macroId: string): Promise<void> {
+  const win = await showMainWindow()
+  if (!win) return
+  await forceToFront(win)
+  const send = (): void => win.webContents.send(IPC.openMacroForPlayback, macroId)
   if (win.webContents.isLoading()) {
     win.webContents.once('did-finish-load', send)
   } else {
@@ -178,6 +196,8 @@ app.whenReady().then(async () => {
   })
   textExpansion.initTextExpansion()
   textExpansion.setEnabled(settings.textExpansionEnabled)
+  initCommandPalette((macroId) => void openMacroForPlayback(macroId))
+  setCommandPaletteEnabled(settings.commandPaletteEnabled)
 
   // ウィンドウが閉じられていてもクリップボード履歴を記録し続けるため、常時監視する
   startClipboardWatcher((entry) => {

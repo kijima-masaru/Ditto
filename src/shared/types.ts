@@ -267,6 +267,9 @@ export interface AppSettings {
   clipboardPiiProtection: ClipboardPiiProtectionSettings
   /** trueなら、定型文に設定したトリガー文字列をどのアプリでも直接入力するだけで本文へ自動展開する */
   textExpansionEnabled: boolean
+  /** trueなら、固定ホットキー(Ctrl+Shift+Space)でクリップボード履歴・定型文・マクロを
+   *  横断検索できるコマンドパレットをどのアプリからでも呼び出せる */
+  commandPaletteEnabled: boolean
 }
 
 /** 設定画面の「アップデートを確認」ボタンの状態表示に使う */
@@ -438,5 +441,15 @@ export const IPC = {
   openScreenshotEditor: 'screenshot-editor:open', // メインウィンドウ -> main
   screenshotEditorImage: 'screenshot-editor:image', // main -> 編集ウィンドウ push
   notifyScreenshotSaved: 'screenshot-editor:notify-saved', // 編集ウィンドウ -> main
-  screenshotEditorSaved: 'screenshot-editor:saved-push' // main -> メインウィンドウ push
+  screenshotEditorSaved: 'screenshot-editor:saved-push', // main -> メインウィンドウ push
+
+  // コマンドパレット(固定ホットキーで呼び出す、クリップボード履歴・定型文・マクロを
+  // 横断検索できる別ウィンドウ)。検索対象データ自体は既存のlistClipboardHistory等を
+  // パレット側から直接呼び出して取得するため、検索専用のIPCは持たない
+  setCommandPaletteEnabled: 'settings:set-command-palette-enabled',
+  commandPaletteShown: 'command-palette:shown', // main -> パレットウィンドウ push(表示するたびに検索状態をリセットさせる)
+  hideCommandPalette: 'command-palette:hide', // パレットウィンドウ -> main
+  commandPaletteInsertText: 'command-palette:insert-text', // パレットウィンドウ -> main(選択項目を元のウィンドウへ入力する)
+  commandPaletteOpenMacro: 'command-palette:open-macro', // パレットウィンドウ -> main(選択したマクロの再生画面をメインウィンドウで開く)
+  openMacroForPlayback: 'window:open-macro-for-playback' // main -> メインウィンドウ push
 } as const

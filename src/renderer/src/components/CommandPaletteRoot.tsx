@@ -1,0 +1,185 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ClipboardHistoryEntry, ClipboardTemplate, MacroCase } from '../../../shared/types'
+
+/**
+ * コマンドパレット専用の別ウィンドウのルート。メインウィンドウと同じrenderer bundleを
+ * `?commandPalette=1`付きで読み込むことで実現している(commandPalette.ts参照)。
+ * 固定ホットキー(Ctrl+Shift+Space)でどのアプリからでも呼び出せる小さな検索窓で、
+ * クリップボード履歴・定型文・マクロを横断的にあいまい検索できる。
+ *
+ * 検索対象データは既存のlistClipboardHistory等をこのウィンドウから直接呼び出して取得し、
+ * 絞り込みもここ(renderer側)で行う。選択した履歴/定型文は元のウィンドウへ直接入力され、
+ * マクロを選んだ場合はメインウィンドウの再生画面(実行はボタンを押すまで開始しない)を開く。
+ */
+
+type PaletteResult =
+  | { kind: 'history'; id: string; primary: string; secondary?: undefined; insertText: string }
+  | { kind: 'template'; id: string; primary: string; secondary?: string; insertText: string }
+  | { kind: 'macro'; id: string; primary: string; secondary?: undefined; insertText?: undefined }
+
+const MAX_PER_SECTION = 6
+
+function truncate(text: string, max = 60): string {
+  const oneLine = text.replace(/\s+/g, ' ').trim()
+  return oneLine.length > max ? `${oneLine.slice(0, max)}…` : oneLine
+}
+
+function matches(query: string, ...fields: (string | undefined)[]): boolean {
+  if (!query) return true
+  const q = query.toLowerCase()
+  return fields.some((f) => f && f.toLowerCase().includes(q))
+}
+
+const KIND_LABEL: Record<PaletteResult['kind'], string> = {
+  history: '履歴',
+  template: '定型文',
+  macro: 'マクロ'
+}
+
+export default function CommandPaletteRoot(): React.JSX.Element {
+  const [query, setQuery] = useState('')
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const [history, setHistory] = useState<ClipboardHistoryEntry[]>([])
+  const [templates, setTemplates] = useState<ClipboardTemplate[]>([])
+  const [macros, setMacros] = useState<MacroCase[]>([])
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const reload = useCallback(() => {
+    Promise.all([
+      window.api.listClipboardHistory(),
+      window.api.listClipboardTemplates(),
+      window.api.listMacros()
+    ]).then(([h, t, m]) => {
+      setHistory(h)
+      setTemplates(t)
+      setMacros(m)
+    })
+  }, [])
+
+  useEffect(() => {
+    // メインウィンドウとは別のBrowserWindowなのでdata-theme属性を独自に引き継ぐ必要がある
+    window.api.getSettings().then((s) => {
+      document.documentElement.setAttribute('data-theme', s.theme)
+    })
+    reload()
+  }, [reload])
+
+  useEffect(() => {
+    return window.api.onCommandPaletteShown(() => {
+      setQuery('')
+      setSelectedIndex(0)
+      reload()
+      inputRef.current?.focus()
+    })
+  }, [reload])
+
+  const results = useMemo<PaletteResult[]>(() => {
+    const historyResults: PaletteResult[] = history
+      .filter((h) => h.type === 'text' && matches(query, h.text))
+      .slice(0, MAX_PER_SECTION)
+      .map((h) => ({ kind: 'history', id: h.id, primary: truncate(h.text), insertText: h.text }))
+
+    const templateResults: PaletteResult[] = templates
+      .filter((t) => matches(query, t.label, t.text, t.trigger))
+      .slice(0, MAX_PER_SECTION)
+      .map((t) => ({
+        kind: 'template',
+        id: t.id,
+        primary: t.label || truncate(t.text),
+        secondary: t.label ? truncate(t.text) : t.trigger,
+        insertText: t.text
+      }))
+
+    const macroResults: PaletteResult[] = macros
+      .filter((m) => matches(query, m.name))
+      .slice(0, MAX_PER_SECTION)
+      .map((m) => ({ kind: 'macro', id: m.id, primary: m.name }))
+
+    return [...historyResults, ...templateResults, ...macroResults]
+  }, [query, history, templates, macros])
+
+  useEffect(() => {
+    setSelectedIndex((i) => Math.min(i, Math.max(results.length - 1, 0)))
+  }, [results.length])
+
+  const activate = useCallback((result: PaletteResult): void => {
+    if (result.kind === 'macro') {
+      void window.api.openMacroViaCommandPalette(result.id)
+    } else {
+      void window.api.insertViaCommandPalette(result.insertText)
+    }
+  }, [])
+
+  const handleKeyDown = (e: React.KeyboardEvent): void => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      window.api.hideCommandPalette()
+      return
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setSelectedIndex((i) => Math.min(i + 1, results.length - 1))
+      return
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setSelectedIndex((i) => Math.max(i - 1, 0))
+      return
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const selected = results[selectedIndex]
+      if (selected) activate(selected)
+    }
+  }
+
+  let flatIndex = -1
+  const renderSection = (kind: PaletteResult['kind']): React.JSX.Element | null => {
+    const items = results.filter((r) => r.kind === kind)
+    if (items.length === 0) return null
+    return (
+      <div className="command-palette-section" key={kind}>
+        <div className="command-palette-section-title">{KIND_LABEL[kind]}</div>
+        {items.map((r) => {
+          flatIndex += 1
+          const idx = flatIndex
+          return (
+            <div
+              key={`${r.kind}-${r.id}`}
+              className={`command-palette-item${idx === selectedIndex ? ' command-palette-item--active' : ''}`}
+              onMouseEnter={() => setSelectedIndex(idx)}
+              onClick={() => activate(r)}
+            >
+              <div className="command-palette-item-primary">{r.primary}</div>
+              {r.secondary && <div className="command-palette-item-secondary">{r.secondary}</div>}
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  return (
+    <div className="command-palette" onKeyDown={handleKeyDown}>
+      <input
+        ref={inputRef}
+        className="command-palette-input"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="クリップボード・定型文・マクロを検索..."
+        autoFocus
+      />
+      <div className="command-palette-results">
+        {results.length === 0 ? (
+          <div className="command-palette-empty">一致する項目がありません</div>
+        ) : (
+          <>
+            {renderSection('history')}
+            {renderSection('template')}
+            {renderSection('macro')}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
