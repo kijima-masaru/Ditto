@@ -21,6 +21,7 @@ const user32 = koffi.load('user32.dll')
 
 const ShowWindow = user32.func('int __stdcall ShowWindow(void *hWnd, int nCmdShow)')
 const IsWindow = user32.func('int __stdcall IsWindow(void *hWnd)')
+const IsIconic = user32.func('int __stdcall IsIconic(void *hWnd)')
 const SetForegroundWindow = user32.func('int __stdcall SetForegroundWindow(void *hWnd)')
 
 const SW_MINIMIZE = 6
@@ -153,6 +154,23 @@ export function windowExists(hwnd: NativeHandle): boolean {
 /** ウィンドウを復元して最前面に表示しフォーカスする */
 export function activateWindow(hwnd: NativeHandle): void {
   ShowWindow(hwnd, SW_RESTORE)
+  SetForegroundWindow(hwnd)
+}
+
+/**
+ * 最小化されている場合のみ復元してから最前面へフォーカスする。
+ *
+ * activateWindow()は常にSW_RESTOREを呼ぶため、デスクトップ対象のタブ切り替え
+ * (最小化↔最前面)のように「このアプリが意図的に最小化したウィンドウを復元する」
+ * 用途では問題ないが、コマンドパレットのように「たまたまフォーカスされていた
+ * 任意のウィンドウ」へフォーカスを戻す用途で使うと、最大化されていたウィンドウの
+ * 最大化状態まで解除してしまい、ウィンドウサイズが勝手に変わって見える不具合になる。
+ * そのため最小化状態(IsIconic)かどうかを確認し、最小化されている場合のみ復元する。
+ */
+export function activateWindowKeepState(hwnd: NativeHandle): void {
+  if (Number(IsIconic(hwnd)) !== 0) {
+    ShowWindow(hwnd, SW_RESTORE)
+  }
   SetForegroundWindow(hwnd)
 }
 

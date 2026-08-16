@@ -157,8 +157,6 @@ const api = {
     ipcRenderer.invoke(IPC.setAlwaysOnTop, alwaysOnTop),
   setTextExpansionEnabled: (enabled: boolean): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setTextExpansionEnabled, enabled),
-  setCommandPaletteEnabled: (enabled: boolean): Promise<AppSettings> =>
-    ipcRenderer.invoke(IPC.setCommandPaletteEnabled, enabled),
   setCommandPaletteHotkey: (hotkey: HotkeyCombo): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setCommandPaletteHotkey, hotkey),
   setAutoMaskEnabled: (enabled: boolean): Promise<AppSettings> => ipcRenderer.invoke(IPC.setAutoMaskEnabled, enabled),

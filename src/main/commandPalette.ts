@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, screen } from 'electron'
+import { BrowserWindow, clipboard, globalShortcut, ipcMain, screen } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { uIOhook, UiohookKey, type UiohookKeyboardEvent } from 'uiohook-napi'
@@ -21,7 +21,6 @@ const WIDTH = 480
 const HEIGHT = 420
 
 let win: BrowserWindow | null = null
-let enabled = false
 // パレットを開く直前にフォーカスされていたウィンドウ。定型文/履歴のテキストを
 // 入力する際、パレット自身ではなくこの元のウィンドウへ戻してから入力する
 let lastFocusedWindowId: number | null = null
@@ -102,12 +101,18 @@ const TYPE_CHUNK_SIZE = 15
 /** パレットで選択した履歴/定型文のテキストを、パレットを開く前にフォーカスされていた
  *  ウィンドウへ直接入力する。文字化けを避けるためSendInput+KEYEVENTF_UNICODEで
  *  直接注入する(textExpansion.tsと同じ方式)。自プロセスのグローバルフックが自ら
- *  注入したイベントを拾ってしまう競合を避けるため、注入中はフックを一時停止する */
+ *  注入したイベントを拾ってしまう競合を避けるため、注入中はフックを一時停止する。
+ *  入力に加えてクリップボードにも同じ内容をコピーしておき、他の画面でも
+ *  Ctrl+Vで貼り付けられるようにする */
 async function insertText(text: string): Promise<void> {
+  clipboard.writeText(text)
   hide()
   if (lastFocusedWindowId !== null) {
     try {
-      win32.activateWindow(win32.idToHandle(lastFocusedWindowId))
+      // activateWindow(常にSW_RESTOREする版)だと、最大化されていた対象ウィンドウの
+      // 最大化状態まで解除されてしまい、ウィンドウサイズが勝手に変わって見えるため、
+      // 最小化されている場合のみ復元するactivateWindowKeepStateを使う
+      win32.activateWindowKeepState(win32.idToHandle(lastFocusedWindowId))
     } catch {
       // 元のウィンドウが既に閉じられている等は無視し、フォーカスされている場所にそのまま入力する
     }
@@ -148,6 +153,62 @@ function matchesModifiers(e: UiohookKeyboardEvent, combo: HotkeyCombo): boolean 
   return e.ctrlKey === combo.ctrl && e.shiftKey === combo.shift && e.altKey === combo.alt && e.metaKey === combo.meta
 }
 
+// --- ホットキーのOSレベル横取り(globalShortcut)。詳細はcomboToAccelerator()のコメント参照 ---
+
+// UiohookKeyの名前のうちElectronのAcceleratorキー名と表記が異なるもの
+const SPECIAL_ACCELERATOR_NAMES: Record<string, string> = {
+  Enter: 'Return',
+  ArrowUp: 'Up',
+  ArrowDown: 'Down',
+  ArrowLeft: 'Left',
+  ArrowRight: 'Right'
+}
+
+// キーコード(uiohook) -> Acceleratorキー名。文字/数字/F1〜F24/主要な編集・移動キーのみ対応する
+// (テンキー専用キーや記号キーはElectronの表記との対応関係が複雑なため対象外とし、
+// その場合は従来通りuiohookでの検知にフォールバックする)
+const ACCELERATOR_KEY_NAMES: Record<number, string> = {}
+for (const [name, code] of Object.entries(UiohookKey) as Array<[string, number]>) {
+  if (/^[A-Z0-9]$/.test(name) || /^F([1-9]|1[0-9]|2[0-4])$/.test(name)) {
+    ACCELERATOR_KEY_NAMES[code] = name
+  } else if (name in SPECIAL_ACCELERATOR_NAMES) {
+    ACCELERATOR_KEY_NAMES[code] = SPECIAL_ACCELERATOR_NAMES[name]
+  } else if (['Space', 'Tab', 'Escape', 'Backspace', 'Delete', 'Insert', 'Home', 'End', 'PageUp', 'PageDown'].includes(name)) {
+    ACCELERATOR_KEY_NAMES[code] = name
+  }
+}
+
+/**
+ * HotkeyComboをElectronのglobalShortcut用Accelerator文字列に変換する。
+ *
+ * uiohookは受動的な監視のみでキー入力を消費(横取り)できないため、コマンドパレットの
+ * ホットキーに割り当てた最後のキー(既定のSpace等、文字として入力され得るキー)の
+ * 物理的なキー入力が、パレットにフォーカスが移る前後どちらのウィンドウであっても
+ * そのまま文字として入力されてしまう不具合があった。globalShortcutはOSのショートカット
+ * 登録機構(Windowsでは RegisterHotKey)を使うため、登録したキーの入力は他のどのウィンドウ
+ * にも渡らずОSレベルで横取りできる。
+ *
+ * ダブルタップ(修飾キー単体を2回押す)モードや、対応表にない特殊キーはAccelerator化できない
+ * ため、その場合はnullを返し、呼び出し側で従来のuiohookベースの検知にフォールバックする。
+ * また修飾キーが1つも設定されていない単独キーは、システム全体でそのキーを常に横取りして
+ * しまい影響が大きすぎるため対象外とする。
+ */
+function comboToAccelerator(combo: HotkeyCombo): string | null {
+  if (combo.keycode === null) return null
+  const keyName = ACCELERATOR_KEY_NAMES[combo.keycode]
+  if (!keyName) return null
+  const modifiers: string[] = []
+  if (combo.ctrl) modifiers.push('Control')
+  if (combo.shift) modifiers.push('Shift')
+  if (combo.alt) modifiers.push('Alt')
+  if (combo.meta) modifiers.push('Super')
+  if (modifiers.length === 0) return null
+  return [...modifiers, keyName].join('+')
+}
+
+// globalShortcutでの登録に成功した現在のAccelerator文字列。nullなら未登録(uiohookで検知する)
+let registeredAccelerator: string | null = null
+
 let hotkey: HotkeyCombo = {
   ctrl: true,
   shift: true,
@@ -164,7 +225,7 @@ const heldKeycodes = new Set<number>()
 function handleKeydown(e: UiohookKeyboardEvent): void {
   const isRepeat = heldKeycodes.has(e.keycode)
   heldKeycodes.add(e.keycode)
-  if (isRepeat || !enabled) return
+  if (isRepeat) return
 
   if (hotkey.keycode === null) {
     const watched = watchedKeycodesForModifierOnly(hotkey)
@@ -180,7 +241,9 @@ function handleKeydown(e: UiohookKeyboardEvent): void {
     } else {
       lastModifierPressAt = 0
     }
-  } else if (e.keycode === hotkey.keycode && matchesModifiers(e, hotkey)) {
+  } else if (!registeredAccelerator && e.keycode === hotkey.keycode && matchesModifiers(e, hotkey)) {
+    // registeredAcceleratorがある場合はglobalShortcut側で既に処理されるため、
+    // ここで二重に発火させない
     toggle()
   }
 }
@@ -189,14 +252,25 @@ function handleKeyup(e: UiohookKeyboardEvent): void {
   heldKeycodes.delete(e.keycode)
 }
 
-export function setEnabled(value: boolean): void {
-  enabled = value
-  if (!enabled) hide()
-}
-
 export function setHotkey(combo: HotkeyCombo): void {
+  if (registeredAccelerator) {
+    globalShortcut.unregister(registeredAccelerator)
+    registeredAccelerator = null
+  }
+
   hotkey = combo
   lastModifierPressAt = 0
+
+  const accelerator = comboToAccelerator(combo)
+  if (accelerator) {
+    // 他アプリが同じ組み合わせを既に横取りしている等で登録に失敗することがあるため、
+    // その場合はregisteredAcceleratorをnullのままにし、従来のuiohookでの検知にフォールバックする
+    const ok = globalShortcut.register(accelerator, () => toggle())
+    if (ok) registeredAccelerator = accelerator
+  }
+
+  // 未設定(修飾キーなし・keycode null)に変更された場合はパレットを閉じておく
+  if (!combo.ctrl && !combo.shift && !combo.alt && !combo.meta && combo.keycode === null) hide()
 }
 
 export function initCommandPalette(openMacroForPlayback: (macroId: string) => void): void {
@@ -214,12 +288,6 @@ export function initCommandPalette(openMacroForPlayback: (macroId: string) => vo
   ipcMain.handle(IPC.commandPaletteOpenMacro, (_e, macroId: string) => {
     hide()
     openMacroForPlayback(macroId)
-  })
-
-  ipcMain.handle(IPC.setCommandPaletteEnabled, async (_e, value: boolean) => {
-    const settings = await settingsStore.setCommandPaletteEnabled(value)
-    setEnabled(value)
-    return settings
   })
 
   ipcMain.handle(IPC.setCommandPaletteHotkey, async (_e, combo: HotkeyCombo) => {

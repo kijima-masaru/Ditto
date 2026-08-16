@@ -48,7 +48,6 @@ const DEFAULT_SETTINGS: AppSettings = {
   autoMaskSensitiveInfo: DEFAULT_SCREENSHOT_MASK_SETTINGS,
   clipboardPiiProtection: DEFAULT_CLIPBOARD_PII_PROTECTION,
   textExpansionEnabled: false,
-  commandPaletteEnabled: false,
   // keycode 57はuiohook-napiのUiohookKey.Space。commandPalette.tsに依存を追加しないよう
   // ここでは数値をそのまま持つ(hotkey.tsのformatComboLabelでも'Space'として表示される)
   commandPaletteHotkey: { ctrl: true, shift: true, alt: false, meta: false, keycode: 57, label: 'Ctrl+Shift+Space' }
@@ -132,7 +131,6 @@ export async function getSettings(): Promise<AppSettings> {
       autoMaskSensitiveInfo: normalizeScreenshotMaskSettings(parsed.autoMaskSensitiveInfo),
       clipboardPiiProtection: normalizeClipboardPiiProtection(parsed.clipboardPiiProtection),
       textExpansionEnabled: parsed.textExpansionEnabled ?? DEFAULT_SETTINGS.textExpansionEnabled,
-      commandPaletteEnabled: parsed.commandPaletteEnabled ?? DEFAULT_SETTINGS.commandPaletteEnabled,
       commandPaletteHotkey: normalizeHotkeyCombo(parsed.commandPaletteHotkey)
     }
   } catch {
@@ -175,13 +173,6 @@ export async function setAlwaysOnTop(alwaysOnTop: boolean): Promise<AppSettings>
 export async function setTextExpansionEnabled(enabled: boolean): Promise<AppSettings> {
   const settings = await getSettings()
   settings.textExpansionEnabled = enabled
-  await writeSettings(settings)
-  return settings
-}
-
-export async function setCommandPaletteEnabled(enabled: boolean): Promise<AppSettings> {
-  const settings = await getSettings()
-  settings.commandPaletteEnabled = enabled
   await writeSettings(settings)
   return settings
 }

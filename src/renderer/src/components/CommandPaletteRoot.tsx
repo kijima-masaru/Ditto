@@ -69,7 +69,11 @@ export default function CommandPaletteRoot(): React.JSX.Element {
       setQuery('')
       setSelectedIndex(0)
       reload()
-      inputRef.current?.focus()
+      // ホットキー(例: Ctrl+Shift+Space)を押した物理的なキーアップは、この直後に
+      // OSから届く。即座に検索欄へフォーカスしてしまうと、そのキーアップの対象が
+      // 押されたキー自体(Spaceなど)を検索欄に入力してしまうため、キーアップが
+      // 届き終わるであろう時間だけフォーカスを遅らせる
+      window.setTimeout(() => inputRef.current?.focus(), 150)
     })
   }, [reload])
 
@@ -174,7 +178,6 @@ export default function CommandPaletteRoot(): React.JSX.Element {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="クリップボード・定型文・マクロを検索..."
-        autoFocus
       />
       <div className="command-palette-results">
         {results.length === 0 ? (

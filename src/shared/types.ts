@@ -271,11 +271,10 @@ export interface AppSettings {
   clipboardPiiProtection: ClipboardPiiProtectionSettings
   /** trueなら、定型文に設定したトリガー文字列をどのアプリでも直接入力するだけで本文へ自動展開する */
   textExpansionEnabled: boolean
-  /** trueなら、commandPaletteHotkeyでクリップボード履歴・定型文・マクロを
-   *  横断検索できるコマンドパレットをどのアプリからでも呼び出せる */
-  commandPaletteEnabled: boolean
-  /** コマンドパレットを開くホットキー。ウィンドウ表示ホットキーと同じ形式(HotkeyCombo)で
-   *  自由に設定できる。既定値はCtrl+Shift+Space */
+  /** コマンドパレット(クリップボード履歴・定型文・マクロを横断検索できる小さな検索窓)を
+   *  開くホットキー。ウィンドウ表示ホットキーと同じ形式(HotkeyCombo)で自由に設定できる。
+   *  キーが未設定(keycode: null かつ修飾キーもすべてfalse)の場合は機能自体が無効になる。
+   *  既定値はCtrl+Shift+Space */
   commandPaletteHotkey: HotkeyCombo
 }
 
@@ -453,7 +452,6 @@ export const IPC = {
   // コマンドパレット(ホットキーで呼び出す、クリップボード履歴・定型文・マクロを
   // 横断検索できる別ウィンドウ)。検索対象データ自体は既存のlistClipboardHistory等を
   // パレット側から直接呼び出して取得するため、検索専用のIPCは持たない
-  setCommandPaletteEnabled: 'settings:set-command-palette-enabled',
   setCommandPaletteHotkey: 'settings:set-command-palette-hotkey',
   commandPaletteShown: 'command-palette:shown', // main -> パレットウィンドウ push(表示するたびに検索状態をリセットさせる)
   hideCommandPalette: 'command-palette:hide', // パレットウィンドウ -> main

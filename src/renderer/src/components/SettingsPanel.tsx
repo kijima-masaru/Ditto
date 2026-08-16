@@ -111,7 +111,6 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const [windowSizeLocked, setWindowSizeLocked] = useState(false)
   const [alwaysOnTop, setAlwaysOnTop] = useState(false)
   const [textExpansionEnabled, setTextExpansionEnabled] = useState(false)
-  const [commandPaletteEnabled, setCommandPaletteEnabled] = useState(false)
   const [commandPaletteHotkey, setCommandPaletteHotkey] = useState<HotkeyCombo | null>(null)
   const [autoMaskSensitiveInfo, setAutoMaskSensitiveInfo] = useState<ScreenshotMaskSettings>({
     enabled: false,
@@ -138,7 +137,6 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
       setWindowSizeLocked(s.windowSizeLocked)
       setAlwaysOnTop(s.alwaysOnTop)
       setTextExpansionEnabled(s.textExpansionEnabled)
-      setCommandPaletteEnabled(s.commandPaletteEnabled)
       setCommandPaletteHotkey(s.commandPaletteHotkey)
       setAutoMaskSensitiveInfo(s.autoMaskSensitiveInfo)
       setClipboardPiiProtection(s.clipboardPiiProtection)
@@ -192,6 +190,13 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     setCapturingId(null)
   }
 
+  // コマンドパレットのホットキーを未設定に戻す(=機能自体を無効化する)
+  const clearCommandPaletteHotkey = async (): Promise<void> => {
+    if (capturingId === COMMAND_PALETTE_CAPTURE_ID) await cancelCapture()
+    setCommandPaletteHotkey(UNSET_HOTKEY)
+    await window.api.setCommandPaletteHotkey(UNSET_HOTKEY)
+  }
+
   const addBinding = (): void => {
     const newBinding: HotkeyBinding = { id: crypto.randomUUID(), hotkey: UNSET_HOTKEY, target: null }
     updateBindings((prev) => [...prev, newBinding])
@@ -225,11 +230,6 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const handleTextExpansionEnabledChange = async (value: boolean): Promise<void> => {
     setTextExpansionEnabled(value)
     await window.api.setTextExpansionEnabled(value)
-  }
-
-  const handleCommandPaletteEnabledChange = async (value: boolean): Promise<void> => {
-    setCommandPaletteEnabled(value)
-    await window.api.setCommandPaletteEnabled(value)
   }
 
   const handleAutoMaskEnabledChange = async (value: boolean): Promise<void> => {
@@ -378,6 +378,45 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
 
         <div className="settings-item">
           <div className="settings-item-row">
+            <span className="settings-item-label">
+              コマンドパレット
+              <HelpIcon
+                text={
+                  'ホットキーでDitto以外のどのアプリからでも小さな検索窓を呼び出せます。\n' +
+                  '未入力時はコマンドパレットに固定指定した定型文・マクロのみを表示し、\n' +
+                  '文字を入力するとクリップボード履歴・定型文・マクロすべてをあいまい検索できます。\n' +
+                  '履歴/定型文はEnterで元のウィンドウへ直接入力します(同じ内容がクリップボードにも\n' +
+                  'コピーされます)。マクロはEnterでその再生画面を開きます(実行はボタンを押すまで\n' +
+                  '開始しません)。ホットキーを「×」で未設定にすると機能自体を無効化できます。'
+                }
+              />
+            </span>
+            {capturingId === COMMAND_PALETTE_CAPTURE_ID ? (
+              <div className="settings-item-control">
+                <span className="hotkey-preview">{previewLabel}</span>
+                <button className="settings-action-btn" onClick={cancelCapture}>
+                  キャンセル
+                </button>
+              </div>
+            ) : (
+              <div className="settings-item-control">
+                <button className="settings-action-btn" onClick={() => startCapture(COMMAND_PALETTE_CAPTURE_ID)}>
+                  {commandPaletteHotkey?.label ?? '未設定'}
+                </button>
+                <button
+                  className="hotkey-binding-delete-btn"
+                  onClick={clearCommandPaletteHotkey}
+                  title="ホットキーを未設定にして無効化"
+                >
+                  ×
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="settings-item">
+          <div className="settings-item-row">
             <span className="settings-item-label">テーマカラー</span>
             <div className="settings-item-control">
               <span className="toggle-state-label">{theme === 'dark' ? 'ダーク' : 'ライト'}</span>
@@ -458,51 +497,6 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
               </label>
             </div>
           </div>
-        </div>
-
-        <div className="settings-item">
-          <div className="settings-item-row">
-            <span className="settings-item-label">
-              コマンドパレット
-              <HelpIcon
-                text={
-                  'ONにすると、下のホットキーでDitto以外のどのアプリからでも小さな検索窓を\n' +
-                  '呼び出せます。未入力時はコマンドパレットに固定指定した定型文・マクロのみを表示し、\n' +
-                  '文字を入力するとクリップボード履歴・定型文・マクロすべてをあいまい検索できます。\n' +
-                  '履歴/定型文はEnterで元のウィンドウへ直接入力、マクロはEnterでその再生画面を\n' +
-                  '開きます(実行はボタンを押すまで開始しません)。'
-                }
-              />
-            </span>
-            <div className="settings-item-control">
-              <span className="toggle-state-label">{commandPaletteEnabled ? 'ON' : 'OFF'}</span>
-              <label className="theme-toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={commandPaletteEnabled}
-                  onChange={(e) => handleCommandPaletteEnabledChange(e.target.checked)}
-                />
-                <span className="theme-toggle-slider" />
-              </label>
-            </div>
-          </div>
-          {commandPaletteHotkey && (
-            <div className="settings-item-row">
-              <span className="settings-item-label">コマンドパレットのホットキー</span>
-              {capturingId === COMMAND_PALETTE_CAPTURE_ID ? (
-                <div className="settings-item-control">
-                  <span className="hotkey-preview">{previewLabel}</span>
-                  <button className="settings-action-btn" onClick={cancelCapture}>
-                    キャンセル
-                  </button>
-                </div>
-              ) : (
-                <button className="settings-action-btn" onClick={() => startCapture(COMMAND_PALETTE_CAPTURE_ID)}>
-                  {commandPaletteHotkey.label}
-                </button>
-              )}
-            </div>
-          )}
         </div>
 
         <div className="settings-item">

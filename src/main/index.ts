@@ -13,11 +13,7 @@ import * as settingsStore from './settingsStore'
 import { initPreviewWindows } from './previewWindow'
 import { initScreenshotEditorWindow } from './screenshotEditorWindow'
 import * as textExpansion from './textExpansion'
-import {
-  initCommandPalette,
-  setEnabled as setCommandPaletteEnabled,
-  setHotkey as setCommandPaletteHotkey
-} from './commandPalette'
+import { initCommandPalette, setHotkey as setCommandPaletteHotkey } from './commandPalette'
 import log from './logger'
 import { pruneOldLogs } from './debugLog'
 
@@ -201,7 +197,6 @@ app.whenReady().then(async () => {
   textExpansion.initTextExpansion()
   textExpansion.setEnabled(settings.textExpansionEnabled)
   initCommandPalette((macroId) => void openMacroForPlayback(macroId))
-  setCommandPaletteEnabled(settings.commandPaletteEnabled)
   setCommandPaletteHotkey(settings.commandPaletteHotkey)
 
   // ウィンドウが閉じられていてもクリップボード履歴を記録し続けるため、常時監視する
