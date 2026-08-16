@@ -939,10 +939,27 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   background: var(--accent-bg);
 }
 
+.clip-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .clip-item-label {
   font-size: 11px;
   font-weight: 700;
   color: var(--accent);
+}
+
+/* 定型文のトリガー展開用バッジ。ラベルと区別するため等幅フォント・ニュートラルな配色にする */
+.clip-item-trigger {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--panel-bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
 }
 
 .clip-item-text {

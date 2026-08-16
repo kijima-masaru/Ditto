@@ -151,7 +151,19 @@ export interface ClipboardTemplate {
   folderId?: string | null
   /** 同じフォルダ内での並び順(昇順)。ドラッグ&ドロップで並び替えた結果を保持する */
   order: number
+  /**
+   * トリガー展開用の文字列(例: ";greeting")。設定されていれば、どのアプリでも
+   * この文字列を直接入力した瞬間に本文へ自動置換される。半角英数字と一部記号のみで、
+   * 全アプリで唯一である必要がある(未設定なら従来通りクリックでのコピー貼り付けのみ)
+   */
+  trigger?: string
 }
+
+/**
+ * 定型文のトリガー展開に使える文字種。IME変換を経由しない直接入力(半角/直接入力モード)を
+ * 前提とするため、物理キーから一意に文字を判定できる半角英数字と一部記号のみに絞っている
+ */
+export const TEMPLATE_TRIGGER_PATTERN = /^[a-z0-9;:._/,-]{2,20}$/
 
 /** 定型文を整理するための階層フォルダ */
 export interface ClipboardTemplateFolder {
@@ -253,6 +265,8 @@ export interface AppSettings {
   autoMaskSensitiveInfo: ScreenshotMaskSettings
   /** クリップボード履歴に対する機密情報の自動マスキング・自動消去設定 */
   clipboardPiiProtection: ClipboardPiiProtectionSettings
+  /** trueなら、定型文に設定したトリガー文字列をどのアプリでも直接入力するだけで本文へ自動展開する */
+  textExpansionEnabled: boolean
 }
 
 /** 設定画面の「アップデートを確認」ボタンの状態表示に使う */
@@ -382,6 +396,7 @@ export const IPC = {
   setTheme: 'settings:set-theme',
   setWindowSizeLocked: 'settings:set-window-size-locked',
   setAlwaysOnTop: 'settings:set-always-on-top',
+  setTextExpansionEnabled: 'settings:set-text-expansion-enabled',
   setAutoMaskEnabled: 'settings:set-auto-mask-enabled',
   setAutoMaskSensitiveInfo: 'settings:set-auto-mask-sensitive-info',
   setClipboardPiiProtectionEnabled: 'settings:set-clipboard-pii-protection-enabled',

@@ -2,7 +2,13 @@ import { app } from 'electron'
 import { randomUUID } from 'crypto'
 import fs from 'fs/promises'
 import path from 'path'
-import type { ClipboardFormatRule, ClipboardHistoryEntry, ClipboardTemplate, ClipboardTemplateFolder } from '../shared/types'
+import {
+  TEMPLATE_TRIGGER_PATTERN,
+  type ClipboardFormatRule,
+  type ClipboardHistoryEntry,
+  type ClipboardTemplate,
+  type ClipboardTemplateFolder
+} from '../shared/types'
 
 const MAX_HISTORY = 200
 
@@ -103,11 +109,33 @@ export async function listTemplates(): Promise<ClipboardTemplate[]> {
   return templates.sort((a, b) => a.order - b.order)
 }
 
+function normalizeTrigger(trigger?: string): string | undefined {
+  const trimmed = trigger?.trim().toLowerCase()
+  return trimmed ? trimmed : undefined
+}
+
+/** トリガー文字列が使用可能(文字種OK・他の定型文と重複なし)であることを確認する。違反時は例外を投げる */
+async function assertTriggerAvailable(trigger: string | undefined, excludeId?: string): Promise<void> {
+  if (!trigger) return
+  if (!TEMPLATE_TRIGGER_PATTERN.test(trigger)) {
+    throw new Error('トリガーは半角英数字と ; : . / , - _ の組み合わせ(2〜20文字)で入力してください')
+  }
+  const templates = await readTemplates()
+  const conflict = templates.find((t) => t.id !== excludeId && normalizeTrigger(t.trigger) === trigger)
+  if (conflict) {
+    const conflictName = conflict.label || conflict.text.slice(0, 20)
+    throw new Error(`トリガー「${trigger}」は既に「${conflictName}」で使われています`)
+  }
+}
+
 export async function createTemplate(
   text: string,
   label?: string,
-  folderId: string | null = null
+  folderId: string | null = null,
+  trigger?: string
 ): Promise<ClipboardTemplate> {
+  const normalizedTrigger = normalizeTrigger(trigger)
+  await assertTriggerAvailable(normalizedTrigger)
   const templates = await readTemplates()
   const order = templates.length === 0 ? 0 : Math.max(...templates.map((t) => t.order)) + 1
   const template: ClipboardTemplate = {
@@ -116,7 +144,8 @@ export async function createTemplate(
     label,
     createdAt: new Date().toISOString(),
     folderId,
-    order
+    order,
+    trigger: normalizedTrigger
   }
   await fs.writeFile(templatesFilePath(), JSON.stringify([...templates, template], null, 2), 'utf-8')
   return template
@@ -132,12 +161,15 @@ export async function reorderTemplates(orderedIds: string[]): Promise<void> {
   await fs.writeFile(templatesFilePath(), JSON.stringify(templates, null, 2), 'utf-8')
 }
 
-export async function updateTemplate(id: string, text: string, label?: string): Promise<void> {
+export async function updateTemplate(id: string, text: string, label?: string, trigger?: string): Promise<void> {
+  const normalizedTrigger = normalizeTrigger(trigger)
+  await assertTriggerAvailable(normalizedTrigger, id)
   const templates = await listTemplates()
   const template = templates.find((t) => t.id === id)
   if (template) {
     template.text = text
     template.label = label
+    template.trigger = normalizedTrigger
   }
   await fs.writeFile(templatesFilePath(), JSON.stringify(templates, null, 2), 'utf-8')
 }

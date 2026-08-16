@@ -12,6 +12,7 @@ import { startClipboardWatcher } from './clipboardWatcher'
 import * as settingsStore from './settingsStore'
 import { initPreviewWindows } from './previewWindow'
 import { initScreenshotEditorWindow } from './screenshotEditorWindow'
+import * as textExpansion from './textExpansion'
 import log from './logger'
 import { pruneOldLogs } from './debugLog'
 
@@ -175,6 +176,8 @@ app.whenReady().then(async () => {
   setupGlobalHotkeys(settings.hotkeyBindings, (target) => {
     void showMainWindowAndNavigate(target)
   })
+  textExpansion.initTextExpansion()
+  textExpansion.setEnabled(settings.textExpansionEnabled)
 
   // ウィンドウが閉じられていてもクリップボード履歴を記録し続けるため、常時監視する
   startClipboardWatcher((entry) => {

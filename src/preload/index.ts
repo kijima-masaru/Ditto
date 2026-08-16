@@ -90,10 +90,14 @@ const api = {
     ipcRenderer.invoke(IPC.deleteClipboardHistoryEntry, id),
   clearClipboardHistory: (): Promise<void> => ipcRenderer.invoke(IPC.clearClipboardHistory),
   listClipboardTemplates: (): Promise<ClipboardTemplate[]> => ipcRenderer.invoke(IPC.listClipboardTemplates),
-  createClipboardTemplate: (text: string, label?: string, folderId?: string | null): Promise<ClipboardTemplate> =>
-    ipcRenderer.invoke(IPC.createClipboardTemplate, text, label, folderId),
-  updateClipboardTemplate: (id: string, text: string, label?: string): Promise<void> =>
-    ipcRenderer.invoke(IPC.updateClipboardTemplate, id, text, label),
+  createClipboardTemplate: (
+    text: string,
+    label?: string,
+    folderId?: string | null,
+    trigger?: string
+  ): Promise<ClipboardTemplate> => ipcRenderer.invoke(IPC.createClipboardTemplate, text, label, folderId, trigger),
+  updateClipboardTemplate: (id: string, text: string, label?: string, trigger?: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.updateClipboardTemplate, id, text, label, trigger),
   deleteClipboardTemplate: (id: string): Promise<void> => ipcRenderer.invoke(IPC.deleteClipboardTemplate, id),
   moveClipboardTemplate: (id: string, folderId: string | null): Promise<void> =>
     ipcRenderer.invoke(IPC.moveClipboardTemplate, id, folderId),
@@ -147,6 +151,8 @@ const api = {
     ipcRenderer.invoke(IPC.setWindowSizeLocked, locked),
   setAlwaysOnTop: (alwaysOnTop: boolean): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setAlwaysOnTop, alwaysOnTop),
+  setTextExpansionEnabled: (enabled: boolean): Promise<AppSettings> =>
+    ipcRenderer.invoke(IPC.setTextExpansionEnabled, enabled),
   setAutoMaskEnabled: (enabled: boolean): Promise<AppSettings> => ipcRenderer.invoke(IPC.setAutoMaskEnabled, enabled),
   setAutoMaskSensitiveInfo: (category: AutoMaskCategory, enabled: boolean): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setAutoMaskSensitiveInfo, category, enabled),

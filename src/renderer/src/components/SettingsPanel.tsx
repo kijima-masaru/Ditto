@@ -106,6 +106,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const [macroFolders, setMacroFolders] = useState<MacroFolder[]>([])
   const [windowSizeLocked, setWindowSizeLocked] = useState(false)
   const [alwaysOnTop, setAlwaysOnTop] = useState(false)
+  const [textExpansionEnabled, setTextExpansionEnabled] = useState(false)
   const [autoMaskSensitiveInfo, setAutoMaskSensitiveInfo] = useState<ScreenshotMaskSettings>({
     enabled: false,
     categories: { phone: false, postalCode: false, email: false, creditCard: false }
@@ -130,6 +131,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
       setHotkeyBindings(s.hotkeyBindings)
       setWindowSizeLocked(s.windowSizeLocked)
       setAlwaysOnTop(s.alwaysOnTop)
+      setTextExpansionEnabled(s.textExpansionEnabled)
       setAutoMaskSensitiveInfo(s.autoMaskSensitiveInfo)
       setClipboardPiiProtection(s.clipboardPiiProtection)
       setLoading(false)
@@ -205,6 +207,11 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const handleAlwaysOnTopChange = async (value: boolean): Promise<void> => {
     setAlwaysOnTop(value)
     await window.api.setAlwaysOnTop(value)
+  }
+
+  const handleTextExpansionEnabledChange = async (value: boolean): Promise<void> => {
+    setTextExpansionEnabled(value)
+    await window.api.setTextExpansionEnabled(value)
   }
 
   const handleAutoMaskEnabledChange = async (value: boolean): Promise<void> => {
@@ -401,6 +408,33 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
                   type="checkbox"
                   checked={alwaysOnTop}
                   onChange={(e) => handleAlwaysOnTopChange(e.target.checked)}
+                />
+                <span className="theme-toggle-slider" />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="settings-item">
+          <div className="settings-item-row">
+            <span className="settings-item-label">
+              定型文のトリガー展開
+              <HelpIcon
+                text={
+                  'ONにすると、定型文に設定した「トリガー」文字列(例: ;greeting)を、\n' +
+                  'Ditto以外のどのアプリでも直接入力するだけで本文へ自動的に置き換えます。\n' +
+                  '半角英数字と一部記号のみ対応です。IMEで日本語変換中の入力には反応しないため、\n' +
+                  'トリガーは半角/直接入力モードで入力してください。'
+                }
+              />
+            </span>
+            <div className="settings-item-control">
+              <span className="toggle-state-label">{textExpansionEnabled ? 'ON' : 'OFF'}</span>
+              <label className="theme-toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={textExpansionEnabled}
+                  onChange={(e) => handleTextExpansionEnabledChange(e.target.checked)}
                 />
                 <span className="theme-toggle-slider" />
               </label>

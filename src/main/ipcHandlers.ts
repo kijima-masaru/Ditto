@@ -30,6 +30,7 @@ import * as clipboardTransforms from './clipboardTransforms'
 import * as settingsStore from './settingsStore'
 import * as targetHistoryStore from './targetHistoryStore'
 import { setHotkeyBindingsRuntime, startHotkeyCapture, cancelHotkeyCapture } from './hotkey'
+import * as textExpansion from './textExpansion'
 import * as debugLog from './debugLog'
 import { checkForUpdates } from './autoUpdater'
 
@@ -162,15 +163,24 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.listClipboardTemplates, async () => clipboardStore.listTemplates())
 
-  ipcMain.handle(IPC.createClipboardTemplate, async (_e, text: string, label?: string, folderId?: string | null) =>
-    clipboardStore.createTemplate(text, label, folderId ?? null)
+  ipcMain.handle(
+    IPC.createClipboardTemplate,
+    async (_e, text: string, label?: string, folderId?: string | null, trigger?: string) => {
+      const template = await clipboardStore.createTemplate(text, label, folderId ?? null, trigger)
+      await textExpansion.refreshTriggerMap()
+      return template
+    }
   )
 
-  ipcMain.handle(IPC.updateClipboardTemplate, async (_e, id: string, text: string, label?: string) =>
-    clipboardStore.updateTemplate(id, text, label)
-  )
+  ipcMain.handle(IPC.updateClipboardTemplate, async (_e, id: string, text: string, label?: string, trigger?: string) => {
+    await clipboardStore.updateTemplate(id, text, label, trigger)
+    await textExpansion.refreshTriggerMap()
+  })
 
-  ipcMain.handle(IPC.deleteClipboardTemplate, async (_e, id: string) => clipboardStore.deleteTemplate(id))
+  ipcMain.handle(IPC.deleteClipboardTemplate, async (_e, id: string) => {
+    await clipboardStore.deleteTemplate(id)
+    await textExpansion.refreshTriggerMap()
+  })
 
   ipcMain.handle(IPC.moveClipboardTemplate, async (_e, id: string, folderId: string | null) =>
     clipboardStore.moveTemplate(id, folderId)
@@ -357,6 +367,12 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   ipcMain.handle(IPC.setAlwaysOnTop, async (_e, alwaysOnTop: boolean) => {
     const settings = await settingsStore.setAlwaysOnTop(alwaysOnTop)
     getWindow()?.setAlwaysOnTop(alwaysOnTop)
+    return settings
+  })
+
+  ipcMain.handle(IPC.setTextExpansionEnabled, async (_e, enabled: boolean) => {
+    const settings = await settingsStore.setTextExpansionEnabled(enabled)
+    textExpansion.setEnabled(enabled)
     return settings
   })
 

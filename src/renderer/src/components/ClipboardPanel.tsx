@@ -53,10 +53,14 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
   const [creating, setCreating] = useState(false)
   const [newText, setNewText] = useState('')
   const [newLabel, setNewLabel] = useState('')
+  const [newTrigger, setNewTrigger] = useState('')
+  const [createError, setCreateError] = useState<string | null>(null)
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const [editLabel, setEditLabel] = useState('')
+  const [editTrigger, setEditTrigger] = useState('')
+  const [editError, setEditError] = useState<string | null>(null)
 
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null)
 
@@ -132,24 +136,47 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
 
   const handleCreateTemplate = async (): Promise<void> => {
     if (!newText.trim()) return
-    await window.api.createClipboardTemplate(newText.trim(), newLabel.trim() || undefined, currentFolderId)
-    setNewText('')
-    setNewLabel('')
-    setCreating(false)
-    reload()
+    setCreateError(null)
+    try {
+      await window.api.createClipboardTemplate(
+        newText.trim(),
+        newLabel.trim() || undefined,
+        currentFolderId,
+        newTrigger.trim() || undefined
+      )
+      setNewText('')
+      setNewLabel('')
+      setNewTrigger('')
+      setCreating(false)
+      reload()
+    } catch (e) {
+      setCreateError((e as Error).message)
+    }
   }
 
   const startEdit = (t: ClipboardTemplate): void => {
     setEditingId(t.id)
     setEditText(t.text)
     setEditLabel(t.label ?? '')
+    setEditTrigger(t.trigger ?? '')
+    setEditError(null)
   }
 
   const handleSaveEdit = async (): Promise<void> => {
     if (!editingId || !editText.trim()) return
-    await window.api.updateClipboardTemplate(editingId, editText.trim(), editLabel.trim() || undefined)
-    setEditingId(null)
-    reload()
+    setEditError(null)
+    try {
+      await window.api.updateClipboardTemplate(
+        editingId,
+        editText.trim(),
+        editLabel.trim() || undefined,
+        editTrigger.trim() || undefined
+      )
+      setEditingId(null)
+      reload()
+    } catch (e) {
+      setEditError((e as Error).message)
+    }
   }
 
   const handleDeleteTemplate = async (id: string): Promise<void> => {
@@ -284,6 +311,8 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
       setCreating(true)
       setNewText('')
       setNewLabel('')
+      setNewTrigger('')
+      setCreateError(null)
     } else if (result === 'go-up') {
       setCurrentFolderId(currentFolder?.parentId ?? null)
     } else if (result === 'go-root') {
@@ -310,6 +339,8 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
       setCreating(true)
       setNewText('')
       setNewLabel('')
+      setNewTrigger('')
+      setCreateError(null)
     } else if (result === 'rename') startRenameFolder(f)
     else if (result === 'delete') setDeletingFolderId(f.id)
     else if (result === 'move-up' || result === 'move-down') {
@@ -566,6 +597,15 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                 <label>本文</label>
                 <textarea value={newText} onChange={(e) => setNewText(e.target.value)} rows={4} />
               </div>
+              <div className="field">
+                <label>トリガー(任意。設定すると、どのアプリでも直接入力するだけで本文へ自動展開されます)</label>
+                <input
+                  value={newTrigger}
+                  onChange={(e) => setNewTrigger(e.target.value)}
+                  placeholder="例: ;greeting"
+                />
+              </div>
+              {createError && <p className="error">{createError}</p>}
               <div className="row">
                 <button className="primary" onClick={handleCreateTemplate} disabled={!newText.trim()}>
                   保存
@@ -595,6 +635,15 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                       <label>本文</label>
                       <textarea value={editText} onChange={(e) => setEditText(e.target.value)} rows={4} />
                     </div>
+                    <div className="field">
+                      <label>トリガー(任意。設定すると、どのアプリでも直接入力するだけで本文へ自動展開されます)</label>
+                      <input
+                        value={editTrigger}
+                        onChange={(e) => setEditTrigger(e.target.value)}
+                        placeholder="例: ;greeting"
+                      />
+                    </div>
+                    {editError && <p className="error">{editError}</p>}
                     <div className="row">
                       <button className="primary" onClick={handleSaveEdit} disabled={!editText.trim()}>
                         保存
@@ -627,7 +676,12 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                         }
                       : {})}
                   >
-                    {t.label && <div className="clip-item-label">{t.label}</div>}
+                    {(t.label || t.trigger) && (
+                      <div className="clip-item-header">
+                        {t.label && <div className="clip-item-label">{t.label}</div>}
+                        {t.trigger && <div className="clip-item-trigger">{t.trigger}</div>}
+                      </div>
+                    )}
                     <div className="clip-item-text">{truncate(t.text)}</div>
                     {copiedId === t.id && <span className="clip-copied-badge">コピーしました</span>}
                   </li>

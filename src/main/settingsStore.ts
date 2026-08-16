@@ -45,7 +45,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   windowSizeLocked: false,
   alwaysOnTop: false,
   autoMaskSensitiveInfo: DEFAULT_SCREENSHOT_MASK_SETTINGS,
-  clipboardPiiProtection: DEFAULT_CLIPBOARD_PII_PROTECTION
+  clipboardPiiProtection: DEFAULT_CLIPBOARD_PII_PROTECTION,
+  textExpansionEnabled: false
 }
 
 // v1.24.9までは単一のboolean(true/false)、v1.24.10〜v1.24.13まではカテゴリだけの
@@ -110,7 +111,8 @@ export async function getSettings(): Promise<AppSettings> {
       windowSizeLocked: parsed.windowSizeLocked ?? DEFAULT_SETTINGS.windowSizeLocked,
       alwaysOnTop: parsed.alwaysOnTop ?? DEFAULT_SETTINGS.alwaysOnTop,
       autoMaskSensitiveInfo: normalizeScreenshotMaskSettings(parsed.autoMaskSensitiveInfo),
-      clipboardPiiProtection: normalizeClipboardPiiProtection(parsed.clipboardPiiProtection)
+      clipboardPiiProtection: normalizeClipboardPiiProtection(parsed.clipboardPiiProtection),
+      textExpansionEnabled: parsed.textExpansionEnabled ?? DEFAULT_SETTINGS.textExpansionEnabled
     }
   } catch {
     return { ...DEFAULT_SETTINGS }
@@ -145,6 +147,13 @@ export async function setWindowSizeLocked(locked: boolean): Promise<AppSettings>
 export async function setAlwaysOnTop(alwaysOnTop: boolean): Promise<AppSettings> {
   const settings = await getSettings()
   settings.alwaysOnTop = alwaysOnTop
+  await writeSettings(settings)
+  return settings
+}
+
+export async function setTextExpansionEnabled(enabled: boolean): Promise<AppSettings> {
+  const settings = await getSettings()
+  settings.textExpansionEnabled = enabled
   await writeSettings(settings)
   return settings
 }
