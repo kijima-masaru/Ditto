@@ -10,6 +10,7 @@ import { flattenFolders, folderBreadcrumb } from '../folderTree'
 import { useHoverIntent } from '../hooks/useHoverIntent'
 import { useDragReorder } from '../hooks/useDragReorder'
 import FolderPreviewFlyout from './FolderPreviewFlyout'
+import ConfirmDialog from './ConfirmDialog'
 
 type SubTab = 'history' | 'templates' | 'rules'
 
@@ -328,6 +329,12 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
   const templateDrag = useDragReorder(visibleTemplates, (t) => t.id, handleReorderTemplates)
   const ruleDrag = useDragReorder(formatRules, (r) => r.id, handleReorderRules)
 
+  // 削除確認モーダルの対象。フォルダをまたいで移動していてもidから引けるよう、
+  // 表示中のリストではなく全件から探す
+  const deletingFolder = deletingFolderId ? (templateFolders.find((f) => f.id === deletingFolderId) ?? null) : null
+  const deletingTemplate = deletingTemplateId ? (templates.find((t) => t.id === deletingTemplateId) ?? null) : null
+  const deletingRule = deletingRuleId ? (formatRules.find((r) => r.id === deletingRuleId) ?? null) : null
+
   const handleAreaContextMenu = async (e: React.MouseEvent): Promise<void> => {
     e.preventDefault()
     const items: ContextMenuItem[] = []
@@ -551,12 +558,13 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
           {subfolders.length > 0 && (
             <ul className="folder-cards">
               {folderDrag.orderedItems.map((f) => {
-                const isEditingFolder = renamingFolderId === f.id || deletingFolderId === f.id
-                const drag = isEditingFolder ? null : folderDrag.getHandlers(f)
+                const isRenamingFolder = renamingFolderId === f.id
+                const isPending = isRenamingFolder || deletingFolderId === f.id
+                const drag = isPending ? null : folderDrag.getHandlers(f)
                 return (
                 <li
                   key={f.id}
-                  className={isEditingFolder ? 'row inline-form' : `folder-card${drag ? ` ${drag.className}` : ''}`}
+                  className={isRenamingFolder ? 'row inline-form' : `folder-card${drag ? ` ${drag.className}` : ''}`}
                   onContextMenu={(e) => handleFolderContextMenu(e, f)}
                   onMouseEnter={() => folderPreview.scheduleShow(f.id)}
                   onMouseLeave={folderPreview.scheduleHide}
@@ -571,7 +579,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                       }
                     : {})}
                 >
-                  {renamingFolderId === f.id ? (
+                  {isRenamingFolder ? (
                     <>
                       <input
                         value={renameFolderInput}
@@ -583,14 +591,6 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                         保存
                       </button>
                       <button onClick={() => setRenamingFolderId(null)}>キャンセル</button>
-                    </>
-                  ) : deletingFolderId === f.id ? (
-                    <>
-                      <span className="hint">「{f.name}」を削除しますか?(中身は上の階層に移動されます)</span>
-                      <button className="danger" onClick={() => confirmDeleteFolder(f.id)}>
-                        削除する
-                      </button>
-                      <button onClick={() => setDeletingFolderId(null)}>キャンセル</button>
                     </>
                   ) : (
                     <button className="folder-card-name" onClick={() => setCurrentFolderId(f.id)}>
@@ -698,14 +698,6 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                       </button>
                       <button onClick={() => setEditingId(null)}>キャンセル</button>
                     </div>
-                  </li>
-                ) : deletingTemplateId === t.id ? (
-                  <li key={t.id} className="row inline-form">
-                    <span className="hint">「{t.label || truncate(t.text, 30)}」を削除しますか?</span>
-                    <button className="danger" onClick={() => handleDeleteTemplate(t.id)}>
-                      削除する
-                    </button>
-                    <button onClick={() => setDeletingTemplateId(null)}>キャンセル</button>
                   </li>
                 ) : (
                   <li
@@ -817,14 +809,6 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                       <button onClick={() => setEditingRuleId(null)}>キャンセル</button>
                     </div>
                   </li>
-                ) : deletingRuleId === r.id ? (
-                  <li key={r.id} className="row inline-form">
-                    <span className="hint">「{r.label || r.find}」を削除しますか?</span>
-                    <button className="danger" onClick={() => handleDeleteRule(r.id)}>
-                      削除する
-                    </button>
-                    <button onClick={() => setDeletingRuleId(null)}>キャンセル</button>
-                  </li>
                 ) : (
                   <li
                     key={r.id}
@@ -863,6 +847,28 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
             </ul>
           )}
         </div>
+      )}
+
+      {deletingFolder && (
+        <ConfirmDialog
+          message={`「${deletingFolder.name}」を削除しますか?(中身は上の階層に移動されます)`}
+          onConfirm={() => confirmDeleteFolder(deletingFolder.id)}
+          onCancel={() => setDeletingFolderId(null)}
+        />
+      )}
+      {deletingTemplate && (
+        <ConfirmDialog
+          message={`「${deletingTemplate.label || truncate(deletingTemplate.text, 30)}」を削除しますか?`}
+          onConfirm={() => handleDeleteTemplate(deletingTemplate.id)}
+          onCancel={() => setDeletingTemplateId(null)}
+        />
+      )}
+      {deletingRule && (
+        <ConfirmDialog
+          message={`「${deletingRule.label || deletingRule.find}」を削除しますか?`}
+          onConfirm={() => handleDeleteRule(deletingRule.id)}
+          onCancel={() => setDeletingRuleId(null)}
+        />
       )}
     </div>
   )

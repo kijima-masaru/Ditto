@@ -223,6 +223,41 @@ body {
   font-size: 15px;
 }
 
+/* 削除確認モーダル(window.confirm()はElectron上で応答しないため独自実装する)。
+   フォルダ・定型文・整形ルール・マクロいずれの削除確認もこの1つの見た目で統一する */
+.confirm-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.confirm-dialog {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  width: min(280px, calc(100% - 40px));
+  box-shadow: 0 8px 24px var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.confirm-dialog-message {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.confirm-dialog-actions {
+  justify-content: flex-end;
+}
+
 .target-type-toggle {
   display: flex;
   flex-wrap: wrap;
