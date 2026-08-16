@@ -155,6 +155,10 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
   }
 
   const startEdit = (t: ClipboardTemplate): void => {
+    // フォルダのホバープレビュー上の定型文を編集する場合、そのフォルダを開いていない
+    // 状態でeditingIdだけ設定しても編集フォームは表示されない(表示中の一覧に
+    // 含まれないため)。対象の定型文が属するフォルダへ遷移してから編集状態にする
+    setCurrentFolderId(t.folderId ?? null)
     setEditingId(t.id)
     setEditText(t.text)
     setEditLabel(t.label ?? '')
