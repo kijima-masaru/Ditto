@@ -1,7 +1,7 @@
 import { BrowserWindow, clipboard, globalShortcut, ipcMain, screen } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
-import { uIOhook, UiohookKey, type UiohookKeyboardEvent } from 'uiohook-napi'
+import { uIOhook, UiohookKey, type UiohookKeyboardEvent, type UiohookMouseEvent } from 'uiohook-napi'
 import activeWin from 'active-win'
 import { ensureGlobalHookStarted, keepGlobalHookAlive } from './adapters/windowTargetBase'
 import * as win32 from './win32'
@@ -252,6 +252,24 @@ function handleKeyup(e: UiohookKeyboardEvent): void {
   heldKeycodes.delete(e.keycode)
 }
 
+/**
+ * パレット表示中にパレットの外側をクリックしたら非表示にする。
+ *
+ * パレットウィンドウ自身のblurイベントでも大半のケースは検知できるが、パレットが
+ * 'screen-saver'レベルのalwaysOnTopで最前面に表示されているため、パレットと重なる
+ * 画面位置をクリックした場合はそのクリックがパレットに吸収されてしまい、狙った
+ * 別ウィンドウにフォーカスが移らず(=blurが発火せず)パレットが閉じないことがある。
+ * そのためグローバルなマウス押下を監視し、パレットの矩形の外側でのクリックであれば
+ * 確実に非表示にする
+ */
+function handleGlobalMousedown(e: UiohookMouseEvent): void {
+  if (!win || win.isDestroyed() || !win.isVisible()) return
+  const bounds = win.getBounds()
+  const insideBounds =
+    e.x >= bounds.x && e.x < bounds.x + bounds.width && e.y >= bounds.y && e.y < bounds.y + bounds.height
+  if (!insideBounds) hide()
+}
+
 export function setHotkey(combo: HotkeyCombo): void {
   if (registeredAccelerator) {
     globalShortcut.unregister(registeredAccelerator)
@@ -278,6 +296,7 @@ export function initCommandPalette(openMacroForPlayback: (macroId: string) => vo
   keepGlobalHookAlive()
   uIOhook.on('keydown', handleKeydown)
   uIOhook.on('keyup', handleKeyup)
+  uIOhook.on('mousedown', handleGlobalMousedown)
 
   ipcMain.on(IPC.hideCommandPalette, () => hide())
 
