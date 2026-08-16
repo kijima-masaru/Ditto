@@ -65,6 +65,7 @@ const INPUT_KEYBOARD = 1
 const KEYEVENTF_UNICODE = 0x0004
 const KEYEVENTF_KEYUP = 0x0002
 const VK_BACK = 0x08
+const VK_RETURN = 0x0d
 
 function unicodeKeyInput(code: number, keyUp: boolean): unknown {
   return {
@@ -94,15 +95,30 @@ function vkKeyInput(vk: number, keyUp: boolean): unknown {
   }
 }
 
-/** 任意のUnicode文字列をSendInput経由でフォーカス中のウィンドウへ直接タイプする */
+/**
+ * 任意のUnicode文字列をSendInput経由でフォーカス中のウィンドウへ直接タイプする。
+ *
+ * 改行文字(\n)はKEYEVENTF_UNICODEでコードポイント0x0Aとして送っても、多くの
+ * テキストコントロールは実際のEnterキー押下(VK_RETURN)としてしか改行を認識しない
+ * ため改行が消えてしまう。そのため改行はVK_RETURNのキー入力として送出する。
+ * \rは\r\n改行の前半として無視する(単独の\rはWindowsのテキストでは通常出現しない)
+ */
 export function typeUnicodeText(text: string): void {
   if (!text) return
   const inputs: unknown[] = []
   for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    if (ch === '\r') continue
+    if (ch === '\n') {
+      inputs.push(vkKeyInput(VK_RETURN, false))
+      inputs.push(vkKeyInput(VK_RETURN, true))
+      continue
+    }
     const code = text.charCodeAt(i)
     inputs.push(unicodeKeyInput(code, false))
     inputs.push(unicodeKeyInput(code, true))
   }
+  if (inputs.length === 0) return
   SendInput(inputs.length, inputs, INPUT_SIZE)
 }
 

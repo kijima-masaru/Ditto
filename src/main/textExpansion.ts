@@ -52,6 +52,15 @@ let buffer = ''
 // バッファ破壊)のを防ぐためのガード
 let expanding = false
 
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+// 1回のSendInputで送るUnicode文字数。長文を1回にまとめて送出すると、対象アプリの
+// メッセージループが処理しきれず一部の文字が欠落・入れ替わることがあるため、
+// 適度な塊に分けて少し間隔を空けながら送る
+const TYPE_CHUNK_SIZE = 15
+
 async function expand(trigger: string, text: string): Promise<void> {
   expanding = true
   // 展開中はグローバルフックを一時停止する。稼働させたままSendInputで大量のキー
@@ -65,12 +74,21 @@ async function expand(trigger: string, text: string): Promise<void> {
     // 取りこぼされることがあるため、1回ずつ確実に処理させる
     for (let i = 0; i < trigger.length; i++) {
       backspaceKeys(1)
-      await new Promise((resolve) => setTimeout(resolve, 15))
+      await wait(15)
     }
     // nut-jsのkeyboard.type()はキーボードレイアウトの仮想キー変換に依存し、
     // レイアウト上にない文字(日本語等)は文字化けするため、SendInput+
-    // KEYEVENTF_UNICODEで直接注入するwin32.typeUnicodeTextを使う
-    typeUnicodeText(text)
+    // KEYEVENTF_UNICODEで直接注入するwin32.typeUnicodeTextを使う。
+    // 長文は対象アプリのメッセージループが追いつけるよう分割して送出する
+    for (let i = 0; i < text.length; i += TYPE_CHUNK_SIZE) {
+      typeUnicodeText(text.slice(i, i + TYPE_CHUNK_SIZE))
+      await wait(20)
+    }
+    // SendInput()はイベントをOSキューに積んだ時点で処理を返すため、呼び出しが
+    // 完了しても対象アプリへの配送がまだ完了していない場合がある。直後にフックを
+    // 再開すると、配送中の末尾数文字を自プロセスのフックが拾ってしまい順序が
+    // 崩れることがあるため、フック再開前に配送が完了するのを少し待つ
+    await wait(100)
   } catch (err) {
     log.error('[textExpansion] expand failed', err)
   } finally {
