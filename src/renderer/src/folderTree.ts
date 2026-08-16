@@ -1,4 +1,4 @@
-/** テスト一覧・定型文で共通の階層フォルダ(id/name/parentIdの形)を扱うための純粋な補助関数 */
+/** マクロ一覧・定型文で共通の階層フォルダ(id/name/parentIdの形)を扱うための純粋な補助関数 */
 export interface FolderLike {
   id: string
   name: string

@@ -13,14 +13,14 @@ let currentFilePath: string | null = null
 
 function sanitizeFileName(name: string): string {
   const cleaned = name.replace(/[\\/:*?"<>|]/g, '_').trim()
-  return cleaned.length > 0 ? cleaned : 'test'
+  return cleaned.length > 0 ? cleaned : 'macro'
 }
 
-export async function startRecording(testName: string): Promise<string> {
+export async function startRecording(macroName: string): Promise<string> {
   const dir = path.join(app.getPath('videos'), 'Ditto')
   await mkdir(dir, { recursive: true })
   const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const filePath = path.join(dir, `${sanitizeFileName(testName)}-${stamp}.webm`)
+  const filePath = path.join(dir, `${sanitizeFileName(macroName)}-${stamp}.webm`)
   writeStream = createWriteStream(filePath)
   currentFilePath = filePath
   return filePath

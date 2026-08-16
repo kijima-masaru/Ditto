@@ -10,7 +10,7 @@ import type {
   NavigationTarget,
   PreviewKind,
   ScreenshotMaskSettings,
-  TestFolder,
+  MacroFolder,
   ThemeMode,
   UpdateStatus
 } from '../../../shared/types'
@@ -103,7 +103,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   }, [capturingId])
 
   const [clipboardFolders, setClipboardFolders] = useState<ClipboardTemplateFolder[]>([])
-  const [testFolders, setTestFolders] = useState<TestFolder[]>([])
+  const [macroFolders, setMacroFolders] = useState<MacroFolder[]>([])
   const [windowSizeLocked, setWindowSizeLocked] = useState(false)
   const [alwaysOnTop, setAlwaysOnTop] = useState(false)
   const [autoMaskSensitiveInfo, setAutoMaskSensitiveInfo] = useState<ScreenshotMaskSettings>({
@@ -136,7 +136,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     })
     window.api.getAppVersion().then(setAppVersion)
     window.api.listClipboardTemplateFolders().then(setClipboardFolders)
-    window.api.listFolders().then(setTestFolders)
+    window.api.listFolders().then(setMacroFolders)
   }, [])
 
   useEffect(() => {
@@ -263,7 +263,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   if (loading || !hotkeyBindings) return <div className="settings-page">読み込み中...</div>
 
   const flatClipboardFolders = flattenFolders(clipboardFolders)
-  const flatTestFolders = flattenFolders(testFolders)
+  const flatMacroFolders = flattenFolders(macroFolders)
 
   const renderTargetSelect = (binding: HotkeyBinding): React.JSX.Element => {
     const value = binding.target ? encodeNavigationTarget(binding.target) : NAVIGATION_TARGET_NONE
@@ -284,10 +284,10 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
             </option>
           ))}
         </optgroup>
-        <optgroup label="テスト">
-          <option value={encodeNavigationTarget({ kind: 'test', folderId: null })}>home</option>
-          {flatTestFolders.map(({ folder, depth }) => (
-            <option key={folder.id} value={encodeNavigationTarget({ kind: 'test', folderId: folder.id })}>
+        <optgroup label="マクロ">
+          <option value={encodeNavigationTarget({ kind: 'macro', folderId: null })}>home</option>
+          {flatMacroFolders.map(({ folder, depth }) => (
+            <option key={folder.id} value={encodeNavigationTarget({ kind: 'macro', folderId: folder.id })}>
               {'　'.repeat(depth + 1)}
               {folder.name}
             </option>
@@ -416,7 +416,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
                 text={
                   '電話番号・郵便番号・メールアドレス・クレジットカード番号らしき内容をOCR/文字列検出し、\n' +
                   '保護する対象をON/OFFで選べます。\n' +
-                  '「スクリーンショット」: 撮影画像・自動テスト失敗時のエビデンス画像内の該当箇所を自動で黒塗りします。\n' +
+                  '「スクリーンショット」: 撮影画像・マクロ失敗時のエビデンス画像内の該当箇所を自動で黒塗りします。\n' +
                   '「クリップボード履歴」: コピーされた内容がDittoの履歴に記録される前に、\n' +
                   '「マスキング」(該当箇所を*に置き換えて保存。コピーした内容自体は変わりません)か\n' +
                   '「自動消去」(履歴に一切保存しません)のどちらかで保護します。\n' +

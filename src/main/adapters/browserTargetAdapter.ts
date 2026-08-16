@@ -1,7 +1,7 @@
 import { shell } from 'electron'
 import activeWin from 'active-win'
 import * as win32 from '../win32'
-import type { TargetAdapter, TestTarget } from '../../shared/types'
+import type { TargetAdapter, MacroTarget } from '../../shared/types'
 import { WindowTargetAdapterBase, sleep } from './windowTargetBase'
 
 /**
@@ -40,9 +40,9 @@ async function findBrowserWindowAfterOpen(url: string, timeoutMs = 8000): Promis
 }
 
 export class BrowserTargetAdapter extends WindowTargetAdapterBase {
-  private readonly target: TestTarget
+  private readonly target: MacroTarget
 
-  constructor(target: TestTarget) {
+  constructor(target: MacroTarget) {
     super()
     this.target = target
   }
@@ -68,6 +68,6 @@ export class BrowserTargetAdapter extends WindowTargetAdapterBase {
   }
 }
 
-export function createBrowserAdapter(target: TestTarget): TargetAdapter {
+export function createBrowserAdapter(target: MacroTarget): TargetAdapter {
   return new BrowserTargetAdapter(target)
 }

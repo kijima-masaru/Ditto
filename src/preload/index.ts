@@ -20,25 +20,25 @@ import {
   type PlaybackResult,
   type TargetHistoryEntry,
   type PreviewKind,
-  type TestCase,
-  type TestFolder,
-  type TestTarget,
+  type MacroCase,
+  type MacroFolder,
+  type MacroTarget,
   type ThemeMode,
   type UpdateStatus
 } from '../shared/types'
 
 const api = {
-  listTests: (): Promise<TestCase[]> => ipcRenderer.invoke(IPC.listTests),
-  saveTest: (testCase: Omit<TestCase, 'id' | 'createdAt' | 'updatedAt' | 'order'> & { id?: string }): Promise<TestCase> =>
-    ipcRenderer.invoke(IPC.saveTest, testCase),
-  deleteTest: (id: string): Promise<void> => ipcRenderer.invoke(IPC.deleteTest, id),
-  renameTest: (id: string, name: string): Promise<TestCase> => ipcRenderer.invoke(IPC.renameTest, id, name),
-  moveTest: (id: string, folderId: string | null): Promise<TestCase> =>
-    ipcRenderer.invoke(IPC.moveTest, id, folderId),
-  reorderTests: (orderedIds: string[]): Promise<void> => ipcRenderer.invoke(IPC.reorderTests, orderedIds),
+  listMacros: (): Promise<MacroCase[]> => ipcRenderer.invoke(IPC.listMacros),
+  saveMacro: (macroCase: Omit<MacroCase, 'id' | 'createdAt' | 'updatedAt' | 'order'> & { id?: string }): Promise<MacroCase> =>
+    ipcRenderer.invoke(IPC.saveMacro, macroCase),
+  deleteMacro: (id: string): Promise<void> => ipcRenderer.invoke(IPC.deleteMacro, id),
+  renameMacro: (id: string, name: string): Promise<MacroCase> => ipcRenderer.invoke(IPC.renameMacro, id, name),
+  moveMacro: (id: string, folderId: string | null): Promise<MacroCase> =>
+    ipcRenderer.invoke(IPC.moveMacro, id, folderId),
+  reorderMacros: (orderedIds: string[]): Promise<void> => ipcRenderer.invoke(IPC.reorderMacros, orderedIds),
 
-  listFolders: (): Promise<TestFolder[]> => ipcRenderer.invoke(IPC.listFolders),
-  createFolder: (name: string, parentId: string | null): Promise<TestFolder> =>
+  listFolders: (): Promise<MacroFolder[]> => ipcRenderer.invoke(IPC.listFolders),
+  createFolder: (name: string, parentId: string | null): Promise<MacroFolder> =>
     ipcRenderer.invoke(IPC.createFolder, name, parentId),
   renameFolder: (id: string, name: string): Promise<void> => ipcRenderer.invoke(IPC.renameFolder, id, name),
   deleteFolder: (id: string): Promise<void> => ipcRenderer.invoke(IPC.deleteFolder, id),
@@ -46,7 +46,7 @@ const api = {
 
   pickExecutable: (): Promise<string | null> => ipcRenderer.invoke(IPC.pickExecutable),
 
-  startRecording: (targets: TestTarget[]): Promise<void> => ipcRenderer.invoke(IPC.recordingStart, targets),
+  startRecording: (targets: MacroTarget[]): Promise<void> => ipcRenderer.invoke(IPC.recordingStart, targets),
   setActiveTarget: (targetId: string): Promise<void> =>
     ipcRenderer.invoke(IPC.recordingSetActiveTarget, targetId),
   setRecordingPaused: (paused: boolean): Promise<void> =>
@@ -58,7 +58,7 @@ const api = {
     return () => ipcRenderer.removeListener(IPC.recordingStep, listener)
   },
 
-  runPlayback: (testCase: TestCase): Promise<PlaybackResult> => ipcRenderer.invoke(IPC.playbackRun, testCase),
+  runPlayback: (macroCase: MacroCase): Promise<PlaybackResult> => ipcRenderer.invoke(IPC.playbackRun, macroCase),
   abortPlayback: (): Promise<void> => ipcRenderer.invoke(IPC.playbackAbort),
   onPlaybackProgress: (cb: (progress: PlaybackProgress) => void): (() => void) => {
     const listener = (_e: unknown, progress: PlaybackProgress): void => cb(progress)
@@ -75,8 +75,8 @@ const api = {
   getRecordingFrameCaptureInfo: (): Promise<CaptureInfo> => ipcRenderer.invoke(IPC.recordingFrameGetCaptureInfo),
 
   getDesktopSources: (): Promise<{ id: string; displayId: string }[]> => ipcRenderer.invoke(IPC.getDesktopSources),
-  startScreenRecordingSession: (testName: string): Promise<string> =>
-    ipcRenderer.invoke(IPC.screenRecordingStart, testName),
+  startScreenRecordingSession: (macroName: string): Promise<string> =>
+    ipcRenderer.invoke(IPC.screenRecordingStart, macroName),
   appendScreenRecordingChunk: (chunk: Uint8Array): Promise<void> =>
     ipcRenderer.invoke(IPC.screenRecordingAppendChunk, chunk),
   finishScreenRecordingSession: (): Promise<string | null> => ipcRenderer.invoke(IPC.screenRecordingFinish),

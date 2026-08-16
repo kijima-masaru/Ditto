@@ -1,16 +1,16 @@
 import { useState } from 'react'
-import type { PlaybackProgress, TestCase } from '../../../shared/types'
+import type { PlaybackProgress, MacroCase } from '../../../shared/types'
 import TargetTabs from './TargetTabs'
 
 interface Props {
-  testCase: TestCase
+  macroCase: MacroCase
   onDone: () => void
 }
 
-export default function Playback({ testCase, onDone }: Props): React.JSX.Element {
+export default function Playback({ macroCase, onDone }: Props): React.JSX.Element {
   const [phase, setPhase] = useState<'idle' | 'running' | 'done'>('idle')
   const [progress, setProgress] = useState<PlaybackProgress[]>([])
-  const [activeTargetId, setActiveTargetId] = useState<string>(testCase.targets[0]?.id ?? '')
+  const [activeTargetId, setActiveTargetId] = useState<string>(macroCase.targets[0]?.id ?? '')
   const [success, setSuccess] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -29,7 +29,7 @@ export default function Playback({ testCase, onDone }: Props): React.JSX.Element
     })
 
     try {
-      const result = await window.api.runPlayback(testCase)
+      const result = await window.api.runPlayback(macroCase)
       setSuccess(result.success)
     } catch (e) {
       setError((e as Error).message)
@@ -40,12 +40,12 @@ export default function Playback({ testCase, onDone }: Props): React.JSX.Element
     }
   }
 
-  const labelFor = (id?: string): string => testCase.targets.find((t) => t.id === id)?.label ?? ''
+  const labelFor = (id?: string): string => macroCase.targets.find((t) => t.id === id)?.label ?? ''
 
   return (
     <div className="workspace">
       <div className="workspace-header">
-        <TargetTabs targets={testCase.targets} activeId={activeTargetId} onSelect={() => {}} disabled />
+        <TargetTabs targets={macroCase.targets} activeId={activeTargetId} onSelect={() => {}} disabled />
         <div className="row">
           {(phase === 'idle' || phase === 'done') && (
             <button className="primary" onClick={handleStart}>
@@ -70,7 +70,7 @@ export default function Playback({ testCase, onDone }: Props): React.JSX.Element
 
       <div className="workspace-footer">
         <ol className="step-list">
-          {testCase.steps.map((s, i) => {
+          {macroCase.steps.map((s, i) => {
             const p = progress[i]
             return (
               <li key={s.id} className={p ? `status-${p.status}` : ''}>
@@ -95,7 +95,7 @@ export default function Playback({ testCase, onDone }: Props): React.JSX.Element
         </ol>
 
         <button className="primary" onClick={onDone}>
-          テストに戻る
+          マクロに戻る
         </button>
       </div>
     </div>

@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import type { TargetHistoryEntry, TargetKind, TestTarget } from '../../../shared/types'
+import type { TargetHistoryEntry, TargetKind, MacroTarget } from '../../../shared/types'
 
 interface Props {
-  onStart: (targets: TestTarget[]) => void
+  onStart: (targets: MacroTarget[]) => void
 }
 
 export default function TargetSelect({ onStart }: Props): React.JSX.Element {
-  const [targets, setTargets] = useState<TestTarget[]>([])
+  const [targets, setTargets] = useState<MacroTarget[]>([])
   const [kind, setKind] = useState<TargetKind>('web')
   const [label, setLabel] = useState('')
   const [url, setUrl] = useState('https://')
@@ -40,7 +40,7 @@ export default function TargetSelect({ onStart }: Props): React.JSX.Element {
   const canAdd = kind === 'web' ? url.trim().length > 8 : exePath.trim().length > 0
 
   const addTarget = async (): Promise<void> => {
-    const newTarget: TestTarget =
+    const newTarget: MacroTarget =
       kind === 'web'
         ? { id: crypto.randomUUID(), kind: 'web', label: label.trim() || url.trim(), url: url.trim() }
         : {

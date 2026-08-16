@@ -1,6 +1,6 @@
 /**
  * アプリ全体で共有する型定義。
- * 1つのテストは複数の対象(WEBアプリ/デスクトップアプリ)を持ち、記録した各ステップは
+ * 1つのマクロは複数の対象(WEBアプリ/デスクトップアプリ)を持ち、記録した各ステップは
  * どの対象に対する操作かを targetId で識別する。
  *
  * WEBアプリ対象もデスクトップアプリ対象も、実体は「OS上の1つのウィンドウ」として
@@ -13,7 +13,7 @@
 
 export type TargetKind = 'web' | 'desktop'
 
-export interface TestTarget {
+export interface MacroTarget {
   id: string
   kind: TargetKind
   /** タブ表示用のラベル */
@@ -26,7 +26,7 @@ export interface TestTarget {
   exeArgs?: string
 }
 
-/** テスト作成時に選択したアプリ・URLの履歴(再選択用) */
+/** マクロ作成時に選択したアプリ・URLの履歴(再選択用) */
 export interface TargetHistoryEntry {
   id: string
   kind: TargetKind
@@ -41,7 +41,7 @@ export type StepType = 'click' | 'dblclick' | 'keypress'
 
 export interface RecordedStep {
   id: string
-  /** このステップがどの対象(TestTarget.id)に対する操作か */
+  /** このステップがどの対象(MacroTarget.id)に対する操作か */
   targetId: string
   type: StepType
   timestamp: number
@@ -65,23 +65,23 @@ export interface RecordedStep {
   label?: string
 }
 
-export interface TestCase {
+export interface MacroCase {
   id: string
   name: string
-  targets: TestTarget[]
+  targets: MacroTarget[]
   steps: RecordedStep[]
   createdAt: string
   updatedAt: string
   /** 最後に実行(再生)した日時。一度も実行していなければ未設定 */
   lastRunAt?: string
-  /** 所属フォルダ(TestFolder.id)。未設定/nullはルート直下 */
+  /** 所属フォルダ(MacroFolder.id)。未設定/nullはルート直下 */
   folderId?: string | null
   /** 同じフォルダ内での並び順(昇順)。ドラッグ&ドロップで並び替えた結果を保持する */
   order: number
 }
 
-/** テスト一覧を整理するための階層フォルダ */
-export interface TestFolder {
+/** マクロ一覧を整理するための階層フォルダ */
+export interface MacroFolder {
   id: string
   name: string
   /** 親フォルダのid。nullはルート直下 */
@@ -193,11 +193,11 @@ export interface HotkeyCombo {
 export type ThemeMode = 'light' | 'dark'
 
 /** ネストしたフォルダプレビューを別ウィンドウで開く際、どちらのデータを見せるか */
-export type PreviewKind = 'test' | 'clipboard'
+export type PreviewKind = 'macro' | 'clipboard'
 
 /**
  * ホットキー押下時にジャンプする遷移先。未設定(null)ならウィンドウ表示のみでジャンプしない。
- * kindが'test'/'clipboard'ならタブ+フォルダへのジャンプ、'recording-frame'なら録画枠オーバーレイの表示を意味する
+ * kindが'macro'/'clipboard'ならタブ+フォルダへのジャンプ、'recording-frame'なら録画枠オーバーレイの表示を意味する
  */
 export type NavigationTarget = { kind: PreviewKind; folderId: string | null } | { kind: 'recording-frame' }
 
@@ -300,12 +300,12 @@ export interface TargetAdapter {
 
 /** renderer <-> main の IPC チャンネル名 */
 export const IPC = {
-  listTests: 'tests:list',
-  saveTest: 'tests:save',
-  deleteTest: 'tests:delete',
-  renameTest: 'tests:rename',
-  moveTest: 'tests:move',
-  reorderTests: 'tests:reorder',
+  listMacros: 'macros:list',
+  saveMacro: 'macros:save',
+  deleteMacro: 'macros:delete',
+  renameMacro: 'macros:rename',
+  moveMacro: 'macros:move',
+  reorderMacros: 'macros:reorder',
 
   listFolders: 'folders:list',
   createFolder: 'folders:create',
@@ -373,7 +373,7 @@ export const IPC = {
   deleteClipboardFormatRule: 'clipboard:delete-format-rule',
   reorderClipboardFormatRules: 'clipboard:reorder-format-rules',
 
-  // 汎用の右クリックメニュー(テスト一覧・定型文のフォルダ操作/移動サブメニュー等に使う)
+  // 汎用の右クリックメニュー(マクロ一覧・定型文のフォルダ操作/移動サブメニュー等に使う)
   showContextMenu: 'context-menu:show',
 
   // アプリ設定(ホットキー・テーマ等)
@@ -392,7 +392,7 @@ export const IPC = {
   hotkeyCapturePreview: 'hotkey-capture:preview', // main -> renderer push
   hotkeyCaptureResult: 'hotkey-capture:result', // main -> renderer push
 
-  // テスト作成時に選択したアプリ・URLの履歴
+  // マクロ作成時に選択したアプリ・URLの履歴
   listTargetHistory: 'target-history:list',
   recordTargetHistory: 'target-history:record',
 

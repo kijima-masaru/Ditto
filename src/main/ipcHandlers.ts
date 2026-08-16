@@ -17,8 +17,8 @@ import {
   type ContextMenuItem,
   type HotkeyBinding,
   type ThemeMode,
-  type TestCase,
-  type TestTarget
+  type MacroCase,
+  type MacroTarget
 } from '../shared/types'
 import * as store from './store'
 import { TargetManager } from './targetManager'
@@ -36,19 +36,19 @@ import { checkForUpdates } from './autoUpdater'
 export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
   const manager = new TargetManager()
 
-  ipcMain.handle(IPC.listTests, async () => store.listTests())
+  ipcMain.handle(IPC.listMacros, async () => store.listMacros())
 
-  ipcMain.handle(IPC.saveTest, async (_e, testCase: Parameters<typeof store.saveTest>[0]) =>
-    store.saveTest(testCase)
+  ipcMain.handle(IPC.saveMacro, async (_e, macroCase: Parameters<typeof store.saveMacro>[0]) =>
+    store.saveMacro(macroCase)
   )
 
-  ipcMain.handle(IPC.deleteTest, async (_e, id: string) => store.deleteTest(id))
+  ipcMain.handle(IPC.deleteMacro, async (_e, id: string) => store.deleteMacro(id))
 
-  ipcMain.handle(IPC.renameTest, async (_e, id: string, name: string) => store.renameTest(id, name))
+  ipcMain.handle(IPC.renameMacro, async (_e, id: string, name: string) => store.renameMacro(id, name))
 
-  ipcMain.handle(IPC.moveTest, async (_e, id: string, folderId: string | null) => store.moveTest(id, folderId))
+  ipcMain.handle(IPC.moveMacro, async (_e, id: string, folderId: string | null) => store.moveMacro(id, folderId))
 
-  ipcMain.handle(IPC.reorderTests, async (_e, orderedIds: string[]) => store.reorderTests(orderedIds))
+  ipcMain.handle(IPC.reorderMacros, async (_e, orderedIds: string[]) => store.reorderMacros(orderedIds))
 
   ipcMain.handle(IPC.listFolders, async () => store.listFolders())
 
@@ -74,7 +74,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     return result.filePaths[0]
   })
 
-  ipcMain.handle(IPC.recordingStart, async (_e, targets: TestTarget[]) => {
+  ipcMain.handle(IPC.recordingStart, async (_e, targets: MacroTarget[]) => {
     const w = getWindow()
     await manager.startRecording(targets, (step) => {
       w?.webContents.send(IPC.recordingStep, step)
@@ -91,12 +91,12 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.recordingStop, async () => manager.stopRecording())
 
-  ipcMain.handle(IPC.playbackRun, async (_e, testCase: TestCase) => {
+  ipcMain.handle(IPC.playbackRun, async (_e, macroCase: MacroCase) => {
     const w = getWindow()
-    const result = await manager.runPlayback(testCase, (progress) => {
+    const result = await manager.runPlayback(macroCase, (progress) => {
       w?.webContents.send(IPC.playbackProgress, progress)
     })
-    await store.recordRun(testCase.id, result.finishedAt)
+    await store.recordRun(macroCase.id, result.finishedAt)
     return result
   })
 
@@ -130,10 +130,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     return sources.map((s) => ({ id: s.id, displayId: s.display_id }))
   })
 
-  ipcMain.handle(IPC.screenRecordingStart, async (_e, testName: string) => {
+  ipcMain.handle(IPC.screenRecordingStart, async (_e, macroName: string) => {
     recordingFrame.setInteractive(false)
     clickHighlight.start()
-    return screenCapture.startRecording(testName)
+    return screenCapture.startRecording(macroName)
   })
 
   ipcMain.handle(IPC.screenRecordingAppendChunk, async (_e, chunk: Uint8Array) => {

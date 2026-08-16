@@ -4,8 +4,8 @@ import type {
   PlaybackResult,
   RecordedStep,
   TargetAdapter,
-  TestCase,
-  TestTarget
+  MacroCase,
+  MacroTarget
 } from '../shared/types'
 import { createBrowserAdapter } from './adapters/browserTargetAdapter'
 import { createDesktopAdapter } from './adapters/desktopTargetAdapter'
@@ -23,7 +23,7 @@ async function interruptibleSleep(ms: number, isAborted: () => boolean): Promise
   }
 }
 
-function createAdapter(target: TestTarget): TargetAdapter {
+function createAdapter(target: MacroTarget): TargetAdapter {
   return target.kind === 'web' ? createBrowserAdapter(target) : createDesktopAdapter(target)
 }
 
@@ -44,7 +44,7 @@ export class TargetManager {
   private onStepPush: ((step: RecordedStep) => void) | null = null
   private aborted = false
 
-  async startRecording(targets: TestTarget[], onStep: (step: RecordedStep) => void): Promise<void> {
+  async startRecording(targets: MacroTarget[], onStep: (step: RecordedStep) => void): Promise<void> {
     if (targets.length === 0) throw new Error('対象が指定されていません')
     await this.disposeAll()
     this.recordedSteps = []
@@ -111,7 +111,7 @@ export class TargetManager {
   }
 
   async runPlayback(
-    testCase: TestCase,
+    macroCase: MacroCase,
     onProgress: (progress: PlaybackProgress) => void
   ): Promise<PlaybackResult> {
     await this.disposeAll()
@@ -123,32 +123,32 @@ export class TargetManager {
     }
 
     try {
-      for (const target of testCase.targets) {
+      for (const target of macroCase.targets) {
         const adapter = createAdapter(target)
         await adapter.init()
         this.adapters.set(target.id, adapter)
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      const evidencePath = (await captureFailureEvidence(testCase.name, 0)) ?? undefined
+      const evidencePath = (await captureFailureEvidence(macroCase.name, 0)) ?? undefined
       push({ stepIndex: 0, status: 'fail', message, evidencePath })
       await this.disposeAll()
       return { success: false, finishedAt: new Date().toISOString(), log }
     }
 
-    if (testCase.targets.length > 0) {
-      await this.setActiveTarget(testCase.targets[0].id)
+    if (macroCase.targets.length > 0) {
+      await this.setActiveTarget(macroCase.targets[0].id)
     }
 
     let success = true
-    for (let i = 0; i < testCase.steps.length; i++) {
+    for (let i = 0; i < macroCase.steps.length; i++) {
       if (this.aborted) {
         push({ stepIndex: i, status: 'skipped', message: '中断されました' })
         success = false
         break
       }
 
-      const step = testCase.steps[i]
+      const step = macroCase.steps[i]
 
       // 記録時に実際に空いていた時間だけ待ってから次の操作を行い、間隔を再現する
       if (step.delayMs > 0) {
@@ -172,7 +172,7 @@ export class TargetManager {
         push({ stepIndex: i, status: 'ok', targetId: step.targetId })
       } catch (err) {
         success = false
-        const evidencePath = (await captureFailureEvidence(testCase.name, i)) ?? undefined
+        const evidencePath = (await captureFailureEvidence(macroCase.name, i)) ?? undefined
         push({
           stepIndex: i,
           status: 'fail',

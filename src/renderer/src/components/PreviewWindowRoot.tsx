@@ -3,14 +3,14 @@ import type {
   ClipboardTemplate,
   ClipboardTemplateFolder,
   PreviewKind,
-  TestCase,
-  TestFolder
+  MacroCase,
+  MacroFolder
 } from '../../../shared/types'
 import FolderPreviewFlyout from './FolderPreviewFlyout'
 
 interface FolderData {
-  folders: (TestFolder | ClipboardTemplateFolder)[]
-  items: (TestCase | ClipboardTemplate)[]
+  folders: (MacroFolder | ClipboardTemplateFolder)[]
+  items: (MacroCase | ClipboardTemplate)[]
 }
 
 function truncate(text: string, max = 80): string {
@@ -48,7 +48,7 @@ export default function PreviewWindowRoot(): React.JSX.Element {
         ([folders, items]) => setData({ folders, items })
       )
     } else {
-      Promise.all([window.api.listFolders(), window.api.listTests()]).then(([folders, items]) =>
+      Promise.all([window.api.listFolders(), window.api.listMacros()]).then(([folders, items]) =>
         setData({ folders, items })
       )
     }
@@ -91,8 +91,8 @@ export default function PreviewWindowRoot(): React.JSX.Element {
               {copiedId === it.id && <span className="clip-copied-badge">コピーしました</span>}
             </div>
           ) : (
-            <div key={it.id} className="folder-preview-item test-name-item">
-              {(it as TestCase).name}
+            <div key={it.id} className="folder-preview-item macro-name-item">
+              {(it as MacroCase).name}
             </div>
           )
         }

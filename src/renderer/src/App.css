@@ -439,7 +439,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   background: var(--danger-bg);
 }
 
-.test-name-list {
+.macro-name-list {
   list-style: none;
   margin: 0;
   padding: 0 0 16px;
@@ -448,7 +448,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   gap: 6px;
 }
 
-.test-name-item {
+.macro-name-item {
   background: var(--panel-bg);
   border-radius: 8px;
   padding: 10px 12px;
@@ -457,7 +457,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   cursor: default;
 }
 
-.test-name-item:hover {
+.macro-name-item:hover {
   background: var(--hover-bg);
 }
 
@@ -776,7 +776,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 }
 
 .folder-preview-folder {
-  /* buttonは既定でshrink-to-fit幅になり、兄弟のdiv(定型文/テスト項目)行と幅が
+  /* buttonは既定でshrink-to-fit幅になり、兄弟のdiv(定型文/マクロ項目)行と幅が
      揃わず縮んで見えてしまうため、ブロック要素として幅いっぱいに広げる */
   display: block;
   width: 100%;
@@ -795,7 +795,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   color: var(--accent);
 }
 
-/* ドラッグ中のカードの見た目(フォルダカード・テスト/定型文リストで共通使用)。
+/* ドラッグ中のカードの見た目(フォルダカード・マクロ/定型文リストで共通使用)。
    並び替え自体はドラッグ中に配列の順序を入れ替えて即座に反映するので、
    ここでは掴んでいるカード自身を少し薄くするだけでよい */
 .drag-item-dragging {
@@ -1039,7 +1039,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   font-size: 13px;
 }
 
-/* 設定画面全体のコンテナ。「クリップボード」「テスト」の一覧と同様、白背景1枚の中に
+/* 設定画面全体のコンテナ。「クリップボード」「マクロ」の一覧と同様、白背景1枚の中に
    項目を並べるのではなく、項目ごとに独立したカードとして区切って表示する */
 .settings-page {
   display: flex;

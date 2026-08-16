@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react'
-import type { ContextMenuItem, TestCase, TestFolder } from '../../../shared/types'
+import type { ContextMenuItem, MacroCase, MacroFolder } from '../../../shared/types'
 import { flattenFolders, folderBreadcrumb } from '../folderTree'
 import { useHoverIntent } from '../hooks/useHoverIntent'
 import { useDragReorder } from '../hooks/useDragReorder'
 import FolderPreviewFlyout from './FolderPreviewFlyout'
 
 interface Props {
-  onRun: (testCase: TestCase) => void
-  onCreateTest: (folderId: string | null) => void
+  onRun: (macroCase: MacroCase) => void
+  onCreateMacro: (folderId: string | null) => void
   initialFolderId?: string | null
 }
 
-function buildMoveSubmenu(flatFolders: { folder: TestFolder; depth: number }[]): ContextMenuItem[] {
+function buildMoveSubmenu(flatFolders: { folder: MacroFolder; depth: number }[]): ContextMenuItem[] {
   const items: ContextMenuItem[] = [{ id: 'move:root', label: 'home' }]
   for (const { folder, depth } of flatFolders) {
     items.push({ id: `move:${folder.id}`, label: `${'　'.repeat(depth)}${folder.name}` })
@@ -29,15 +29,15 @@ function swapOrder(ids: string[], id: string, direction: 'up' | 'down'): string[
   return next
 }
 
-export default function TestList({ onRun, onCreateTest, initialFolderId = null }: Props): React.JSX.Element {
-  const [tests, setTests] = useState<TestCase[]>([])
-  const [folders, setFolders] = useState<TestFolder[]>([])
+export default function MacroList({ onRun, onCreateMacro, initialFolderId = null }: Props): React.JSX.Element {
+  const [macros, setMacros] = useState<MacroCase[]>([])
+  const [folders, setFolders] = useState<MacroFolder[]>([])
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(initialFolderId)
   const [loading, setLoading] = useState(true)
 
-  const [renamingTestId, setRenamingTestId] = useState<string | null>(null)
-  const [renameTestInput, setRenameTestInput] = useState('')
-  const [deletingTestId, setDeletingTestId] = useState<string | null>(null)
+  const [renamingMacroId, setRenamingMacroId] = useState<string | null>(null)
+  const [renameMacroInput, setRenameMacroInput] = useState('')
+  const [deletingMacroId, setDeletingMacroId] = useState<string | null>(null)
 
   const [creatingFolder, setCreatingFolder] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
@@ -49,8 +49,8 @@ export default function TestList({ onRun, onCreateTest, initialFolderId = null }
 
   const reload = async (): Promise<void> => {
     setLoading(true)
-    const [testList, folderList] = await Promise.all([window.api.listTests(), window.api.listFolders()])
-    setTests(testList)
+    const [macroList, folderList] = await Promise.all([window.api.listMacros(), window.api.listFolders()])
+    setMacros(macroList)
     setFolders(folderList)
     setLoading(false)
   }
@@ -61,30 +61,30 @@ export default function TestList({ onRun, onCreateTest, initialFolderId = null }
 
   useEffect(() => {
     return window.api.onNavigateToFolder(({ kind, folderId }) => {
-      if (kind === 'test') setCurrentFolderId(folderId)
+      if (kind === 'macro') setCurrentFolderId(folderId)
     })
   }, [])
 
-  const startRenameTest = (t: TestCase): void => {
-    setRenamingTestId(t.id)
-    setRenameTestInput(t.name)
+  const startRenameMacro = (t: MacroCase): void => {
+    setRenamingMacroId(t.id)
+    setRenameMacroInput(t.name)
   }
 
-  const saveRenameTest = async (): Promise<void> => {
-    if (!renamingTestId || !renameTestInput.trim()) return
-    await window.api.renameTest(renamingTestId, renameTestInput.trim())
-    setRenamingTestId(null)
+  const saveRenameMacro = async (): Promise<void> => {
+    if (!renamingMacroId || !renameMacroInput.trim()) return
+    await window.api.renameMacro(renamingMacroId, renameMacroInput.trim())
+    setRenamingMacroId(null)
     reload()
   }
 
-  const confirmDeleteTest = async (id: string): Promise<void> => {
-    await window.api.deleteTest(id)
-    setDeletingTestId(null)
+  const confirmDeleteMacro = async (id: string): Promise<void> => {
+    await window.api.deleteMacro(id)
+    setDeletingMacroId(null)
     reload()
   }
 
-  const handleMoveTest = async (id: string, folderId: string | null): Promise<void> => {
-    await window.api.moveTest(id, folderId)
+  const handleMoveMacro = async (id: string, folderId: string | null): Promise<void> => {
+    await window.api.moveMacro(id, folderId)
     reload()
   }
 
@@ -96,7 +96,7 @@ export default function TestList({ onRun, onCreateTest, initialFolderId = null }
     reload()
   }
 
-  const startRenameFolder = (f: TestFolder): void => {
+  const startRenameFolder = (f: MacroFolder): void => {
     setRenamingFolderId(f.id)
     setRenameFolderInput(f.name)
   }
@@ -120,8 +120,8 @@ export default function TestList({ onRun, onCreateTest, initialFolderId = null }
     reload()
   }
 
-  const handleReorderTests = async (orderedIds: string[]): Promise<void> => {
-    await window.api.reorderTests(orderedIds)
+  const handleReorderMacros = async (orderedIds: string[]): Promise<void> => {
+    await window.api.reorderMacros(orderedIds)
     reload()
   }
 
@@ -129,9 +129,9 @@ export default function TestList({ onRun, onCreateTest, initialFolderId = null }
   const breadcrumb = folderBreadcrumb(folders, currentFolderId)
   const currentFolder = folders.find((f) => f.id === currentFolderId) ?? null
   const subfolders = folders.filter((f) => f.parentId === currentFolderId)
-  const visibleTests = tests.filter((t) => (t.folderId ?? null) === currentFolderId)
+  const visibleMacros = macros.filter((t) => (t.folderId ?? null) === currentFolderId)
   const folderDrag = useDragReorder(subfolders, (f) => f.id, handleReorderFolders)
-  const testDrag = useDragReorder(visibleTests, (t) => t.id, handleReorderTests)
+  const macroDrag = useDragReorder(visibleMacros, (t) => t.id, handleReorderMacros)
 
   const handleAreaContextMenu = async (e: React.MouseEvent): Promise<void> => {
     e.preventDefault()
@@ -139,7 +139,7 @@ export default function TestList({ onRun, onCreateTest, initialFolderId = null }
     if (currentFolderId === null) {
       items.push({ id: 'create-folder', label: '新規フォルダを作成' })
     }
-    items.push({ id: 'create-test', label: '新規テストを作成' })
+    items.push({ id: 'create-macro', label: '新規マクロを作成' })
     if (currentFolderId !== null) {
       items.push({ id: 'sep1', type: 'separator' })
       items.push({ id: 'go-up', label: '上の階層に戻る' })
@@ -148,20 +148,20 @@ export default function TestList({ onRun, onCreateTest, initialFolderId = null }
     if (result === 'create-folder') {
       setCreatingFolder(true)
       setNewFolderName('')
-    } else if (result === 'create-test') {
-      onCreateTest(currentFolderId)
+    } else if (result === 'create-macro') {
+      onCreateMacro(currentFolderId)
     } else if (result === 'go-up') {
       setCurrentFolderId(currentFolder?.parentId ?? null)
     }
   }
 
-  const handleFolderContextMenu = async (e: React.MouseEvent, f: TestFolder): Promise<void> => {
+  const handleFolderContextMenu = async (e: React.MouseEvent, f: MacroFolder): Promise<void> => {
     e.preventDefault()
     e.stopPropagation()
     const ids = subfolders.map((sf) => sf.id)
     const index = ids.indexOf(f.id)
     const result = await window.api.showContextMenu([
-      { id: 'create-test', label: '新規テストを作成' },
+      { id: 'create-macro', label: '新規マクロを作成' },
       { id: 'sep0', type: 'separator' },
       { id: 'rename', label: '名前変更' },
       { id: 'move-up', label: '上に移動', enabled: index > 0 },
@@ -169,7 +169,7 @@ export default function TestList({ onRun, onCreateTest, initialFolderId = null }
       { id: 'sep', type: 'separator' },
       { id: 'delete', label: '削除' }
     ])
-    if (result === 'create-test') onCreateTest(f.id)
+    if (result === 'create-macro') onCreateMacro(f.id)
     else if (result === 'rename') startRenameFolder(f)
     else if (result === 'delete') setDeletingFolderId(f.id)
     else if (result === 'move-up' || result === 'move-down') {
@@ -178,10 +178,10 @@ export default function TestList({ onRun, onCreateTest, initialFolderId = null }
     }
   }
 
-  const handleTestContextMenu = async (e: React.MouseEvent, t: TestCase): Promise<void> => {
+  const handleMacroContextMenu = async (e: React.MouseEvent, t: MacroCase): Promise<void> => {
     e.preventDefault()
     e.stopPropagation()
-    const ids = visibleTests.map((vt) => vt.id)
+    const ids = visibleMacros.map((vt) => vt.id)
     const index = ids.indexOf(t.id)
     const result = await window.api.showContextMenu([
       { id: 'run', label: '実行' },
@@ -193,14 +193,14 @@ export default function TestList({ onRun, onCreateTest, initialFolderId = null }
       { id: 'delete', label: '削除' }
     ])
     if (result === 'run') onRun(t)
-    else if (result === 'rename') startRenameTest(t)
-    else if (result === 'delete') setDeletingTestId(t.id)
+    else if (result === 'rename') startRenameMacro(t)
+    else if (result === 'delete') setDeletingMacroId(t.id)
     else if (result?.startsWith('move:')) {
       const dest = result.slice('move:'.length)
-      handleMoveTest(t.id, dest === 'root' ? null : dest)
+      handleMoveMacro(t.id, dest === 'root' ? null : dest)
     } else if (result === 'move-up' || result === 'move-down') {
       const next = swapOrder(ids, t.id, result === 'move-up' ? 'up' : 'down')
-      if (next) handleReorderTests(next)
+      if (next) handleReorderMacros(next)
     }
   }
 
@@ -242,14 +242,14 @@ export default function TestList({ onRun, onCreateTest, initialFolderId = null }
         </div>
       )}
 
-      {subfolders.length === 0 && visibleTests.length === 0 && !creatingFolder ? (
+      {subfolders.length === 0 && visibleMacros.length === 0 && !creatingFolder ? (
         <div className="panel">
           {currentFolderId ? (
-            <p>このフォルダにはテストがありません。</p>
+            <p>このフォルダにはマクロがありません。</p>
           ) : (
             <>
-              <p>保存されたテストケースはまだありません。</p>
-              <p>右クリックして「新規テストを作成」から記録してください。</p>
+              <p>保存されたマクロはまだありません。</p>
+              <p>右クリックして「新規マクロを作成」から記録してください。</p>
             </>
           )}
         </div>
@@ -313,17 +313,17 @@ export default function TestList({ onRun, onCreateTest, initialFolderId = null }
                     >
                       <FolderPreviewFlyout
                         folders={folders}
-                        items={tests}
+                        items={macros}
                         folderId={f.id}
-                        kind="test"
+                        kind="macro"
                         depth={1}
                         getItemFolderId={(t) => t.folderId ?? null}
                         onNavigate={setCurrentFolderId}
                         renderItem={(t) => (
                           <div
                             key={t.id}
-                            className="folder-preview-item test-name-item"
-                            onContextMenu={(e) => handleTestContextMenu(e, t)}
+                            className="folder-preview-item macro-name-item"
+                            onContextMenu={(e) => handleMacroContextMenu(e, t)}
                           >
                             {t.name}
                           </div>
@@ -337,11 +337,11 @@ export default function TestList({ onRun, onCreateTest, initialFolderId = null }
             </ul>
           )}
 
-          {visibleTests.length > 0 && (
-            <ul className="test-name-list">
-              {testDrag.orderedItems.map((t) => {
-                const isEditingTest = renamingTestId === t.id || deletingTestId === t.id
-                const drag = isEditingTest ? null : testDrag.getHandlers(t)
+          {visibleMacros.length > 0 && (
+            <ul className="macro-name-list">
+              {macroDrag.orderedItems.map((t) => {
+                const isEditingMacro = renamingMacroId === t.id || deletingMacroId === t.id
+                const drag = isEditingMacro ? null : macroDrag.getHandlers(t)
                 return (
                 <li
                   key={t.id}
@@ -357,29 +357,29 @@ export default function TestList({ onRun, onCreateTest, initialFolderId = null }
                       }
                     : {})}
                 >
-                  {renamingTestId === t.id ? (
+                  {renamingMacroId === t.id ? (
                     <div className="row inline-form">
                       <input
-                        value={renameTestInput}
-                        onChange={(e) => setRenameTestInput(e.target.value)}
+                        value={renameMacroInput}
+                        onChange={(e) => setRenameMacroInput(e.target.value)}
                         autoFocus
-                        onKeyDown={(e) => e.key === 'Enter' && saveRenameTest()}
+                        onKeyDown={(e) => e.key === 'Enter' && saveRenameMacro()}
                       />
-                      <button className="primary" onClick={saveRenameTest} disabled={!renameTestInput.trim()}>
+                      <button className="primary" onClick={saveRenameMacro} disabled={!renameMacroInput.trim()}>
                         保存
                       </button>
-                      <button onClick={() => setRenamingTestId(null)}>キャンセル</button>
+                      <button onClick={() => setRenamingMacroId(null)}>キャンセル</button>
                     </div>
-                  ) : deletingTestId === t.id ? (
+                  ) : deletingMacroId === t.id ? (
                     <div className="row inline-form">
                       <span className="hint">「{t.name}」を削除しますか?</span>
-                      <button className="danger" onClick={() => confirmDeleteTest(t.id)}>
+                      <button className="danger" onClick={() => confirmDeleteMacro(t.id)}>
                         削除する
                       </button>
-                      <button onClick={() => setDeletingTestId(null)}>キャンセル</button>
+                      <button onClick={() => setDeletingMacroId(null)}>キャンセル</button>
                     </div>
                   ) : (
-                    <div className="test-name-item" onContextMenu={(e) => handleTestContextMenu(e, t)}>
+                    <div className="macro-name-item" onContextMenu={(e) => handleMacroContextMenu(e, t)}>
                       {t.name}
                     </div>
                   )}

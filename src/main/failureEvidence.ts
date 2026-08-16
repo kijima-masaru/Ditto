@@ -5,7 +5,7 @@ import * as piiMask from './piiMask'
 import type { WindowBounds } from './adapters/windowTargetBase'
 
 /**
- * 自動テスト再生中にステップが失敗した際、その時点の画面をエビデンスとして
+ * マクロ再生中にステップが失敗した際、その時点の画面をエビデンスとして
  * 自動的にスクリーンショット保存する。renderer側のdesktopCapturer+getUserMediaの
  * パイプライン(useScreenshot.ts等)は使わず、mainプロセスのdesktopCapturerだけで
  * 完結させる(失敗時に別ウィンドウを経由させたくないため)。
@@ -36,7 +36,7 @@ function pickDisplay(bounds: WindowBounds | null | undefined): Electron.Display 
 }
 
 export async function captureFailureEvidence(
-  testCaseName: string,
+  macroCaseName: string,
   stepIndex: number,
   targetBounds?: WindowBounds | null
 ): Promise<string | null> {
@@ -55,7 +55,7 @@ export async function captureFailureEvidence(
     bytes = await piiMask.maskPngIfEnabled(bytes)
 
     const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-    const fileName = `失敗-${sanitizeForFileName(testCaseName)}-step${stepIndex + 1}-${stamp}`
+    const fileName = `失敗-${sanitizeForFileName(macroCaseName)}-step${stepIndex + 1}-${stamp}`
     return await screenCapture.saveScreenshot(bytes, fileName)
   } catch (err) {
     log.warn('failure evidence capture failed', err)

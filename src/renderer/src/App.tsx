@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { TestCase, TestTarget, ThemeMode } from '../../shared/types'
+import type { MacroCase, MacroTarget, ThemeMode } from '../../shared/types'
 import TargetSelect from './components/TargetSelect'
 import Recording from './components/Recording'
-import TestList from './components/TestList'
+import MacroList from './components/MacroList'
 import Playback from './components/Playback'
 import ClipboardPanel from './components/ClipboardPanel'
 import SettingsPanel from './components/SettingsPanel'
@@ -20,9 +20,9 @@ const isScreenshotEditorWindow = new URLSearchParams(window.location.search).get
 
 type View =
   | { name: 'target-select'; folderId: string | null }
-  | { name: 'recording'; targets: TestTarget[]; folderId: string | null }
-  | { name: 'test-list' }
-  | { name: 'playback'; testCase: TestCase }
+  | { name: 'recording'; targets: MacroTarget[]; folderId: string | null }
+  | { name: 'macro-list' }
+  | { name: 'playback'; macroCase: MacroCase }
   | { name: 'clipboard' }
   | { name: 'settings' }
 
@@ -46,7 +46,7 @@ function MainApp(): React.JSX.Element {
   const [refreshKey, setRefreshKey] = useState(0)
   const [theme, setTheme] = useState<ThemeMode>('light')
   // 設定画面で登録したホットキーの遷移先(タブ+フォルダ)へジャンプするための状態。
-  // topPageNonceが変わるたびにClipboardPanel/TestListをkey経由で強制的に作り直し、
+  // topPageNonceが変わるたびにClipboardPanel/MacroListをkey経由で強制的に作り直し、
   // その時点のtopPageFolderIdを初期フォルダとして渡す(通常のタブ切替では変化しないため
   // 手動ナビゲーション中の状態を壊さない)
   const [topPageFolderId, setTopPageFolderId] = useState<string | null>(null)
@@ -68,7 +68,7 @@ function MainApp(): React.JSX.Element {
       setTopPageFolderId(target.folderId)
       setTopPageNonce((n) => n + 1)
       if (target.kind === 'clipboard') setView({ name: 'clipboard' })
-      else setView({ name: 'test-list' })
+      else setView({ name: 'macro-list' })
     })
   }, [recorder.showFrame])
 
@@ -77,7 +77,7 @@ function MainApp(): React.JSX.Element {
   }, [theme])
 
   // 録画枠(オーバーレイウィンドウ)のフッターボタンは、実際のキャプチャ処理を持つ
-  // このウィンドウのuseScreenRecordingに操作を中継する形で動く(テスト機能とは独立)
+  // このウィンドウのuseScreenRecordingに操作を中継する形で動く(マクロ機能とは独立)
   useEffect(() => {
     return window.api.onRecordingFrameFooterAction((action) => {
       if (action === 'start') recorder.start('画面録画')
@@ -98,7 +98,7 @@ function MainApp(): React.JSX.Element {
 
   const goHome = useCallback(() => {
     setRefreshKey((k) => k + 1)
-    setView({ name: 'test-list' })
+    setView({ name: 'macro-list' })
   }, [])
 
   const isWorkspace = view.name === 'recording' || view.name === 'playback'
@@ -115,8 +115,8 @@ function MainApp(): React.JSX.Element {
           <button className={view.name === 'clipboard' ? 'active' : ''} onClick={() => setView({ name: 'clipboard' })}>
             クリップボード
           </button>
-          <button className={view.name === 'test-list' ? 'active' : ''} onClick={() => setView({ name: 'test-list' })}>
-            テスト
+          <button className={view.name === 'macro-list' ? 'active' : ''} onClick={() => setView({ name: 'macro-list' })}>
+            マクロ
           </button>
         </nav>
         <button
@@ -191,16 +191,16 @@ function MainApp(): React.JSX.Element {
           <Recording targets={view.targets} folderId={view.folderId} onDone={goHome} onCancel={goHome} />
         )}
 
-        {view.name === 'test-list' && (
-          <TestList
+        {view.name === 'macro-list' && (
+          <MacroList
             key={`${refreshKey}-${topPageNonce}`}
             initialFolderId={topPageFolderId}
-            onRun={(testCase) => setView({ name: 'playback', testCase })}
-            onCreateTest={(folderId) => setView({ name: 'target-select', folderId })}
+            onRun={(macroCase) => setView({ name: 'playback', macroCase })}
+            onCreateMacro={(folderId) => setView({ name: 'target-select', folderId })}
           />
         )}
 
-        {view.name === 'playback' && <Playback testCase={view.testCase} onDone={goHome} />}
+        {view.name === 'playback' && <Playback macroCase={view.macroCase} onDone={goHome} />}
 
         {view.name === 'clipboard' && (
           <ClipboardPanel

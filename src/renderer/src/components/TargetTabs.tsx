@@ -1,7 +1,7 @@
-import type { TestTarget } from '../../../shared/types'
+import type { MacroTarget } from '../../../shared/types'
 
 interface Props {
-  targets: TestTarget[]
+  targets: MacroTarget[]
   activeId: string
   onSelect: (id: string) => void
   disabled?: boolean

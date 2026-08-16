@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import type { RecordedStep, TestTarget } from '../../../shared/types'
+import type { RecordedStep, MacroTarget } from '../../../shared/types'
 import TargetTabs from './TargetTabs'
 
 interface Props {
-  targets: TestTarget[]
+  targets: MacroTarget[]
   folderId: string | null
   onDone: () => void
   onCancel: () => void
@@ -13,7 +13,7 @@ export default function Recording({ targets, folderId, onDone, onCancel }: Props
   const [steps, setSteps] = useState<RecordedStep[]>([])
   const [status, setStatus] = useState<'starting' | 'recording' | 'stopping' | 'stopped' | 'error'>('starting')
   const [error, setError] = useState<string | null>(null)
-  const [testName, setTestName] = useState('')
+  const [macroName, setMacroName] = useState('')
   const [nameError, setNameError] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -64,7 +64,7 @@ export default function Recording({ targets, folderId, onDone, onCancel }: Props
   }
 
   const handleSave = async (): Promise<void> => {
-    if (!testName.trim()) {
+    if (!macroName.trim()) {
       setNameError(true)
       return
     }
@@ -72,7 +72,7 @@ export default function Recording({ targets, folderId, onDone, onCancel }: Props
     setSaveError(null)
     setSaving(true)
     try {
-      await window.api.saveTest({ name: testName.trim(), targets, steps, folderId })
+      await window.api.saveMacro({ name: macroName.trim(), targets, steps, folderId })
       onDone()
     } catch (e) {
       setSaveError((e as Error).message)
@@ -148,11 +148,11 @@ export default function Recording({ targets, folderId, onDone, onCancel }: Props
         {status === 'stopped' && (
           <div className="row">
             <div className="field field--inline">
-              <label>保存するテスト名</label>
+              <label>保存するマクロ名</label>
               <input
-                value={testName}
+                value={macroName}
                 onChange={(e) => {
-                  setTestName(e.target.value)
+                  setMacroName(e.target.value)
                   if (e.target.value.trim()) setNameError(false)
                 }}
                 placeholder="例: ログインフロー確認"
@@ -167,7 +167,7 @@ export default function Recording({ targets, folderId, onDone, onCancel }: Props
             </button>
           </div>
         )}
-        {nameError && <p className="error">テスト名を入力してください。</p>}
+        {nameError && <p className="error">マクロ名を入力してください。</p>}
         {saveError && <p className="error">保存に失敗しました: {saveError}</p>}
       </div>
     </div>

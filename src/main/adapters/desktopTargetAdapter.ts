@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from 'child_process'
 import path from 'path'
 import activeWin from 'active-win'
 import * as win32 from '../win32'
-import type { TargetAdapter, TestTarget } from '../../shared/types'
+import type { TargetAdapter, MacroTarget } from '../../shared/types'
 import { WindowTargetAdapterBase, sleep } from './windowTargetBase'
 
 /**
@@ -40,10 +40,10 @@ async function findWindowByPid(pid: number | undefined, exePath: string, timeout
 }
 
 export class DesktopTargetAdapter extends WindowTargetAdapterBase {
-  private readonly target: TestTarget
+  private readonly target: MacroTarget
   private child: ChildProcess | null = null
 
-  constructor(target: TestTarget) {
+  constructor(target: MacroTarget) {
     super()
     this.target = target
   }
@@ -81,6 +81,6 @@ export class DesktopTargetAdapter extends WindowTargetAdapterBase {
   }
 }
 
-export function createDesktopAdapter(target: TestTarget): TargetAdapter {
+export function createDesktopAdapter(target: MacroTarget): TargetAdapter {
   return new DesktopTargetAdapter(target)
 }

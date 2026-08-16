@@ -16,7 +16,7 @@ import log from './logger'
 import { pruneOldLogs } from './debugLog'
 
 // 表示名は"Ditto"だが、内部的な名前(userDataの保存先フォルダ名等に影響)は
-// 旧アプリ名のまま固定し、既存インストールのテストデータ・設定を引き継ぐ
+// 旧アプリ名のまま固定し、既存インストールのマクロデータ・設定を引き継ぐ
 app.setName('auto-test-tool')
 
 // 複数プロセスが同時に起動していると、ホットキーのグローバルフックがプロセスごとに
@@ -63,7 +63,7 @@ async function showMainWindow(): Promise<BrowserWindow | undefined> {
 }
 
 // ウィンドウ表示ホットキーで表示した際、そのホットキーに紐づく遷移先
-// (クリップボード/テストの特定フォルダ)へジャンプする。targetがnull(未設定)の場合は
+// (クリップボード/マクロの特定フォルダ)へジャンプする。targetがnull(未設定)の場合は
 // ウィンドウ表示のみ行う。ウィンドウ生成直後でレンダラーの読み込みが終わっていない
 // 場合は、読み込み完了を待ってから送る
 async function showMainWindowAndNavigate(target: NavigationTarget | null): Promise<void> {

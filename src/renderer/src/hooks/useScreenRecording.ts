@@ -10,7 +10,7 @@ export interface ScreenRecorderApi {
   elapsedMs: number
   savedPath: string | null
   errorMessage: string | null
-  start: (testName: string) => Promise<void>
+  start: (macroName: string) => Promise<void>
   pause: () => void
   resume: () => void
   stop: () => Promise<void>
@@ -90,7 +90,7 @@ export function useScreenRecording(): ScreenRecorderApi {
   }
 
   const start = useCallback(
-    async (testName: string) => {
+    async (macroName: string) => {
       setErrorMessage(null)
       setSavedPath(null)
       try {
@@ -134,7 +134,7 @@ export function useScreenRecording(): ScreenRecorderApi {
           sh: outH
         }
 
-        await window.api.startScreenRecordingSession(testName)
+        await window.api.startScreenRecordingSession(macroName)
 
         const canvasStream = canvas.captureStream(30)
         const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find((t) =>
