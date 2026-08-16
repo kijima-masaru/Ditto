@@ -182,6 +182,17 @@ export async function setTemplatePinned(id: string, pinned: boolean): Promise<vo
   await fs.writeFile(templatesFilePath(), JSON.stringify(templates, null, 2), 'utf-8')
 }
 
+/** コマンドパレット内でのピン留め項目同士の並び替え。フォルダ内並び順(order)とは
+ *  別のpinnedOrderフィールドを更新する(ピン留めはフォルダをまたいで行えるため) */
+export async function reorderPinnedTemplates(orderedIds: string[]): Promise<void> {
+  const templates = await readTemplates()
+  orderedIds.forEach((id, index) => {
+    const template = templates.find((t) => t.id === id)
+    if (template) template.pinnedOrder = index
+  })
+  await fs.writeFile(templatesFilePath(), JSON.stringify(templates, null, 2), 'utf-8')
+}
+
 export async function deleteTemplate(id: string): Promise<void> {
   const templates = await listTemplates()
   await fs.writeFile(templatesFilePath(), JSON.stringify(templates.filter((t) => t.id !== id), null, 2), 'utf-8')

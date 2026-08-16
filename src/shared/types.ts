@@ -80,6 +80,10 @@ export interface MacroCase {
   order: number
   /** trueなら、コマンドパレットの初期表示(未入力時)にこのマクロを表示する */
   pinned?: boolean
+  /** コマンドパレット内でのピン留め項目同士の並び順(昇順)。フォルダをまたいで
+   *  ピン留めできるため、フォルダ内並び順のorderとは別に持つ。ドラッグ&ドロップで
+   *  並び替えた結果を保持する。未設定の項目は末尾に表示する */
+  pinnedOrder?: number
 }
 
 /** マクロ一覧を整理するための階層フォルダ */
@@ -161,6 +165,10 @@ export interface ClipboardTemplate {
   trigger?: string
   /** trueなら、コマンドパレットの初期表示(未入力時)にこの定型文を表示する */
   pinned?: boolean
+  /** コマンドパレット内でのピン留め項目同士の並び順(昇順)。フォルダをまたいで
+   *  ピン留めできるため、フォルダ内並び順のorderとは別に持つ。ドラッグ&ドロップで
+   *  並び替えた結果を保持する。未設定の項目は末尾に表示する */
+  pinnedOrder?: number
 }
 
 /**
@@ -461,5 +469,8 @@ export const IPC = {
 
   // コマンドパレットの初期表示(未入力時)に出す定型文・マクロの固定指定
   setClipboardTemplatePinned: 'clipboard:set-template-pinned',
-  setMacroPinned: 'macros:set-pinned'
+  setMacroPinned: 'macros:set-pinned',
+  // コマンドパレット内でのピン留め項目同士の並び替え(フォルダ内並び順とは別管理)
+  reorderPinnedClipboardTemplates: 'clipboard:reorder-pinned-templates',
+  reorderPinnedMacros: 'macros:reorder-pinned'
 } as const

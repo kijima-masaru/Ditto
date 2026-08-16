@@ -53,6 +53,8 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.reorderMacros, async (_e, orderedIds: string[]) => store.reorderMacros(orderedIds))
 
+  ipcMain.handle(IPC.reorderPinnedMacros, async (_e, orderedIds: string[]) => store.reorderPinnedMacros(orderedIds))
+
   ipcMain.handle(IPC.listFolders, async () => store.listFolders())
 
   ipcMain.handle(IPC.createFolder, async (_e, name: string, parentId: string | null) =>
@@ -194,6 +196,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.reorderClipboardTemplates, async (_e, orderedIds: string[]) =>
     clipboardStore.reorderTemplates(orderedIds)
+  )
+
+  ipcMain.handle(IPC.reorderPinnedClipboardTemplates, async (_e, orderedIds: string[]) =>
+    clipboardStore.reorderPinnedTemplates(orderedIds)
   )
 
   ipcMain.handle(IPC.listClipboardTemplateFolders, async () => clipboardStore.listTemplateFolders())

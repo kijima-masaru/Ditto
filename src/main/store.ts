@@ -166,6 +166,25 @@ export async function setPinned(id: string, pinned: boolean): Promise<MacroCase>
   return macroCase
 }
 
+/** コマンドパレット内でのピン留め項目同士の並び替え。フォルダ内並び順(order)とは
+ *  別のpinnedOrderフィールドを更新する(ピン留めはフォルダをまたいで行えるため) */
+export async function reorderPinnedMacros(orderedIds: string[]): Promise<void> {
+  await Promise.all(
+    orderedIds.map(async (id, index) => {
+      try {
+        const raw = await fs.readFile(filePathFor(id), 'utf-8')
+        const macroCase = JSON.parse(raw) as MacroCase
+        if (macroCase.pinnedOrder !== index) {
+          macroCase.pinnedOrder = index
+          await fs.writeFile(filePathFor(id), JSON.stringify(macroCase, null, 2), 'utf-8')
+        }
+      } catch {
+        // 既に削除されたマクロなどは無視する
+      }
+    })
+  )
+}
+
 export async function listFolders(): Promise<MacroFolder[]> {
   const folders = await readFolders()
   return folders.sort((a, b) => a.order - b.order)

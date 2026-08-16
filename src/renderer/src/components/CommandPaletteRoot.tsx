@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ClipboardHistoryEntry, ClipboardTemplate, MacroCase } from '../../../shared/types'
+import { useDragReorder, type DragReorderHandlers } from '../hooks/useDragReorder'
 
 /**
  * コマンドパレット専用の別ウィンドウのルート。メインウィンドウと同じrenderer bundleを
@@ -13,9 +14,15 @@ import type { ClipboardHistoryEntry, ClipboardTemplate, MacroCase } from '../../
  */
 
 type PaletteResult =
-  | { kind: 'history'; id: string; primary: string; secondary?: undefined; insertText: string }
-  | { kind: 'template'; id: string; primary: string; secondary?: string; insertText: string }
-  | { kind: 'macro'; id: string; primary: string; secondary?: undefined; insertText?: undefined }
+  | { kind: 'history'; id: string; primary: string; secondary?: undefined; insertText: string; dragHandlers?: undefined }
+  | { kind: 'template'; id: string; primary: string; secondary?: string; insertText: string; dragHandlers?: DragReorderHandlers }
+  | { kind: 'macro'; id: string; primary: string; secondary?: undefined; insertText?: undefined; dragHandlers?: DragReorderHandlers }
+
+/** pinnedOrder昇順(未設定は末尾)にソートする。未検索時にコマンドパレットへ
+ *  固定表示する定型文・マクロは、フォルダをまたいでドラッグ&ドロップで並び替えられる */
+function sortByPinnedOrder<T extends { pinnedOrder?: number }>(items: T[]): T[] {
+  return [...items].sort((a, b) => (a.pinnedOrder ?? Infinity) - (b.pinnedOrder ?? Infinity))
+}
 
 const MAX_PER_SECTION = 6
 
@@ -82,6 +89,21 @@ export default function CommandPaletteRoot(): React.JSX.Element {
   // 何か入力した場合のみ、Ditto内の履歴・定型文・マクロすべてを検索対象にする
   const isSearching = query.trim().length > 0
 
+  // 固定指定した定型文・マクロは、フォルダをまたいでドラッグ&ドロップで
+  // 並び替えられる(pinnedOrderで管理。フォルダ内並び順のorderとは別)
+  const pinnedTemplates = useMemo(() => sortByPinnedOrder(templates.filter((t) => t.pinned)), [templates])
+  const pinnedMacros = useMemo(() => sortByPinnedOrder(macros.filter((m) => m.pinned)), [macros])
+
+  const handleReorderPinnedTemplates = useCallback((orderedIds: string[]): void => {
+    void window.api.reorderPinnedClipboardTemplates(orderedIds).then(reload)
+  }, [reload])
+  const handleReorderPinnedMacros = useCallback((orderedIds: string[]): void => {
+    void window.api.reorderPinnedMacros(orderedIds).then(reload)
+  }, [reload])
+
+  const templateDrag = useDragReorder(pinnedTemplates, (t) => t.id, handleReorderPinnedTemplates)
+  const macroDrag = useDragReorder(pinnedMacros, (m) => m.id, handleReorderPinnedMacros)
+
   const results = useMemo<PaletteResult[]>(() => {
     const historyResults: PaletteResult[] = isSearching
       ? history
@@ -90,24 +112,41 @@ export default function CommandPaletteRoot(): React.JSX.Element {
           .map((h) => ({ kind: 'history', id: h.id, primary: truncate(h.text), insertText: h.text }))
       : []
 
-    const templateResults: PaletteResult[] = templates
-      .filter((t) => (isSearching ? matches(query, t.label, t.text, t.trigger) : t.pinned))
-      .slice(0, MAX_PER_SECTION)
-      .map((t) => ({
-        kind: 'template',
-        id: t.id,
-        primary: t.label || truncate(t.text),
-        secondary: t.label ? truncate(t.text) : t.trigger,
-        insertText: t.text
-      }))
+    const templateResults: PaletteResult[] = isSearching
+      ? templates
+          .filter((t) => matches(query, t.label, t.text, t.trigger))
+          .slice(0, MAX_PER_SECTION)
+          .map((t) => ({
+            kind: 'template',
+            id: t.id,
+            primary: t.label || truncate(t.text),
+            secondary: t.label ? truncate(t.text) : t.trigger,
+            insertText: t.text
+          }))
+      : templateDrag.orderedItems.slice(0, MAX_PER_SECTION).map((t) => ({
+          kind: 'template',
+          id: t.id,
+          primary: t.label || truncate(t.text),
+          secondary: t.label ? truncate(t.text) : t.trigger,
+          insertText: t.text,
+          dragHandlers: templateDrag.getHandlers(t)
+        }))
 
-    const macroResults: PaletteResult[] = macros
-      .filter((m) => (isSearching ? matches(query, m.name) : m.pinned))
-      .slice(0, MAX_PER_SECTION)
-      .map((m) => ({ kind: 'macro', id: m.id, primary: m.name }))
+    const macroResults: PaletteResult[] = isSearching
+      ? macros
+          .filter((m) => matches(query, m.name))
+          .slice(0, MAX_PER_SECTION)
+          .map((m) => ({ kind: 'macro', id: m.id, primary: m.name }))
+      : macroDrag.orderedItems.slice(0, MAX_PER_SECTION).map((m) => ({
+          kind: 'macro',
+          id: m.id,
+          primary: m.name,
+          dragHandlers: macroDrag.getHandlers(m)
+        }))
 
     return [...historyResults, ...templateResults, ...macroResults]
-  }, [isSearching, query, history, templates, macros])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSearching, query, history, templates, macros, templateDrag.orderedItems, macroDrag.orderedItems])
 
   useEffect(() => {
     setSelectedIndex((i) => Math.min(i, Math.max(results.length - 1, 0)))
@@ -154,12 +193,23 @@ export default function CommandPaletteRoot(): React.JSX.Element {
         {items.map((r) => {
           flatIndex += 1
           const idx = flatIndex
+          const drag = r.dragHandlers
           return (
             <div
               key={`${r.kind}-${r.id}`}
-              className={`command-palette-item${idx === selectedIndex ? ' command-palette-item--active' : ''}`}
+              className={`command-palette-item${idx === selectedIndex ? ' command-palette-item--active' : ''}${drag ? ` ${drag.className}` : ''}`}
               onMouseEnter={() => setSelectedIndex(idx)}
               onClick={() => activate(r)}
+              {...(drag
+                ? {
+                    draggable: drag.draggable,
+                    onDragStart: drag.onDragStart,
+                    onDragEnter: drag.onDragEnter,
+                    onDragOver: drag.onDragOver,
+                    onDrop: drag.onDrop,
+                    onDragEnd: drag.onDragEnd
+                  }
+                : {})}
             >
               <div className="command-palette-item-primary">{r.primary}</div>
               {r.secondary && <div className="command-palette-item-secondary">{r.secondary}</div>}

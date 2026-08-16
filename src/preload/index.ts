@@ -38,6 +38,8 @@ const api = {
   setMacroPinned: (id: string, pinned: boolean): Promise<MacroCase> =>
     ipcRenderer.invoke(IPC.setMacroPinned, id, pinned),
   reorderMacros: (orderedIds: string[]): Promise<void> => ipcRenderer.invoke(IPC.reorderMacros, orderedIds),
+  reorderPinnedMacros: (orderedIds: string[]): Promise<void> =>
+    ipcRenderer.invoke(IPC.reorderPinnedMacros, orderedIds),
 
   listFolders: (): Promise<MacroFolder[]> => ipcRenderer.invoke(IPC.listFolders),
   createFolder: (name: string, parentId: string | null): Promise<MacroFolder> =>
@@ -107,6 +109,8 @@ const api = {
     ipcRenderer.invoke(IPC.setClipboardTemplatePinned, id, pinned),
   reorderClipboardTemplates: (orderedIds: string[]): Promise<void> =>
     ipcRenderer.invoke(IPC.reorderClipboardTemplates, orderedIds),
+  reorderPinnedClipboardTemplates: (orderedIds: string[]): Promise<void> =>
+    ipcRenderer.invoke(IPC.reorderPinnedClipboardTemplates, orderedIds),
 
   listClipboardTemplateFolders: (): Promise<ClipboardTemplateFolder[]> =>
     ipcRenderer.invoke(IPC.listClipboardTemplateFolders),
