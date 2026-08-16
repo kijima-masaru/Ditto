@@ -157,6 +157,30 @@ export async function moveMacro(id: string, folderId: string | null): Promise<Ma
   return macroCase
 }
 
+/** マクロの末尾へ「定型文を入力する」ステップを追加する。動的変数({{date}}等)は
+ *  ここでは解決せず、再生の都度execStep側でその場で解決する(seqを毎回進めるため) */
+export async function addTemplateStep(
+  macroId: string,
+  targetId: string,
+  templateId: string,
+  templateLabel: string
+): Promise<MacroCase> {
+  const raw = await fs.readFile(filePathFor(macroId), 'utf-8')
+  const macroCase = JSON.parse(raw) as MacroCase
+  macroCase.steps.push({
+    id: randomUUID(),
+    targetId,
+    type: 'type',
+    timestamp: Date.now(),
+    delayMs: 0,
+    templateId,
+    label: templateLabel ? `定型文: ${templateLabel}` : '定型文入力'
+  })
+  macroCase.updatedAt = new Date().toISOString()
+  await fs.writeFile(filePathFor(macroId), JSON.stringify(macroCase, null, 2), 'utf-8')
+  return macroCase
+}
+
 /** コマンドパレットの初期表示(未入力時)にこのマクロを出すかどうかを切り替える */
 export async function setPinned(id: string, pinned: boolean): Promise<MacroCase> {
   const raw = await fs.readFile(filePathFor(id), 'utf-8')

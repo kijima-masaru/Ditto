@@ -155,6 +155,10 @@ export default function CommandPaletteRoot(): React.JSX.Element {
   const activate = useCallback((result: PaletteResult): void => {
     if (result.kind === 'macro') {
       void window.api.openMacroViaCommandPalette(result.id)
+    } else if (result.kind === 'template') {
+      // 定型文は{{date}}/{{seq}}/{{clipboard}}等の動的変数をmain側でその場で
+      // 解決してから入力する必要があるため、生テキストではなくidを渡す
+      void window.api.insertTemplateViaCommandPalette(result.id)
     } else {
       void window.api.insertViaCommandPalette(result.insertText)
     }

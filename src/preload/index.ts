@@ -40,6 +40,13 @@ const api = {
   reorderMacros: (orderedIds: string[]): Promise<void> => ipcRenderer.invoke(IPC.reorderMacros, orderedIds),
   reorderPinnedMacros: (orderedIds: string[]): Promise<void> =>
     ipcRenderer.invoke(IPC.reorderPinnedMacros, orderedIds),
+  addTemplateStepToMacro: (
+    macroId: string,
+    targetId: string,
+    templateId: string,
+    templateLabel: string
+  ): Promise<MacroCase> =>
+    ipcRenderer.invoke(IPC.addTemplateStepToMacro, macroId, targetId, templateId, templateLabel),
 
   listFolders: (): Promise<MacroFolder[]> => ipcRenderer.invoke(IPC.listFolders),
   createFolder: (name: string, parentId: string | null): Promise<MacroFolder> =>
@@ -137,6 +144,8 @@ const api = {
     ipcRenderer.invoke(IPC.reorderClipboardFormatRules, orderedIds),
 
   copyToClipboard: (text: string): Promise<void> => ipcRenderer.invoke(IPC.copyToClipboard, text),
+  copyTemplateToClipboard: (templateId: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.copyTemplateToClipboard, templateId),
   copyImageToClipboard: (dataUrl: string): Promise<void> => ipcRenderer.invoke(IPC.copyImageToClipboard, dataUrl),
   showClipboardHistoryMenu: (entryId: string, text: string): Promise<void> =>
     ipcRenderer.invoke(IPC.showClipboardHistoryMenu, entryId, text),
@@ -258,6 +267,8 @@ const api = {
   hideCommandPalette: (): void => ipcRenderer.send(IPC.hideCommandPalette),
   insertViaCommandPalette: (text: string): Promise<void> =>
     ipcRenderer.invoke(IPC.commandPaletteInsertText, text),
+  insertTemplateViaCommandPalette: (templateId: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.commandPaletteInsertTemplate, templateId),
   openMacroViaCommandPalette: (macroId: string): Promise<void> =>
     ipcRenderer.invoke(IPC.commandPaletteOpenMacro, macroId),
   onOpenMacroForPlayback: (cb: (macroId: string) => void): (() => void) => {

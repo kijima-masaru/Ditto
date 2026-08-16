@@ -37,7 +37,8 @@ export interface TargetHistoryEntry {
   lastUsedAt: string
 }
 
-export type StepType = 'click' | 'dblclick' | 'keypress'
+/** 'type'は記録操作では発生せず、マクロ編集画面から定型文ステップとして手動追加する専用の種別 */
+export type StepType = 'click' | 'dblclick' | 'keypress' | 'type'
 
 export interface RecordedStep {
   id: string
@@ -60,6 +61,11 @@ export interface RecordedStep {
    * フォールバックする
    */
   targetImage?: string
+
+  /** type時: 入力する定型文(ClipboardTemplate.id)。動的変数は再生の都度その場で解決する */
+  templateId?: string
+  /** type時: このステップ自体の{{seq}}用カウンタ。定型文のカウンタとは独立して進む */
+  seq?: number
 
   /** UI表示用の説明ラベル */
   label?: string
@@ -169,6 +175,9 @@ export interface ClipboardTemplate {
    *  ピン留めできるため、フォルダ内並び順のorderとは別に持つ。ドラッグ&ドロップで
    *  並び替えた結果を保持する。未設定の項目は末尾に表示する */
   pinnedOrder?: number
+  /** 本文中の{{seq}}変数に使う、この定型文が実際に使われた(コピー/入力された)回数。
+   *  使われるたびに1つ進む。編集時には変化しない */
+  seq?: number
 }
 
 /**
@@ -337,6 +346,8 @@ export const IPC = {
   renameMacro: 'macros:rename',
   moveMacro: 'macros:move',
   reorderMacros: 'macros:reorder',
+  // マクロへ「定型文を入力する」ステップを追加する(動的変数は再生の都度その場で解決する)
+  addTemplateStepToMacro: 'macros:add-template-step',
 
   listFolders: 'folders:list',
   createFolder: 'folders:create',
@@ -385,6 +396,10 @@ export const IPC = {
   moveClipboardTemplate: 'clipboard:move-template',
   reorderClipboardTemplates: 'clipboard:reorder-templates',
   copyToClipboard: 'clipboard:copy',
+  // 定型文をコピーする専用チャンネル。{{date}}/{{seq}}/{{clipboard}}等の動的変数を
+  // main側でその場で解決してからクリップボードへ書き込む(copyToClipboardは
+  // 履歴の生テキスト等にも使う汎用チャンネルのため、定型文はこちらを使う)
+  copyTemplateToClipboard: 'clipboard:copy-template',
   copyImageToClipboard: 'clipboard:copy-image',
   showClipboardHistoryMenu: 'clipboard:show-history-menu',
   showClipboardImageHistoryMenu: 'clipboard:show-image-history-menu',
@@ -463,7 +478,8 @@ export const IPC = {
   setCommandPaletteHotkey: 'settings:set-command-palette-hotkey',
   commandPaletteShown: 'command-palette:shown', // main -> パレットウィンドウ push(表示するたびに検索状態をリセットさせる)
   hideCommandPalette: 'command-palette:hide', // パレットウィンドウ -> main
-  commandPaletteInsertText: 'command-palette:insert-text', // パレットウィンドウ -> main(選択項目を元のウィンドウへ入力する)
+  commandPaletteInsertText: 'command-palette:insert-text', // パレットウィンドウ -> main(選択項目を元のウィンドウへ入力する。履歴用、生テキストをそのまま渡す)
+  commandPaletteInsertTemplate: 'command-palette:insert-template', // パレットウィンドウ -> main(定型文用。動的変数をmain側で解決してから入力する)
   commandPaletteOpenMacro: 'command-palette:open-macro', // パレットウィンドウ -> main(選択したマクロの再生画面をメインウィンドウで開く)
   openMacroForPlayback: 'window:open-macro-for-playback', // main -> メインウィンドウ push
 

@@ -58,8 +58,11 @@ export default function PreviewWindowRoot(): React.JSX.Element {
     window.api.navigateToFolder(kind, id)
   }
 
-  const handleCopy = (id: string, text: string): void => {
-    window.api.copyToClipboard(text)
+  // この別ウィンドウはネストしたフォルダプレビュー専用で、kind==='clipboard'側の
+  // itemは常にClipboardTemplateのため、{{date}}/{{seq}}/{{clipboard}}等の動的変数を
+  // main側でその場で解決するcopyTemplateToClipboardを使う(idのみ渡す)
+  const handleCopy = (id: string): void => {
+    window.api.copyTemplateToClipboard(id)
     setCopiedId(id)
     if (copiedTimer.current) window.clearTimeout(copiedTimer.current)
     copiedTimer.current = window.setTimeout(() => setCopiedId(null), 1200)
@@ -82,7 +85,7 @@ export default function PreviewWindowRoot(): React.JSX.Element {
             <div
               key={it.id}
               className={`folder-preview-item clip-item${copiedId === it.id ? ' clip-item--copied' : ''}`}
-              onClick={() => handleCopy(it.id, (it as ClipboardTemplate).text)}
+              onClick={() => handleCopy(it.id)}
             >
               {(it as ClipboardTemplate).label && (
                 <div className="clip-item-label">{(it as ClipboardTemplate).label}</div>

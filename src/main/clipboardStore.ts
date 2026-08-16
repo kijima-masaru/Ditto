@@ -193,6 +193,23 @@ export async function reorderPinnedTemplates(orderedIds: string[]): Promise<void
   await fs.writeFile(templatesFilePath(), JSON.stringify(templates, null, 2), 'utf-8')
 }
 
+export async function getTemplate(id: string): Promise<ClipboardTemplate | undefined> {
+  const templates = await readTemplates()
+  return templates.find((t) => t.id === id)
+}
+
+/** 定型文が実際に使われる(コピー/入力される)たびに呼び出し、本文中の{{seq}}変数用の
+ *  カウンタを1つ進めてから新しい値を返す。編集や一覧表示では呼ばない */
+export async function incrementAndGetSeq(id: string): Promise<number> {
+  const templates = await readTemplates()
+  const template = templates.find((t) => t.id === id)
+  if (!template) return 1
+  const next = (typeof template.seq === 'number' ? template.seq : 0) + 1
+  template.seq = next
+  await fs.writeFile(templatesFilePath(), JSON.stringify(templates, null, 2), 'utf-8')
+  return next
+}
+
 export async function deleteTemplate(id: string): Promise<void> {
   const templates = await listTemplates()
   await fs.writeFile(templatesFilePath(), JSON.stringify(templates.filter((t) => t.id !== id), null, 2), 'utf-8')

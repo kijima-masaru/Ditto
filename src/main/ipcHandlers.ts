@@ -27,6 +27,7 @@ import * as clickHighlight from './clickHighlight'
 import * as screenCapture from './screenCapture'
 import * as clipboardStore from './clipboardStore'
 import * as clipboardTransforms from './clipboardTransforms'
+import { resolveTemplateText } from './templateVariables'
 import * as settingsStore from './settingsStore'
 import * as targetHistoryStore from './targetHistoryStore'
 import { setHotkeyBindingsRuntime, startHotkeyCapture, cancelHotkeyCapture } from './hotkey'
@@ -54,6 +55,12 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   ipcMain.handle(IPC.reorderMacros, async (_e, orderedIds: string[]) => store.reorderMacros(orderedIds))
 
   ipcMain.handle(IPC.reorderPinnedMacros, async (_e, orderedIds: string[]) => store.reorderPinnedMacros(orderedIds))
+
+  ipcMain.handle(
+    IPC.addTemplateStepToMacro,
+    async (_e, macroId: string, targetId: string, templateId: string, templateLabel: string) =>
+      store.addTemplateStep(macroId, targetId, templateId, templateLabel)
+  )
 
   ipcMain.handle(IPC.listFolders, async () => store.listFolders())
 
@@ -244,6 +251,11 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC.copyToClipboard, async (_e, text: string) => {
     clipboard.writeText(text)
+  })
+
+  ipcMain.handle(IPC.copyTemplateToClipboard, async (_e, templateId: string) => {
+    const resolved = await resolveTemplateText(templateId)
+    clipboard.writeText(resolved)
   })
 
   ipcMain.handle(IPC.copyImageToClipboard, async (_e, dataUrl: string) => {

@@ -4,7 +4,13 @@ import activeWin from 'active-win'
 import * as win32 from '../win32'
 import type { RecordedStep, TargetAdapter } from '../../shared/types'
 import { captureTemplateAt, findTemplateMatch } from '../imageMatch'
+import { resolveTemplateText } from '../templateVariables'
 import log from '../logger'
+
+// 1回のSendInputで送るUnicode文字数。commandPalette.ts/textExpansion.tsと同じ対策
+// (長文を1回にまとめて送出すると対象アプリのメッセージループが追いつかず文字が
+// 欠落・入れ替わることがあるため、適度な塊に分けて少し間隔を空けながら送る)
+const TYPE_CHUNK_SIZE = 15
 
 /**
  * デスクトップアプリ対象・WEBアプリ対象(ユーザーの既定ブラウザ)に共通する、
@@ -211,6 +217,25 @@ export abstract class WindowTargetAdapterBase implements TargetAdapter {
       case 'keypress': {
         if (!step.key) throw new Error('キー情報がありません')
         await pressKey(step.key)
+        return
+      }
+      case 'type': {
+        if (!step.templateId) throw new Error('定型文が指定されていません')
+        const text = await resolveTemplateText(step.templateId)
+        // nut-jsのkeyboard.type()はキーボードレイアウトの仮想キー変換に依存し、
+        // レイアウト上にない文字(日本語等)は文字化けするため、SendInput+
+        // KEYEVENTF_UNICODEで直接注入するwin32.typeUnicodeTextを使う
+        // (commandPalette.ts/textExpansion.tsと同じ方式)
+        uIOhook.stop()
+        try {
+          for (let i = 0; i < text.length; i += TYPE_CHUNK_SIZE) {
+            win32.typeUnicodeText(text.slice(i, i + TYPE_CHUNK_SIZE))
+            await sleep(20)
+          }
+          await sleep(100)
+        } finally {
+          uIOhook.start()
+        }
         return
       }
       default:

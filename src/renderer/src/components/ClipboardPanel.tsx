@@ -18,6 +18,33 @@ function truncate(text: string, max = 80): string {
   return oneLine.length > max ? `${oneLine.slice(0, max)}…` : oneLine
 }
 
+// 定型文の本文に埋め込める動的変数(main/templateVariables.tsで解決する記法と対応)
+const TEMPLATE_VARIABLES: { token: string; desc: string }[] = [
+  { token: '{{date}}', desc: '今日の日付' },
+  { token: '{{seq}}', desc: '使うたびに増える連番' },
+  { token: '{{clipboard}}', desc: '直前のクリップボード内容' }
+]
+
+/** 本文入力欄の下に表示する、動的変数を挿入するためのボタン列 */
+function TemplateVariableHint({ onInsert }: { onInsert: (token: string) => void }): React.JSX.Element {
+  return (
+    <div className="template-variable-hint">
+      <span className="hint">動的変数(コピー・入力の直前に置き換わります): </span>
+      {TEMPLATE_VARIABLES.map((v) => (
+        <button
+          key={v.token}
+          type="button"
+          className="variable-chip"
+          title={v.desc}
+          onClick={() => onInsert(v.token)}
+        >
+          {v.token}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function buildMoveSubmenu(flatFolders: { folder: ClipboardTemplateFolder; depth: number }[]): ContextMenuItem[] {
   const items: ContextMenuItem[] = [{ id: 'move:root', label: 'home' }]
   for (const { folder, depth } of flatFolders) {
@@ -112,6 +139,15 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
 
   const handleCopy = async (id: string, text: string): Promise<void> => {
     await window.api.copyToClipboard(text)
+    setCopiedId(id)
+    window.setTimeout(() => setCopiedId((cur) => (cur === id ? null : cur)), 1200)
+  }
+
+  // 定型文専用のコピー処理。{{date}}/{{seq}}/{{clipboard}}等の動的変数をmain側で
+  // その場で解決してからコピーする(handleCopyは履歴の生テキスト等にも使う汎用処理のため、
+  // 定型文の本文をそのまま渡すと変数記法が展開されずコピーされてしまう)
+  const handleCopyTemplate = async (id: string): Promise<void> => {
+    await window.api.copyTemplateToClipboard(id)
     setCopiedId(id)
     window.setTimeout(() => setCopiedId((cur) => (cur === id ? null : cur)), 1200)
   }
@@ -581,7 +617,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                           <div
                             key={t.id}
                             className={`folder-preview-item clip-item${copiedId === t.id ? ' clip-item--copied' : ''}`}
-                            onClick={() => handleCopy(t.id, t.text)}
+                            onClick={() => handleCopyTemplate(t.id)}
                             onContextMenu={(e) => handleTemplateContextMenu(e, t)}
                           >
                             {t.label && <div className="clip-item-label">{t.label}</div>}
@@ -607,6 +643,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
               <div className="field">
                 <label>本文</label>
                 <textarea value={newText} onChange={(e) => setNewText(e.target.value)} rows={4} />
+                <TemplateVariableHint onInsert={(token) => setNewText((v) => v + token)} />
               </div>
               <div className="field">
                 <label>トリガー(任意。設定すると、どのアプリでも直接入力するだけで本文へ自動展開されます)</label>
@@ -645,6 +682,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                     <div className="field">
                       <label>本文</label>
                       <textarea value={editText} onChange={(e) => setEditText(e.target.value)} rows={4} />
+                      <TemplateVariableHint onInsert={(token) => setEditText((v) => v + token)} />
                     </div>
                     <div className="field">
                       <label>トリガー(任意。設定すると、どのアプリでも直接入力するだけで本文へ自動展開されます)</label>
@@ -674,7 +712,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                   <li
                     key={t.id}
                     className={`clip-item${copiedId === t.id ? ' clip-item--copied' : ''}${drag ? ` ${drag.className}` : ''}`}
-                    onClick={() => handleCopy(t.id, t.text)}
+                    onClick={() => handleCopyTemplate(t.id)}
                     onContextMenu={(e) => handleTemplateContextMenu(e, t)}
                     {...(drag
                       ? {

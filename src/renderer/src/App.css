@@ -362,6 +362,33 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   color: var(--text-secondary);
 }
 
+/* 定型文編集フォームの本文欄下、動的変数({{date}}等)をワンクリックで挿入するボタン列 */
+.template-variable-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.variable-chip {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  border: 1px solid var(--accent-border, transparent);
+}
+
+.variable-chip:hover {
+  filter: brightness(0.95);
+}
+
+/* マクロ再生画面の「定型文入力ステップを追加」フォーム */
+.add-template-step-form select {
+  min-width: 0;
+}
+
 .error {
   color: var(--danger);
   background: var(--danger-bg);

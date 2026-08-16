@@ -1,6 +1,7 @@
 import { uIOhook, UiohookKey, type UiohookKeyboardEvent } from 'uiohook-napi'
 import { ensureGlobalHookStarted, keepGlobalHookAlive } from './adapters/windowTargetBase'
 import * as clipboardStore from './clipboardStore'
+import { resolveTemplateText } from './templateVariables'
 import { backspaceKeys, typeUnicodeText } from './win32'
 import log from './logger'
 
@@ -46,6 +47,8 @@ function charForKeydown(e: UiohookKeyboardEvent): string | null {
 }
 
 let enabled = false
+// トリガー文字列 -> 定型文id。動的変数({{date}}等)は展開の都度resolveTemplateTextで
+// その場で解決するため、本文の生テキストではなくidを保持する
 let triggerMap = new Map<string, string>()
 let buffer = ''
 // 展開中にnut-jsで送出したキー入力自身をフックが拾って再判定してしまう(無限ループ・
@@ -61,7 +64,7 @@ function wait(ms: number): Promise<void> {
 // 適度な塊に分けて少し間隔を空けながら送る
 const TYPE_CHUNK_SIZE = 15
 
-async function expand(trigger: string, text: string): Promise<void> {
+async function expand(trigger: string, templateId: string): Promise<void> {
   expanding = true
   // 展開中はグローバルフックを一時停止する。稼働させたままSendInputで大量のキー
   // イベントを注入すると、自プロセス自身のフックがそれらを拾って処理する分だけ
@@ -69,6 +72,10 @@ async function expand(trigger: string, text: string): Promise<void> {
   // 起こり文字化けや欠落につながるため、注入中はフック自体を外して競合を断つ
   uIOhook.stop()
   try {
+    // {{date}}/{{seq}}/{{clipboard}}等の動的変数は、実際に展開する直前(=このタイミング)で
+    // その場で解決する。トリガーのBackspace消去より前に呼ぶ必要がある({{clipboard}}が
+    // 展開直前のクリップボード内容を指すため、クリップボード自体はここでは書き換えない)
+    const text = await resolveTemplateText(templateId)
     // Backspaceを1つずつ、短い間隔を空けて送出する。同一キーのdown/upを
     // 間隔なしで連続送出すると、キーリピート判定を行うアプリ側で一部が
     // 取りこぼされることがあるため、1回ずつ確実に処理させる
@@ -120,10 +127,10 @@ function handleKeydown(e: UiohookKeyboardEvent): void {
 
   buffer = (buffer + ch).slice(-MAX_BUFFER_LENGTH)
 
-  for (const [trigger, text] of triggerMap) {
+  for (const [trigger, templateId] of triggerMap) {
     if (buffer.endsWith(trigger)) {
       buffer = ''
-      void expand(trigger, text)
+      void expand(trigger, templateId)
       return
     }
   }
@@ -139,7 +146,7 @@ export async function refreshTriggerMap(): Promise<void> {
   const templates = await clipboardStore.listTemplates()
   const next = new Map<string, string>()
   for (const t of templates) {
-    if (t.trigger) next.set(t.trigger, t.text)
+    if (t.trigger) next.set(t.trigger, t.id)
   }
   triggerMap = next
 }

@@ -6,6 +6,7 @@ import activeWin from 'active-win'
 import { ensureGlobalHookStarted, keepGlobalHookAlive } from './adapters/windowTargetBase'
 import * as win32 from './win32'
 import * as settingsStore from './settingsStore'
+import { resolveTemplateText } from './templateVariables'
 import { IPC, type HotkeyCombo } from '../shared/types'
 
 /**
@@ -128,6 +129,14 @@ async function insertText(text: string): Promise<void> {
   } finally {
     uIOhook.start()
   }
+}
+
+/** パレットで選択した定型文を入力する。{{date}}/{{seq}}/{{clipboard}}等の動的変数を
+ *  先に解決してからinsertTextに渡す({{clipboard}}はinsertTextがクリップボードを
+ *  書き換える前の内容を指すため、解決を先に完了させる必要がある) */
+async function insertTemplate(templateId: string): Promise<void> {
+  const resolved = await resolveTemplateText(templateId)
+  await insertText(resolved)
 }
 
 // --- ホットキー検知(設定画面のウィンドウ表示ホットキーと同じHotkeyCombo形式で1つだけ保持する) ---
@@ -302,6 +311,10 @@ export function initCommandPalette(openMacroForPlayback: (macroId: string) => vo
 
   ipcMain.handle(IPC.commandPaletteInsertText, async (_e, text: string) => {
     await insertText(text)
+  })
+
+  ipcMain.handle(IPC.commandPaletteInsertTemplate, async (_e, templateId: string) => {
+    await insertTemplate(templateId)
   })
 
   ipcMain.handle(IPC.commandPaletteOpenMacro, (_e, macroId: string) => {
