@@ -53,18 +53,6 @@ function buildMoveSubmenu(flatFolders: { folder: ClipboardTemplateFolder; depth:
   return items
 }
 
-// 新規フォルダ/新規定型文の作成フォームの想定サイズ。右クリック位置がウィンドウ端に
-// 近い場合でもフォームがウィンドウからはみ出さないよう、この値をもとに位置を補正する
-const CREATE_FORM_WIDTH = 300
-const CREATE_FORM_HEIGHT = 420
-
-/** クリック座標をもとに、フォームがウィンドウからはみ出さない表示位置を計算する */
-function clampCreateFormPos(x: number, y: number): { x: number; y: number } {
-  const maxX = Math.max(8, window.innerWidth - CREATE_FORM_WIDTH - 8)
-  const maxY = Math.max(8, window.innerHeight - CREATE_FORM_HEIGHT - 8)
-  return { x: Math.min(Math.max(x, 8), maxX), y: Math.min(Math.max(y, 8), maxY) }
-}
-
 /** idの並び順を1つ上/下の要素と入れ替えた新しい配列を返す。端で動かせない場合はnull */
 function swapOrder(ids: string[], id: string, direction: 'up' | 'down'): string[] | null {
   const index = ids.indexOf(id)
@@ -104,9 +92,6 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null)
 
   const [creatingFolder, setCreatingFolder] = useState(false)
-  // 新規フォルダ/新規定型文の作成フォームを表示する位置。右クリックした場所の近くに
-  // 出すため、一覧の先頭など固定位置ではなくコンテキストメニューを開いた座標を保持する
-  const [createFormPos, setCreateFormPos] = useState({ x: 20, y: 20 })
   const [newFolderName, setNewFolderName] = useState('')
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
   const [renameFolderInput, setRenameFolderInput] = useState('')
@@ -352,7 +337,6 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
 
   const handleAreaContextMenu = async (e: React.MouseEvent): Promise<void> => {
     e.preventDefault()
-    const pos = clampCreateFormPos(e.clientX, e.clientY)
     const items: ContextMenuItem[] = []
     if (currentFolderId === null) {
       items.push({ id: 'create-folder', label: '新規フォルダを作成' })
@@ -367,11 +351,9 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
     }
     const result = await window.api.showContextMenu(items)
     if (result === 'create-folder') {
-      setCreateFormPos(pos)
       setCreatingFolder(true)
       setNewFolderName('')
     } else if (result === 'create-template') {
-      setCreateFormPos(pos)
       setCreating(true)
       setNewText('')
       setNewLabel('')
@@ -387,7 +369,6 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
   const handleFolderContextMenu = async (e: React.MouseEvent, f: ClipboardTemplateFolder): Promise<void> => {
     e.preventDefault()
     e.stopPropagation()
-    const pos = clampCreateFormPos(e.clientX, e.clientY)
     const ids = subfolders.map((sf) => sf.id)
     const index = ids.indexOf(f.id)
     const result = await window.api.showContextMenu([
@@ -401,7 +382,6 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
     ])
     if (result === 'create-template') {
       setCurrentFolderId(f.id)
-      setCreateFormPos(pos)
       setCreating(true)
       setNewText('')
       setNewLabel('')
@@ -544,7 +524,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
       {subTab === 'templates' && (
         <div className="folder-browser" onContextMenu={handleAreaContextMenu}>
           {breadcrumb.length > 0 && (
-            <div className="breadcrumb">
+            <div className="breadcrumb breadcrumb--below-subtabs">
               <button onClick={() => setCurrentFolderId(null)}>home</button>
               {breadcrumb.map((f, i) => (
                 <span key={f.id} className="breadcrumb-item">
@@ -560,22 +540,24 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
           )}
 
           {creatingFolder && (
-            <div
-              className="row inline-form popover-form"
-              style={{ left: createFormPos.x, top: createFormPos.y }}
-              onContextMenu={(e) => e.stopPropagation()}
-            >
-              <input
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                placeholder="フォルダ名"
-                autoFocus
-                onKeyDown={(e) => e.key === 'Enter' && saveCreateFolder()}
-              />
-              <button className="primary" onClick={saveCreateFolder} disabled={!newFolderName.trim()}>
-                作成
-              </button>
-              <button onClick={() => setCreatingFolder(false)}>キャンセル</button>
+            <div className="confirm-dialog-backdrop" onClick={() => setCreatingFolder(false)}>
+              <div
+                className="row inline-form popover-form"
+                onClick={(e) => e.stopPropagation()}
+                onContextMenu={(e) => e.stopPropagation()}
+              >
+                <input
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  placeholder="フォルダ名"
+                  autoFocus
+                  onKeyDown={(e) => e.key === 'Enter' && saveCreateFolder()}
+                />
+                <button className="primary" onClick={saveCreateFolder} disabled={!newFolderName.trim()}>
+                  作成
+                </button>
+                <button onClick={() => setCreatingFolder(false)}>キャンセル</button>
+              </div>
             </div>
           )}
 
@@ -658,34 +640,36 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
           )}
 
           {creating && (
-            <div
-              className="panel clip-edit-form popover-form"
-              style={{ left: createFormPos.x, top: createFormPos.y }}
-              onContextMenu={(e) => e.stopPropagation()}
-            >
-              <div className="field">
-                <label>ラベル(任意)</label>
-                <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="例: 挨拶文" />
-              </div>
-              <div className="field">
-                <label>本文</label>
-                <textarea value={newText} onChange={(e) => setNewText(e.target.value)} rows={4} />
-                <TemplateVariableHint onInsert={(token) => setNewText((v) => v + token)} />
-              </div>
-              <div className="field">
-                <label>トリガー(任意。設定すると、どのアプリでも直接入力するだけで本文へ自動展開されます)</label>
-                <input
-                  value={newTrigger}
-                  onChange={(e) => setNewTrigger(e.target.value)}
-                  placeholder="例: ;greeting"
-                />
-              </div>
-              {createError && <p className="error">{createError}</p>}
-              <div className="row">
-                <button className="primary" onClick={handleCreateTemplate} disabled={!newText.trim()}>
-                  保存
-                </button>
-                <button onClick={() => setCreating(false)}>キャンセル</button>
+            <div className="confirm-dialog-backdrop" onClick={() => setCreating(false)}>
+              <div
+                className="panel clip-edit-form popover-form"
+                onClick={(e) => e.stopPropagation()}
+                onContextMenu={(e) => e.stopPropagation()}
+              >
+                <div className="field">
+                  <label>ラベル(任意)</label>
+                  <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="例: 挨拶文" />
+                </div>
+                <div className="field">
+                  <label>本文</label>
+                  <textarea value={newText} onChange={(e) => setNewText(e.target.value)} rows={4} />
+                  <TemplateVariableHint onInsert={(token) => setNewText((v) => v + token)} />
+                </div>
+                <div className="field">
+                  <label>トリガー(任意。設定すると、どのアプリでも直接入力するだけで本文へ自動展開されます)</label>
+                  <input
+                    value={newTrigger}
+                    onChange={(e) => setNewTrigger(e.target.value)}
+                    placeholder="例: ;greeting"
+                  />
+                </div>
+                {createError && <p className="error">{createError}</p>}
+                <div className="row form-actions">
+                  <button className="primary" onClick={handleCreateTemplate} disabled={!newText.trim()}>
+                    保存
+                  </button>
+                  <button onClick={() => setCreating(false)}>キャンセル</button>
+                </div>
               </div>
             </div>
           )}
@@ -720,7 +704,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                       />
                     </div>
                     {editError && <p className="error">{editError}</p>}
-                    <div className="row">
+                    <div className="row form-actions">
                       <button className="primary" onClick={handleSaveEdit} disabled={!editText.trim()}>
                         保存
                       </button>
