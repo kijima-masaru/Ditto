@@ -5,11 +5,12 @@ PC側(Ditto本体)とAndroidアプリ(`mobile/`)は実装済みですが、**実
 
 ## 現在の状態(要約)
 
-- **PC側(`src/main/remoteServer.ts`ほか)**: 完全に実装・検証済み。`scripts/simulate-remote-client.mjs`(Node製のスマホ代替クライアント)を使い、ペアリング→暗号化された`listItems`/`triggerTemplate`/`triggerMacro`→デバイス失効まで、実際に動いているDittoアプリに対して一通り成功を確認済み。
+- **PC側(`src/main/remoteServer.ts`ほか)**: 完全に実装・検証済み。`scripts/simulate-remote-client.mjs`(Node製のスマホ代替クライアント)を使い、ペアリング→暗号化された`listItems`/`triggerTemplate`/`triggerMacro`→デバイス失効まで、実際に動いているDittoアプリに対して一通り成功を確認済み。追加で、不正な6桁コードの拒否(`invalid-or-expired-code`)、同一IPからの5回失敗によるレート制限(`rate-limited`、60秒ブロック)も実機(このWindows PC)で再確認済み。
 - **Android側(`mobile/`)**: Expo(React Native, TypeScript)でペアリング画面・ホーム画面・暗号通信クライアントを実装済み。`npx tsc --noEmit`はエラーなし、`npm install`も完了済み(このリポジトリをcloneし直した場合は`node_modules`が無いので`cd mobile && npm install`が必要)。
-- **未検証(このPCでの最優先タスク)**: 物理Android端末またはエミュレータ上での実際の動作。特に以下3点は「コードは書いたが実機で動くか未確認」:
-  1. `expo-crypto`のAES-GCM API(`AESEncryptionKey.import`/`aesEncryptAsync`/`aesDecryptAsync`ほか、`src/lib/crypto.ts`参照)が実際にこのシグネチャで動くか。Expo SDK 57時点の新機能で、ドキュメント調査ベースで実装しており実機での動作未確認。
-  2. `expo-camera`の`CameraView`+`onBarcodeScanned`によるQRスキャンが実際に機能するか(SDKバージョンによっては無効化される不具合が報告されている)。
+- **静的に確認済み(実機なしでの追加検証)**: `mobile/node_modules/expo-crypto`と`mobile/node_modules/expo-camera`にインストールされている実際の`.d.ts`型定義を直接読み、`mobile/src/lib/crypto.ts`(`AESEncryptionKey.import`/`AESSealedData.fromParts`/`aesEncryptAsync`/`aesDecryptAsync`)と`mobile/src/screens/PairingScreen.tsx`(`CameraView`の`barcodeScannerSettings`/`onBarcodeScanned`/`facing`、`useCameraPermissions`)の呼び出しシグネチャが実際のパッケージのAPIと完全に一致することを確認済み。ドキュメント調査ベースではなく、インストール済みパッケージの型定義と1行ずつ突き合わせた結果なので、API不一致による`decrypt-failed`等は考えにくい。
+- **未検証(このPCでの最優先タスク)**: 上記の静的検証によりAPI不一致の可能性は低いと考えられるが、それでも物理Android端末/エミュレータ上での実際の動作(ネイティブモジュールの実行時挙動、パーミッションダイアログ、実際のLAN通信)はまだ一度も試していない。特に:
+  1. `expo-crypto`のAES-GCM暗号化/復号が実機で実際に成功するか(型は合っているが、ネイティブ実装側の挙動は未確認)。
+  2. `expo-camera`のQRスキャンが実機で実際に反応するか(SDKバージョンによっては無効化される不具合が報告されている。型は合っている)。
   3. PC(このリポジトリのDitto)とAndroid実機が同一LAN上でWebSocket(`ws://<IP>:58211/ws`)で実際に繋がるか(Windowsファイアウォールの初回許可ダイアログが出る想定)。
 
 ## このPCでの事前セットアップ
@@ -58,6 +59,7 @@ npx expo run:android
 
 ## うまく動かない場合に確認すること
 
+- **PC側Dittoの再起動がうまくいかない(ハマりポイント)**: `npm start`で起動したDittoのプロセス名は`electron.exe`ではなく**`Ditto.exe`**。`taskkill //IM electron.exe //F`では終了できず、単一インスタンスロックにより新しい`npm start`が古いプロセスに掴まれて`remoteServer`が起動しない(ポート58211がbindされない)ことがある。再起動する際は`taskkill //IM Ditto.exe //F`を使うこと。PC側ログ(`%APPDATA%\auto-test-tool\logs\main-<日付>.log`)に`[remoteServer] Ditto Remote listening on port 58211`が出ているか確認すると切り分けやすい。
 - **接続できない**: Windowsファイアウォールの許可ダイアログが出ていないか(初回のみ出るはず)。PCとAndroidが本当に同一LAN/サブネットにいるか(モバイルデータ通信がOFFになっているか)。
 - **QRスキャンが反応しない**: `mobile/src/screens/PairingScreen.tsx`の`CameraView`設定を見直す。Expo SDKのバージョンによる既知の不具合の可能性があるため、手入力モードで代替できるか確認する。
 - **`decrypt-failed`が返る**: `mobile/src/lib/crypto.ts`のexpo-crypto API呼び出しが、インストールされているExpo SDKバージョンの実際のシグネチャと一致しているか確認する(`node_modules/expo-crypto`の型定義を直接確認するのが早い)。PC側の対応実装は`src/main/remoteCrypto.ts`。
