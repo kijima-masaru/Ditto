@@ -15,9 +15,13 @@ import type { PairingQrPayload } from '../lib/protocol'
 import { SCREEN_TOP_PADDING } from '../lib/layout'
 
 /**
- * ペアリング画面。QRコードスキャン(expo-camera)か、IP/ポート/コードの手入力の
- * どちらかでPC側のDitto Remoteに接続要求を送る。QRの中身はPC設定画面で表示される
- * {ips, port, code}のJSON(remoteServer.tsのgetPairingInfo参照)。
+ * ペアリング画面。以下3通りのいずれかでPC側のDitto Remoteに接続要求を送る。
+ *  - QRコードスキャン(expo-camera)。QRの中身はPC設定画面で表示される
+ *    {ips, port, code}のJSON(remoteServer.tsのgetPairingInfo参照)
+ *  - IP/ポート/コードの手入力(同一Wi-Fi)
+ *  - USB接続。`adb reverse tcp:58211 tcp:58211`でPCのlocalhost:58211をスマホ側の
+ *    localhostへトンネルする前提で、host=127.0.0.1固定・コードのみ入力する。
+ *    PC側のremoteServer.tsは通常の同一LAN接続と区別せず扱えるため変更不要
  */
 
 interface Props {
@@ -26,7 +30,17 @@ interface Props {
   onErrorDismiss: () => void
 }
 
-type Mode = 'scan' | 'manual'
+type Mode = 'scan' | 'manual' | 'usb'
+
+const DEFAULT_PORT = '58211'
+const USB_HOST = '127.0.0.1'
+
+/**
+ * USB接続は`adb reverse`(Android Debug Bridge)でPCのlocalhostをトンネルする前提の機能。
+ * iOSにadbは無く、同等の手段も無いため、iOSで選ぶと127.0.0.1がiPhone自身を指してしまい
+ * 必ず接続に失敗する。そのためiOSではタブごと出さない
+ */
+const USB_MODE_AVAILABLE = Platform.OS === 'android'
 
 // PC側のペアリング済み一覧に出る名前なので、実際の端末に合った既定値にする
 const DEFAULT_DEVICE_NAME = Platform.OS === 'ios' ? 'iPhone' : 'Androidスマホ'
@@ -39,8 +53,9 @@ export default function PairingScreen({ client, errorMessage, onErrorDismiss }: 
   const [scanned, setScanned] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const [host, setHost] = useState('')
-  const [port, setPort] = useState('58211')
+  const [port, setPort] = useState(DEFAULT_PORT)
   const [code, setCode] = useState('')
+  const [usbCode, setUsbCode] = useState('')
   const [deviceName, setDeviceName] = useState(DEFAULT_DEVICE_NAME)
 
   const startPairing = async (targetHost: string, targetPort: number, targetCode: string): Promise<void> => {
@@ -70,6 +85,11 @@ export default function PairingScreen({ client, errorMessage, onErrorDismiss }: 
     const portNumber = Number(port)
     if (!host.trim() || !Number.isFinite(portNumber) || code.trim().length !== 6) return
     void startPairing(host.trim(), portNumber, code.trim())
+  }
+
+  const handleUsbSubmit = (): void => {
+    if (usbCode.trim().length !== 6) return
+    void startPairing(USB_HOST, Number(DEFAULT_PORT), usbCode.trim())
   }
 
   if (connecting) {
@@ -117,6 +137,14 @@ export default function PairingScreen({ client, errorMessage, onErrorDismiss }: 
         >
           <Text style={mode === 'manual' ? styles.modeButtonTextActive : styles.modeButtonText}>手入力</Text>
         </TouchableOpacity>
+        {USB_MODE_AVAILABLE && (
+          <TouchableOpacity
+            style={[styles.modeButton, mode === 'usb' && styles.modeButtonActive]}
+            onPress={() => setMode('usb')}
+          >
+            <Text style={mode === 'usb' ? styles.modeButtonTextActive : styles.modeButtonText}>USB接続</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <TextInput
@@ -129,7 +157,7 @@ export default function PairingScreen({ client, errorMessage, onErrorDismiss }: 
         keyboardAppearance="dark"
       />
 
-      {mode === 'scan' ? (
+      {mode === 'scan' && (
         <View style={styles.cameraWrap}>
           {!permission ? (
             <ActivityIndicator />
@@ -149,7 +177,9 @@ export default function PairingScreen({ client, errorMessage, onErrorDismiss }: 
             />
           )}
         </View>
-      ) : (
+      )}
+
+      {mode === 'manual' && (
         <View style={styles.form}>
           <TextInput
             style={styles.input}
@@ -186,6 +216,28 @@ export default function PairingScreen({ client, errorMessage, onErrorDismiss }: 
           </TouchableOpacity>
         </View>
       )}
+
+      {mode === 'usb' && (
+        <View style={styles.form}>
+          <Text style={styles.hintText}>
+            USBケーブルでPCに接続し、PC側で以下を実行してから連携してください:{'\n'}
+            {'adb reverse tcp:58211 tcp:58211'}
+          </Text>
+          <TextInput
+            style={[styles.input, styles.usbCodeInput]}
+            placeholder="6桁コード"
+            placeholderTextColor="#888"
+            value={usbCode}
+            onChangeText={setUsbCode}
+            keyboardType="number-pad"
+            maxLength={6}
+            keyboardAppearance="dark"
+          />
+          <TouchableOpacity style={styles.primaryButton} onPress={handleUsbSubmit}>
+            <Text style={styles.primaryButtonText}>連携する</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </KeyboardAvoidingView>
   )
 }
@@ -199,6 +251,7 @@ const styles = StyleSheet.create({
   hintText: { color: '#9ba0bd', fontSize: 13, textAlign: 'center' },
   errorBanner: { backgroundColor: '#3a1b1b', borderRadius: 8, padding: 10, marginBottom: 12 },
   errorText: { color: '#f27a7a', fontSize: 13 },
+  usbCodeInput: { marginTop: 16 },
   modeSwitch: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   modeButton: {
     flex: 1,

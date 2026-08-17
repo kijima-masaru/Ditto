@@ -31,6 +31,7 @@ iOS 14以降、LAN内アドレスへの通信には**ローカルネットワー
 - **セーフエリアの二重取り**: ルートの`SafeAreaView`(react-native)はiOSでのみノッチ/Dynamic Island分を挿入し、Androidでは何もしない。両画面が`paddingTop: 60`を持っていたため、iOSでは上端が大きく間延びしていた。`src/lib/layout.ts`の`SCREEN_TOP_PADDING`(iOSは12、Androidは60)に切り出して解消した。
 - **端末名**: PC側のペアリング済み一覧に出る既定名が`Androidスマホ`固定だったので、iOSでは`iPhone`になるようにした(プレースホルダも同様)。
 - **暗い背景での視認性**: `keyboardAppearance="dark"`(iOS専用)を各入力欄に指定。ホーム画面の引っ張って更新のスピナーは既定のグレーが暗い背景で見えづらいので`tintColor`を明示した。
+- **「USB接続」タブはiOSでは非表示**: `main`側で追加されたUSB接続モードは`adb reverse`(Android Debug Bridge)でPCのlocalhostをトンネルする前提の機能。iOSにadbは無く同等の手段も無いため、iOSで選ぶと`127.0.0.1`がiPhone自身を指してしまい必ず失敗する。`USB_MODE_AVAILABLE`(`Platform.OS === 'android'`)でタブごと出さないようにした。**iOSでの接続手段は同一Wi-Fi(QRスキャン/手入力)のみ**になる。
 
 ### 4. 認証情報の保存(iOSのKeychain)
 
