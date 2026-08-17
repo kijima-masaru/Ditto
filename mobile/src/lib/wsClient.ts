@@ -28,6 +28,10 @@ interface RemoteClientEvents {
  */
 const COUNTER_BLOCK = 1000
 
+/** 自動再接続の待ち時間。試行のたびに倍化し、上限で頭打ちにする */
+const RECONNECT_BASE_DELAY_MS = 1000
+const RECONNECT_MAX_DELAY_MS = 30_000
+
 export class RemoteClient {
   private ws: WebSocket | null = null
   private sessionKey: AESEncryptionKey | null = null
@@ -38,6 +42,11 @@ export class RemoteClient {
   private counterCeiling = 0
   private host = ''
   private port = 0
+  // ペアリング/認証が一度成立した後だけ自動再接続する。連携解除やデバイス失効の後に
+  // 再接続を試み続けないよう、forget()/disconnect()で false に戻す
+  private shouldReconnect = false
+  private reconnectAttempt = 0
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private readonly events: RemoteClientEvents
 
   constructor(events: RemoteClientEvents = {}) {
@@ -62,8 +71,34 @@ export class RemoteClient {
       ws.onclose = () => {
         this.ws = null
         this.setStatus('disconnected')
+        this.scheduleReconnect()
       }
     })
+  }
+
+  /**
+   * 切断を検知したら指数バックオフで再接続を試みる。PC側のDittoを再起動した場合や
+   * 一時的にネットワークが切れた場合に、アプリを手動で立ち上げ直さずに復帰できる。
+   * タイマーが既にある場合は何もしない(openSocketの失敗とoncloseが両方走っても
+   * 二重にスケジュールしないため)
+   */
+  private scheduleReconnect(): void {
+    if (!this.shouldReconnect || this.reconnectTimer) return
+    const delay = Math.min(RECONNECT_BASE_DELAY_MS * 2 ** this.reconnectAttempt, RECONNECT_MAX_DELAY_MS)
+    this.reconnectAttempt += 1
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null
+      if (!this.shouldReconnect) return
+      this.connectWithSavedCredentials().catch(() => this.scheduleReconnect())
+    }, delay)
+  }
+
+  private cancelReconnect(): void {
+    this.shouldReconnect = false
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = null
+    }
   }
 
   private async handleRawMessage(raw: string): Promise<void> {
@@ -81,7 +116,15 @@ export class RemoteClient {
         const msg = await decryptPayload<RemoteServerMessage>(parsed as EncryptedEnvelope, this.sessionKey)
         // 保存済み認証情報での再接続はhandlePaired()を通らないため、認証成立をここで拾って
         // 'connecting'のままになっている状態表示を'connected'へ進める
-        if (msg.type === 'authOk') this.setStatus('connected')
+        if (msg.type === 'authOk') {
+          this.setStatus('connected')
+          this.reconnectAttempt = 0 // 次に切れたときは待たずに1秒から再開する
+        }
+        // 失効・未登録の端末は何度繋ぎ直しても通らないため、再接続を諦める
+        // (App.tsx側でforget()が呼ばれ、ペアリング画面へ戻る)
+        if (msg.type === 'authFailed' && (msg.reason === 'unknown-device' || msg.reason === 'revoked')) {
+          this.cancelReconnect()
+        }
         this.events.onServerMessage?.(msg)
       } catch {
         // 改ざん・鍵不一致は無視する
@@ -92,8 +135,11 @@ export class RemoteClient {
     this.events.onServerMessage?.(parsed as RemoteServerMessage)
   }
 
+  // 切断中は黙って捨てず例外にする。無反応だと操作が成功したのか失敗したのかが
+  // 画面から判別できないため(呼び出し側でユーザーに通知する)
   private sendRaw(obj: unknown): void {
-    this.ws?.send(JSON.stringify(obj))
+    if (!this.ws) throw new Error('PCと接続されていません')
+    this.ws.send(JSON.stringify(obj))
   }
 
   /** counterのブロックを予約し、認証情報とあわせて永続化する */
@@ -143,6 +189,8 @@ export class RemoteClient {
     // ペアリング成立時はPC側もdeviceCountersを0にリセットするため、ここも0から始めてよい
     this.counter = 0
     await this.reserveCounterBlock(0)
+    this.shouldReconnect = true
+    this.reconnectAttempt = 0
     this.setStatus('connected')
   }
 
@@ -159,6 +207,9 @@ export class RemoteClient {
     // 送ったどのcounterよりも必ず大きくなるためPC側のリプレイ判定に弾かれない
     this.counter = creds.counter ?? 0
     await this.reserveCounterBlock(this.counter)
+    // 認証情報がある時点で再接続の対象。openSocketが失敗してもoncloseや
+    // 呼び出し側のcatchからscheduleReconnect()に入れるよう、接続前に立てておく
+    this.shouldReconnect = true
     this.setStatus('connecting')
     await this.openSocket()
     await this.sendEncrypted({ type: 'auth' })
@@ -178,6 +229,7 @@ export class RemoteClient {
   }
 
   disconnect(): void {
+    this.cancelReconnect()
     this.ws?.close()
     this.ws = null
   }
