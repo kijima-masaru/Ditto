@@ -13,6 +13,13 @@ export interface StoredCredentials {
   sessionKeyBase64: string
   host: string
   port: number
+  /**
+   * 次回接続時に使い始めるcounterの下限。PC側(remoteServer.tsのdeviceCounters)は
+   * 再接続をまたいでcounterの単調増加を要求するため、アプリを再起動しても以前送った
+   * どの値よりも大きい値から再開できるようにここへ保存しておく。書き込み回数を抑える
+   * ため、送信のたびではなくブロック単位(wsClient.tsのCOUNTER_BLOCK)で先に予約する
+   */
+  counter?: number
 }
 
 export async function saveCredentials(creds: StoredCredentials): Promise<void> {

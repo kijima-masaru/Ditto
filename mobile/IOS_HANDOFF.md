@@ -30,7 +30,7 @@ PC側との連携確認手順はAndroid版(`mobile/ANDROID_HANDOFF.md`)と同じ
 
 - **カメラ権限**: `app.json`の`ios.infoPlist.NSCameraUsageDescription`は設定済み。実機で権限ダイアログが正しく出るか確認する。
 - **`expo-secure-store`の挙動**: AndroidはKeystore、iOSはKeychainを裏で使う。API自体は共通だが、実機でのキーチェーンアクセス許可まわりで挙動差が出ないか確認する。
-- **`expo-crypto`のAES-GCM API**: Android同様、iOS(CryptoKit経由)でも同じAPIで動くはずだが未検証。Android側で動作確認が取れた実装(`mobile/src/lib/crypto.ts`)をそのまま流用し、まずAndroidと同じ結果になるか確認する。
+- **`expo-crypto`のAES-GCM API**: **Android側の検証(2026-08-17完了)で、型定義と実装が食い違うバグが2件見つかっている**(`ciphertext()`が`encoding: 'base64'`を無視してUint8Arrayを返す / `fromParts()`がbase64文字列のtagを受け付けない)。詳細と対処は`ANDROID_HANDOFF.md`の「検証で見つかったバグ」を参照。現在の`mobile/src/lib/crypto.ts`は戻り値がstringでもUint8Arrayでも動くよう正規化してあるため、iOSでもそのまま動く見込みが高い。ただし**これらはAndroidのKotlin実装に起因する問題なので、iOS(CryptoKit経由)では別の挙動をする可能性がある**。`tsc`は通ってしまうため、疑わしい場合は固定の鍵・IV・平文でNode側(`src/main/remoteCrypto.ts`)と出力を突き合わせること。
 - **配布方法**: 個人利用の範囲であれば、Xcodeから直接実機ビルド(7日間有効の無料枠)で足りる。継続的に使うならApple Developer Program登録+TestFlightまたはEAS Build/EAS Submitの利用を検討する(ストア公開は将来的な話でここでは扱わない)。
 - **Windows機での継続開発との連携**: iOSのネイティブプロジェクト生成物(`ios/`ディレクトリ、もし`expo prebuild`で作られた場合)はWindows側に持ち帰っても使えないため、`.gitignore`に含めるかコミット対象から外すか判断すること(現状`mobile/.gitignore`はExpoの標準テンプレートのものをそのまま使っている)。
 
