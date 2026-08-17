@@ -4,6 +4,9 @@ dist/
 release/
 *.log
 *.tsbuildinfo
+# 開発用シミュレータが保存する状態。セッション鍵を平文で含むためコミットしない
+scripts/.remote-client-state.json
+scripts/.remote-server-state.json
 .DS_Store
 .env
 .env.local

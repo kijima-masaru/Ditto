@@ -7,9 +7,11 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
+      "bundleIdentifier": "com.ditto.remote",
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "PCとのペアリング用QRコードを読み取るためにカメラを使用します。"
+        "NSCameraUsageDescription": "PCとのペアリング用QRコードを読み取るためにカメラを使用します。",
+        "NSLocalNetworkUsageDescription": "同一Wi-Fi上のPCで動作しているDittoに接続するためにローカルネットワークを使用します。"
       }
     },
     "android": {

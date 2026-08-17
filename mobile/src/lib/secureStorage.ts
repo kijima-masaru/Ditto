@@ -1,12 +1,21 @@
 import * as SecureStore from 'expo-secure-store'
 
 /**
- * ペアリング済みの認証情報(デバイスID・セッション鍵・接続先)をAndroid Keystore経由で
- * 暗号化して端末に保存する(expo-secure-store)。セッション鍵はDitto Remoteの唯一の
- * 秘密であり、これを保持している限り再ペアリングなしに再接続できる
+ * ペアリング済みの認証情報(デバイスID・セッション鍵・接続先)を暗号化して端末に保存する
+ * (expo-secure-store。裏で使うのはAndroidならKeystore、iOSならKeychain)。セッション鍵は
+ * Ditto Remoteの唯一の秘密であり、これを保持している限り再ペアリングなしに再接続できる
  */
 
 const STORAGE_KEY = 'ditto_remote_credentials'
+
+/**
+ * iOSのKeychainは既定(WHEN_UNLOCKED)だとバックアップ復元時に別の端末へ移行される。
+ * セッション鍵が移行先の端末に渡ると、PC側から見て失効させたつもりのない端末が
+ * 増えることになるため、この端末限定にする。Androidでは無視されるオプション
+ */
+const KEYCHAIN_OPTIONS: SecureStore.SecureStoreOptions = {
+  keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
+}
 
 export interface StoredCredentials {
   deviceId: string
@@ -23,7 +32,7 @@ export interface StoredCredentials {
 }
 
 export async function saveCredentials(creds: StoredCredentials): Promise<void> {
-  await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(creds))
+  await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(creds), KEYCHAIN_OPTIONS)
 }
 
 export async function loadCredentials(): Promise<StoredCredentials | null> {

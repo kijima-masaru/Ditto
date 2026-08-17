@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
+import { FlatList, Platform, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import * as Crypto from 'expo-crypto'
 import type { RemoteClient, ConnectionStatus } from '../lib/wsClient'
 import type { RemoteMacroItem, RemoteTemplateItem } from '../lib/protocol'
@@ -133,8 +133,11 @@ export default function HomeScreen({ client, status, templates, macros, onRefres
   )
 }
 
+/** PairingScreenと同じ理由でiOSだけ小さくする(App.tsxのSafeAreaViewとの二重取り回避) */
+const TOP_PADDING = Platform.OS === 'ios' ? 12 : 60
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#15161f', paddingTop: 60 },
+  container: { flex: 1, backgroundColor: '#15161f', paddingTop: TOP_PADDING },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
