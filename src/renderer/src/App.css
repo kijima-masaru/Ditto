@@ -1220,8 +1220,8 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 
 .command-palette-max-input {
   width: 56px;
-  text-align: right;
-  padding: 5px 8px;
+  text-align: left;
+  padding: 5px 4px 5px 10px;
   font-size: 13px;
 }
 
@@ -2104,6 +2104,9 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 .command-palette-results {
   flex: 1;
   overflow-y: auto;
+}
+
+.command-palette-results-inner {
   padding: 6px;
 }
 

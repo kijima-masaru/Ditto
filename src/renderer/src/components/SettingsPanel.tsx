@@ -5,6 +5,8 @@ import type {
   ClipboardPiiProtectionMode,
   ClipboardPiiProtectionSettings,
   ClipboardTemplateFolder,
+  CommandPaletteMaxPerSection,
+  CommandPalettePerSectionCategory,
   HotkeyBinding,
   HotkeyCombo,
   NavigationTarget,
@@ -112,7 +114,11 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const [alwaysOnTop, setAlwaysOnTop] = useState(false)
   const [textExpansionEnabled, setTextExpansionEnabled] = useState(false)
   const [commandPaletteHotkey, setCommandPaletteHotkey] = useState<HotkeyCombo | null>(null)
-  const [commandPaletteMaxPerSection, setCommandPaletteMaxPerSection] = useState(6)
+  const [commandPaletteMaxPerSection, setCommandPaletteMaxPerSection] = useState<CommandPaletteMaxPerSection>({
+    history: 6,
+    templates: 6,
+    macros: 6
+  })
   const [autoMaskSensitiveInfo, setAutoMaskSensitiveInfo] = useState<ScreenshotMaskSettings>({
     enabled: false,
     categories: { phone: false, postalCode: false, email: false, creditCard: false }
@@ -199,11 +205,14 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     await window.api.setCommandPaletteHotkey(UNSET_HOTKEY)
   }
 
-  // コマンドパレットに一度に表示する件数(履歴・定型文・マクロそれぞれの区分ごと)の上限
-  const handleCommandPaletteMaxPerSectionChange = async (value: number): Promise<void> => {
+  // コマンドパレットに一度に表示する件数の上限(履歴・定型文・マクロそれぞれの区分ごとに個別指定)
+  const handleCommandPaletteMaxPerSectionChange = async (
+    category: CommandPalettePerSectionCategory,
+    value: number
+  ): Promise<void> => {
     if (!Number.isFinite(value)) return
-    setCommandPaletteMaxPerSection(value)
-    const settings = await window.api.setCommandPaletteMaxPerSection(value)
+    setCommandPaletteMaxPerSection((prev) => ({ ...prev, [category]: value }))
+    const settings = await window.api.setCommandPaletteMaxPerSection(category, value)
     setCommandPaletteMaxPerSection(settings.commandPaletteMaxPerSection)
   }
 
@@ -431,25 +440,40 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
               コマンドパレットの表示件数
               <HelpIcon
                 text={
-                  'コマンドパレットに一度に表示する件数の上限です。履歴・定型文・マクロそれぞれの\n' +
-                  '区分ごとにこの件数まで表示します(例: 6件なら履歴6件+定型文6件+マクロ6件)。\n' +
-                  '固定指定した定型文・マクロがこの件数を超える場合、超えた分は未入力時の一覧には\n' +
-                  '表示されませんが、検索すれば見つけて選択できます。'
+                  'コマンドパレットに一度に表示する件数の上限を、履歴・定型文・マクロそれぞれ\n' +
+                  '個別に指定できます。固定指定した定型文・マクロがこの件数を超える場合、\n' +
+                  '超えた分は未入力時の一覧には表示されませんが、検索すれば見つけて選択できます。'
                 }
               />
             </span>
-            <div className="settings-item-control">
-              <input
-                type="number"
-                className="command-palette-max-input"
-                min={1}
-                max={30}
-                value={commandPaletteMaxPerSection}
-                onChange={(e) => setCommandPaletteMaxPerSection(Number(e.target.value))}
-                onBlur={(e) => handleCommandPaletteMaxPerSectionChange(Number(e.target.value))}
-              />
-              <span className="hint">件</span>
-            </div>
+          </div>
+
+          <div className="settings-subitem-list">
+            {(
+              [
+                { key: 'history', label: '履歴' },
+                { key: 'templates', label: '定型文' },
+                { key: 'macros', label: 'マクロ' }
+              ] as { key: CommandPalettePerSectionCategory; label: string }[]
+            ).map(({ key, label }) => (
+              <div className="settings-subitem-row" key={key}>
+                <span className="settings-subitem-label">{label}</span>
+                <div className="settings-item-control">
+                  <input
+                    type="number"
+                    className="command-palette-max-input"
+                    min={1}
+                    max={30}
+                    value={commandPaletteMaxPerSection[key]}
+                    onChange={(e) =>
+                      setCommandPaletteMaxPerSection((prev) => ({ ...prev, [key]: Number(e.target.value) }))
+                    }
+                    onBlur={(e) => handleCommandPaletteMaxPerSectionChange(key, Number(e.target.value))}
+                  />
+                  <span className="hint">件</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 

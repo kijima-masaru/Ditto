@@ -293,10 +293,19 @@ export interface AppSettings {
    *  キーが未設定(keycode: null かつ修飾キーもすべてfalse)の場合は機能自体が無効になる。
    *  既定値はCtrl+Shift+Space */
   commandPaletteHotkey: HotkeyCombo
-  /** コマンドパレットに一度に表示する件数の上限(履歴・定型文・マクロそれぞれの区分ごと)。
-   *  既定値は6 */
-  commandPaletteMaxPerSection: number
+  /** コマンドパレットに一度に表示する件数の上限。履歴・定型文・マクロそれぞれの区分ごとに
+   *  個別に指定できる。既定値はいずれも6 */
+  commandPaletteMaxPerSection: CommandPaletteMaxPerSection
 }
+
+/** コマンドパレットの区分ごとの表示件数上限 */
+export interface CommandPaletteMaxPerSection {
+  history: number
+  templates: number
+  macros: number
+}
+
+export type CommandPalettePerSectionCategory = keyof CommandPaletteMaxPerSection
 
 /** 設定画面の「アップデートを確認」ボタンの状態表示に使う */
 export type UpdateStatus =
@@ -481,6 +490,7 @@ export const IPC = {
   setCommandPaletteHotkey: 'settings:set-command-palette-hotkey',
   setCommandPaletteMaxPerSection: 'settings:set-command-palette-max-per-section',
   commandPaletteShown: 'command-palette:shown', // main -> パレットウィンドウ push(表示するたびに検索状態をリセットさせる)
+  commandPaletteResize: 'command-palette:resize', // パレットウィンドウ -> main(表示件数に応じてウィンドウの高さを調整する)
   hideCommandPalette: 'command-palette:hide', // パレットウィンドウ -> main
   commandPaletteInsertText: 'command-palette:insert-text', // パレットウィンドウ -> main(選択項目を元のウィンドウへ入力する。履歴用、生テキストをそのまま渡す)
   commandPaletteInsertTemplate: 'command-palette:insert-template', // パレットウィンドウ -> main(定型文用。動的変数をmain側で解決してから入力する)

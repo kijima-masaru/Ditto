@@ -14,6 +14,7 @@ import {
   IPC,
   type AutoMaskCategory,
   type ClipboardPiiProtectionMode,
+  type CommandPalettePerSectionCategory,
   type ContextMenuItem,
   type HotkeyBinding,
   type ThemeMode,
@@ -408,9 +409,12 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     return settingsStore.setAutoMaskCategory(category, enabled)
   })
 
-  ipcMain.handle(IPC.setCommandPaletteMaxPerSection, async (_e, value: number) => {
-    return settingsStore.setCommandPaletteMaxPerSection(value)
-  })
+  ipcMain.handle(
+    IPC.setCommandPaletteMaxPerSection,
+    async (_e, category: CommandPalettePerSectionCategory, value: number) => {
+      return settingsStore.setCommandPaletteMaxPerSection(category, value)
+    }
+  )
 
   ipcMain.handle(IPC.setClipboardPiiProtectionEnabled, async (_e, enabled: boolean) => {
     return settingsStore.setClipboardPiiProtectionEnabled(enabled)

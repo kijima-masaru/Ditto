@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { ClipboardHistoryEntry, ClipboardTemplate, MacroCase } from '../../../shared/types'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { ClipboardHistoryEntry, ClipboardTemplate, CommandPaletteMaxPerSection, MacroCase } from '../../../shared/types'
 import { useDragReorder, type DragReorderHandlers } from '../hooks/useDragReorder'
 
 /**
@@ -24,7 +24,7 @@ function sortByPinnedOrder<T extends { pinnedOrder?: number }>(items: T[]): T[] 
   return [...items].sort((a, b) => (a.pinnedOrder ?? Infinity) - (b.pinnedOrder ?? Infinity))
 }
 
-const DEFAULT_MAX_PER_SECTION = 6
+const DEFAULT_MAX_PER_SECTION: CommandPaletteMaxPerSection = { history: 6, templates: 6, macros: 6 }
 
 function truncate(text: string, max = 60): string {
   const oneLine = text.replace(/\s+/g, ' ').trim()
@@ -49,8 +49,9 @@ export default function CommandPaletteRoot(): React.JSX.Element {
   const [history, setHistory] = useState<ClipboardHistoryEntry[]>([])
   const [templates, setTemplates] = useState<ClipboardTemplate[]>([])
   const [macros, setMacros] = useState<MacroCase[]>([])
-  const [maxPerSection, setMaxPerSection] = useState(DEFAULT_MAX_PER_SECTION)
+  const [maxPerSection, setMaxPerSection] = useState<CommandPaletteMaxPerSection>(DEFAULT_MAX_PER_SECTION)
   const inputRef = useRef<HTMLInputElement>(null)
+  const resultsRef = useRef<HTMLDivElement>(null)
 
   const reload = useCallback(() => {
     Promise.all([
@@ -109,14 +110,14 @@ export default function CommandPaletteRoot(): React.JSX.Element {
     const historyResults: PaletteResult[] = isSearching
       ? history
           .filter((h) => h.type === 'text' && matches(query, h.text))
-          .slice(0, maxPerSection)
+          .slice(0, maxPerSection.history)
           .map((h) => ({ kind: 'history', id: h.id, primary: truncate(h.text), insertText: h.text }))
       : []
 
     const templateResults: PaletteResult[] = isSearching
       ? templates
           .filter((t) => matches(query, t.label, t.text, t.trigger))
-          .slice(0, maxPerSection)
+          .slice(0, maxPerSection.templates)
           .map((t) => ({
             kind: 'template',
             id: t.id,
@@ -124,7 +125,7 @@ export default function CommandPaletteRoot(): React.JSX.Element {
             secondary: t.label ? truncate(t.text) : t.trigger,
             insertText: t.text
           }))
-      : templateDrag.orderedItems.slice(0, maxPerSection).map((t) => ({
+      : templateDrag.orderedItems.slice(0, maxPerSection.templates).map((t) => ({
           kind: 'template',
           id: t.id,
           primary: t.label || truncate(t.text),
@@ -136,9 +137,9 @@ export default function CommandPaletteRoot(): React.JSX.Element {
     const macroResults: PaletteResult[] = isSearching
       ? macros
           .filter((m) => matches(query, m.name))
-          .slice(0, maxPerSection)
+          .slice(0, maxPerSection.macros)
           .map((m) => ({ kind: 'macro', id: m.id, primary: m.name }))
-      : macroDrag.orderedItems.slice(0, maxPerSection).map((m) => ({
+      : macroDrag.orderedItems.slice(0, maxPerSection.macros).map((m) => ({
           kind: 'macro',
           id: m.id,
           primary: m.name,
@@ -152,6 +153,20 @@ export default function CommandPaletteRoot(): React.JSX.Element {
   useEffect(() => {
     setSelectedIndex((i) => Math.min(i, Math.max(results.length - 1, 0)))
   }, [results.length])
+
+  // 表示件数(履歴/定型文/マクロの合計、検索結果の有無)に応じてウィンドウの高さを自動調整する。
+  // .command-palette-results はflex:1 overflow-y:autoで常にウィンドウいっぱいまで伸びるため、
+  // その要素自体のscrollHeight/offsetHeightはコンテンツが少ない時でも常に伸びた分の高さを
+  // 返してしまい実際のコンテンツ量を反映しない。そのため中身はflexで伸縮しない内側のラッパー
+  // (resultsRef)に入れ、その自然な高さ(getBoundingClientRect)を実測する
+  useLayoutEffect(() => {
+    const inputEl = inputRef.current
+    const resultsEl = resultsRef.current
+    if (!inputEl || !resultsEl) return
+    const BORDER_HEIGHT = 2 // .command-palette の上下ボーダー(1pxずつ)
+    const height = inputEl.getBoundingClientRect().height + resultsEl.getBoundingClientRect().height + BORDER_HEIGHT
+    window.api.resizeCommandPalette(Math.round(height))
+  }, [results, isSearching])
 
   const activate = useCallback((result: PaletteResult): void => {
     if (result.kind === 'macro') {
@@ -235,19 +250,21 @@ export default function CommandPaletteRoot(): React.JSX.Element {
         placeholder="クリップボード・定型文・マクロを検索..."
       />
       <div className="command-palette-results">
-        {results.length === 0 ? (
-          <div className="command-palette-empty">
-            {isSearching
-              ? '一致する項目がありません'
-              : 'コマンドパレットに固定した定型文・マクロがありません。\n入力すると履歴・定型文・マクロすべてから検索できます。'}
-          </div>
-        ) : (
-          <>
-            {renderSection('history')}
-            {renderSection('template')}
-            {renderSection('macro')}
-          </>
-        )}
+        <div className="command-palette-results-inner" ref={resultsRef}>
+          {results.length === 0 ? (
+            <div className="command-palette-empty">
+              {isSearching
+                ? '一致する項目がありません'
+                : 'コマンドパレットに固定した定型文・マクロがありません。\n入力すると履歴・定型文・マクロすべてから検索できます。'}
+            </div>
+          ) : (
+            <>
+              {renderSection('history')}
+              {renderSection('template')}
+              {renderSection('macro')}
+            </>
+          )}
+        </div>
       </div>
     </div>
   )

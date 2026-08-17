@@ -8,6 +8,8 @@ import type {
   AutoMaskSettings,
   ClipboardPiiProtectionMode,
   ClipboardPiiProtectionSettings,
+  CommandPaletteMaxPerSection,
+  CommandPalettePerSectionCategory,
   HotkeyBinding,
   HotkeyCombo,
   ScreenshotMaskSettings,
@@ -51,7 +53,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   // keycode 57はuiohook-napiのUiohookKey.Space。commandPalette.tsに依存を追加しないよう
   // ここでは数値をそのまま持つ(hotkey.tsのformatComboLabelでも'Space'として表示される)
   commandPaletteHotkey: { ctrl: true, shift: true, alt: false, meta: false, keycode: 57, label: 'Ctrl+Shift+Space' },
-  commandPaletteMaxPerSection: 6
+  commandPaletteMaxPerSection: { history: 6, templates: 6, macros: 6 }
 }
 
 // コマンドパレットの表示件数上限として許容する範囲。0や負数、極端に大きい値を防ぐ
@@ -61,6 +63,34 @@ const COMMAND_PALETTE_MAX_PER_SECTION_MAX = 30
 function clampCommandPaletteMaxPerSection(value: number): number {
   const rounded = Math.round(value)
   return Math.min(Math.max(rounded, COMMAND_PALETTE_MAX_PER_SECTION_MIN), COMMAND_PALETTE_MAX_PER_SECTION_MAX)
+}
+
+// v1.27.17までは履歴・定型文・マクロで共通の単一値(number)だった。区分ごとに個別指定できる
+// { history, templates, macros } 形式へ移行するため、旧形式の設定ファイルを読み込んだ場合は
+// その値を全区分の初期値として引き継ぐ
+function normalizeCommandPaletteMaxPerSection(value: unknown): CommandPaletteMaxPerSection {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const clamped = clampCommandPaletteMaxPerSection(value)
+    return { history: clamped, templates: clamped, macros: clamped }
+  }
+  if (value && typeof value === 'object') {
+    const v = value as Partial<CommandPaletteMaxPerSection>
+    return {
+      history:
+        typeof v.history === 'number' && Number.isFinite(v.history)
+          ? clampCommandPaletteMaxPerSection(v.history)
+          : DEFAULT_SETTINGS.commandPaletteMaxPerSection.history,
+      templates:
+        typeof v.templates === 'number' && Number.isFinite(v.templates)
+          ? clampCommandPaletteMaxPerSection(v.templates)
+          : DEFAULT_SETTINGS.commandPaletteMaxPerSection.templates,
+      macros:
+        typeof v.macros === 'number' && Number.isFinite(v.macros)
+          ? clampCommandPaletteMaxPerSection(v.macros)
+          : DEFAULT_SETTINGS.commandPaletteMaxPerSection.macros
+    }
+  }
+  return { ...DEFAULT_SETTINGS.commandPaletteMaxPerSection }
 }
 
 // v1.24.9までは単一のboolean(true/false)、v1.24.10〜v1.24.13まではカテゴリだけの
@@ -142,10 +172,7 @@ export async function getSettings(): Promise<AppSettings> {
       clipboardPiiProtection: normalizeClipboardPiiProtection(parsed.clipboardPiiProtection),
       textExpansionEnabled: parsed.textExpansionEnabled ?? DEFAULT_SETTINGS.textExpansionEnabled,
       commandPaletteHotkey: normalizeHotkeyCombo(parsed.commandPaletteHotkey),
-      commandPaletteMaxPerSection:
-        typeof parsed.commandPaletteMaxPerSection === 'number' && Number.isFinite(parsed.commandPaletteMaxPerSection)
-          ? clampCommandPaletteMaxPerSection(parsed.commandPaletteMaxPerSection)
-          : DEFAULT_SETTINGS.commandPaletteMaxPerSection
+      commandPaletteMaxPerSection: normalizeCommandPaletteMaxPerSection(parsed.commandPaletteMaxPerSection)
     }
   } catch {
     return { ...DEFAULT_SETTINGS }
@@ -198,9 +225,15 @@ export async function setCommandPaletteHotkey(hotkey: HotkeyCombo): Promise<AppS
   return settings
 }
 
-export async function setCommandPaletteMaxPerSection(value: number): Promise<AppSettings> {
+export async function setCommandPaletteMaxPerSection(
+  category: CommandPalettePerSectionCategory,
+  value: number
+): Promise<AppSettings> {
   const settings = await getSettings()
-  settings.commandPaletteMaxPerSection = clampCommandPaletteMaxPerSection(value)
+  settings.commandPaletteMaxPerSection = {
+    ...settings.commandPaletteMaxPerSection,
+    [category]: clampCommandPaletteMaxPerSection(value)
+  }
   await writeSettings(settings)
   return settings
 }

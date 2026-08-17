@@ -71,9 +71,30 @@ function ensureWindow(): BrowserWindow {
   return win
 }
 
+// パレット表示のたびに、前回開いた時に自動調整された高さが残らないよう基準サイズへ戻す
+function resetSize(w: BrowserWindow): void {
+  const [width] = w.getSize()
+  w.setSize(width, HEIGHT)
+}
+
+// 表示件数に応じてrenderer側から要求された高さへウィンドウを調整する。位置(x, y)の
+// 左上は固定し、高さだけを変える(positionAtCursorで中央寄せした位置が縦方向にずれないように
+// 上端を基準にする)。ディスプレイの作業領域からはみ出さないようクランプする
+const MIN_HEIGHT = 120
+
+function resizeWindow(height: number): void {
+  if (!win || win.isDestroyed()) return
+  const bounds = win.getBounds()
+  const { workArea } = screen.getDisplayMatching(bounds)
+  const clampedHeight = Math.max(MIN_HEIGHT, Math.min(Math.round(height), workArea.height))
+  const y = Math.min(bounds.y, Math.max(workArea.y, workArea.y + workArea.height - clampedHeight))
+  win.setBounds({ x: bounds.x, y, width: bounds.width, height: clampedHeight })
+}
+
 function show(): void {
   lastFocusedWindowId = activeWin.sync()?.id ?? null
   const w = ensureWindow()
+  resetSize(w)
   positionAtCursor(w)
   const send = (): void => w.webContents.send(IPC.commandPaletteShown)
   if (w.webContents.isLoading()) {
@@ -308,6 +329,10 @@ export function initCommandPalette(openMacroForPlayback: (macroId: string) => vo
   uIOhook.on('mousedown', handleGlobalMousedown)
 
   ipcMain.on(IPC.hideCommandPalette, () => hide())
+
+  ipcMain.on(IPC.commandPaletteResize, (_e, height: number) => {
+    if (typeof height === 'number' && Number.isFinite(height)) resizeWindow(height)
+  })
 
   ipcMain.handle(IPC.commandPaletteInsertText, async (_e, text: string) => {
     await insertText(text)

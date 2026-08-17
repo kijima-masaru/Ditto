@@ -9,6 +9,7 @@ import {
   type ClipboardPiiProtectionMode,
   type ClipboardTemplate,
   type ClipboardTemplateFolder,
+  type CommandPalettePerSectionCategory,
   type ContextMenuItem,
   type HotkeyBinding,
   type HotkeyCombo,
@@ -172,8 +173,8 @@ const api = {
     ipcRenderer.invoke(IPC.setTextExpansionEnabled, enabled),
   setCommandPaletteHotkey: (hotkey: HotkeyCombo): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setCommandPaletteHotkey, hotkey),
-  setCommandPaletteMaxPerSection: (value: number): Promise<AppSettings> =>
-    ipcRenderer.invoke(IPC.setCommandPaletteMaxPerSection, value),
+  setCommandPaletteMaxPerSection: (category: CommandPalettePerSectionCategory, value: number): Promise<AppSettings> =>
+    ipcRenderer.invoke(IPC.setCommandPaletteMaxPerSection, category, value),
   setAutoMaskEnabled: (enabled: boolean): Promise<AppSettings> => ipcRenderer.invoke(IPC.setAutoMaskEnabled, enabled),
   setAutoMaskSensitiveInfo: (category: AutoMaskCategory, enabled: boolean): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setAutoMaskSensitiveInfo, category, enabled),
@@ -266,6 +267,7 @@ const api = {
     ipcRenderer.on(IPC.commandPaletteShown, listener)
     return () => ipcRenderer.removeListener(IPC.commandPaletteShown, listener)
   },
+  resizeCommandPalette: (height: number): void => ipcRenderer.send(IPC.commandPaletteResize, height),
   hideCommandPalette: (): void => ipcRenderer.send(IPC.hideCommandPalette),
   insertViaCommandPalette: (text: string): Promise<void> =>
     ipcRenderer.invoke(IPC.commandPaletteInsertText, text),
