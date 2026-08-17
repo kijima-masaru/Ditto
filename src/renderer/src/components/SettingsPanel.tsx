@@ -825,8 +825,8 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
                     />
                   </div>
                   <p className="remote-pairing-hint">
-                    {'スマホアプリでQRコードを読み取るか、上記の数字コードを入力してください。\n' +
-                      '2分間有効です。\n' +
+                    {'スマホアプリでQRコードを読み取るか、コードを入力してください。\n' +
+                      '2分間有効です。\n\n' +
                       '読み取り後、このPC側で表示される確認ダイアログで「許可」を押すと連携が完了します。'}
                   </p>
                 </>

@@ -1609,6 +1609,8 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   color: var(--text-muted);
   font-size: 13px;
   white-space: pre-line;
+  text-align: left;
+  align-self: stretch;
   margin: 0;
 }
 
