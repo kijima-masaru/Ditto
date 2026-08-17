@@ -23,6 +23,7 @@
 | 定型文タップ→PCのフォーカス中の入力欄にテキスト入力 | ✅ メモ帳に実際に入力されることを確認 |
 | マクロ長押し→PCでマクロ実行+通知 | ✅ 「スマホからマクロ「s」が実行されました」を確認 |
 | デバイス失効→即時切断→再認証時に`authFailed`→認証情報破棄 | ✅ |
+| PC側Ditto再起動後の自動再接続(無操作での復帰) | ✅ **後から実装**(下記バグ5) |
 
 ### 未検証で残っている項目
 
@@ -156,10 +157,32 @@ PC側(`remoteServer.ts`の`deviceCounters`)はリプレイ対策として**再�
 - `expo prebuild`が`app.json`に`RECORD_AUDIO`(マイク権限)を自動追加していた。expo-cameraの`recordAudioAndroid`が既定`true`のため。QRコードを読むだけなので`recordAudioAndroid: false` / `microphonePermission: false`で除去した。
 - パッケージ名が`com.anonymous.dittoremote`(Expoのプレースホルダ)だったので`com.ditto.remote`に変更した。
 
+### 5. 自動再接続が無く、切断中の操作が無反応だった(別コミットで修正)
+
+`sendRaw()`が`this.ws?.send()`だったため、切断中(`ws === null`)にボタンを押しても何も起きずエラーも出なかった。かつ再接続の仕組みが無く、PC側のDittoを再起動するとアプリを手動で立ち上げ直すしかなかった。
+
+対処:
+
+- `ws.onclose`から指数バックオフ(1秒→倍化→上限30秒)で自動再接続する。
+- `shouldReconnect`フラグを持ち、連携解除(`forget()`/`disconnect()`)後は再試行しない。`authFailed`の`unknown-device`/`revoked`を受けた時点でも再接続を打ち切る(何度繋ぎ直しても通らないため)。
+- `sendRaw()`は切断中に例外を投げるようにし、`HomeScreen`側で未接続バナー表示+ボタン無効化+送信失敗メッセージを出す。
+
+検証: PC側Dittoをプロセスごとkill→アプリに未接続バナーが出てボタンが無効化される→Dittoを再起動→**アプリを一切操作せずに自動復帰**し、定型文トリガーが通ることを確認済み。
+
+### 6. ペアリング拒否時に承認待ちスピナーから永久に戻れなかった(別コミットで修正)
+
+`client.startPairing()`は「`pair`メッセージを送信し終えた」時点で解決するため、PC側に拒否されても`PairingScreen`のローカルstate `connecting`が`true`のまま残る。`connecting`中はスピナーだけを描画する作りなので、`App.tsx`が`pairRejected`を受けて`pairError`をセットしても**エラーバナーを描画するコードに到達しない**。
+
+影響範囲は広く、`pairRejectedMessage()`が用意していた4つの文言(`invalid-or-expired-code` / `denied-by-user` / `timeout` / `rate-limited`)は**どれも一度も表示されない**状態だった。復帰手段はアプリの再起動のみ。
+
+対処: `PairingScreen`に`useEffect`を足し、`errorMessage`が入った時点で`connecting`/`scanned`を解除する。あわせて`startPairing()`の先頭で`onErrorDismiss()`を呼び、前回のエラーが残っていて即座に解除されてしまうのを防ぐ。
+
+> **この種のバグを見逃した理由**: それまでの検証が成功パスしか通していなかったため。ペアリングは「わざと誤った6桁コードを入れる」だけで失敗系を試せるので、次から必ず両方確認すること。
+
 ## 既知の未対応事項
 
-- **切断中にボタンを押しても無反応**。`wsClient.ts`の`sendRaw()`は`this.ws?.send()`なので、切断済み(`ws === null`)だと何も起きずエラーも出ない。かつ自動再接続の仕組みが無いため、PC側を再起動した後などはアプリを手動で再起動するしかない。実用上いちばん気になる箇所。
 - デバイス失効の直後、アプリはホーム画面のまま「未接続」表示で項目も残る。失効を検知するのは次回の認証時。
+- **原因未特定**: 検証中に一度、操作していないのにアプリ側の認証情報が消えてペアリング画面に戻る現象が起きた。PC側の`settings.json`にはデバイスが残っており(`lastSeenAt`も直前の時刻)、失効操作もしていない。エラーバナーも出ていなかったため`authFailed`経由ではない可能性が高い。再現条件が不明なため未修正。再発したらその時点の`adb logcat`を確保すること。
 
 ## うまく動かない場合に確認すること
 
@@ -168,6 +191,7 @@ PC側(`remoteServer.ts`の`deviceCounters`)はリプレイ対策として**再�
   - `Get-NetTCPConnection -LocalPort 58211` でLISTENしているか。接続中は`Established`、失効・切断後は`TimeWait`が見える。
   - なお同じ理由で、devビルドではマクロ実行通知の送信元アプリ名が「Ditto」ではなく**「Electron」**と表示される。
 - **接続できない**: Windowsファイアウォールの許可ダイアログが出ていないか(初回のみ出るはず)。PCとAndroidが本当に同一LAN/サブネットにいるか(モバイルデータ通信がOFFになっているか)。
+- **`wsClient.ts`を直したのに挙動が変わらない(ハマりポイント)**: MetroのFast Refreshは画面の再描画はするが、`App.tsx`が`useRef`で保持している`RemoteClient`インスタンスは作り直さない。そのため**画面まわりの修正だけ反映され、クライアント側のロジックは修正前の古いインスタンスのまま動く**という紛らわしい状態になる。実際にこれで「自動再接続が効かない」と誤判定しかけた。`wsClient.ts`など`useRef`が抱えるオブジェクトを変更したときは、Fast Refreshに頼らず`adb shell am force-stop com.ditto.remote`でアプリを完全に再起動して確認すること。
 - **QRスキャンが反応しない**: `mobile/src/screens/PairingScreen.tsx`の`CameraView`設定を見直す。Expo SDKのバージョンによる既知の不具合の可能性があるため、手入力モードで代替できるか確認する。
 - **`decrypt-failed`が返る**: まず上記「検証で見つかったバグ」の1・2を疑う。**型定義との突き合わせでは判断できない**ので、固定の鍵・IV・平文でNode側とアプリ側の出力を実際に突き合わせること。PC側の対応実装は`src/main/remoteCrypto.ts`。
 - **プロトコルの型を変更した場合**: `mobile/src/lib/protocol.ts`と`src/shared/types.ts`(`RemoteClientMessage`/`RemoteServerMessage`等)は手動で同期する設計(2つの独立したnpmプロジェクトのため型を共有していない)。片方だけ変更すると通信が`decrypt-failed`等で弾かれるので注意。

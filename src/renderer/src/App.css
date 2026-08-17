@@ -1546,15 +1546,17 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   color: var(--text-secondary);
 }
 
-/* Ditto Remote(スマホ連携)のペアリングモーダル。debug-log-modalと同じ枠組みを使い、
-   中身だけQRコード+数字コード用に差し替える */
+/* Ditto Remote(スマホ連携)のペアリングモーダル。debug-log-overlayの中に配置されるが、
+   ヘッダーを持たずコンテンツの高さだけを占めるようにする。overlay自体はdisplay:flexで
+   align-itemsを指定していない(既定値stretch)ため、margin:autoを上下左右すべてに
+   指定することでstretchを打ち消しつつ縦横中央に配置する(auto marginはalign-selfより
+   優先される) */
 .remote-pairing-modal {
-  margin: 10px auto;
+  margin: auto;
   max-width: 320px;
-  width: 100%;
+  width: calc(100% - 20px);
   display: flex;
   flex-direction: column;
-  min-height: 0;
   background: var(--panel-bg);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -1585,6 +1587,28 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   font-weight: 700;
   letter-spacing: 0.15em;
   color: var(--text);
+  margin: 0;
+}
+
+/* コードの残り有効時間を示すバー。pairingTotalMsを100%として、経過とともにfillが減っていく */
+.remote-pairing-progress {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.remote-pairing-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.25s linear;
+}
+
+.remote-pairing-hint {
+  color: var(--text-muted);
+  font-size: 13px;
+  white-space: pre-line;
   margin: 0;
 }
 

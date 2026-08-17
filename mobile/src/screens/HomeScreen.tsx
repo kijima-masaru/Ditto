@@ -33,6 +33,8 @@ const STATUS_LABEL: Record<ConnectionStatus, string> = {
 export default function HomeScreen({ client, status, templates, macros, onRefresh, onForget }: Props): React.JSX.Element {
   const [refreshing, setRefreshing] = useState(false)
   const [pendingId, setPendingId] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const connected = status === 'connected'
 
   const handleRefresh = (): void => {
     setRefreshing(true)
@@ -55,6 +57,10 @@ export default function HomeScreen({ client, status, templates, macros, onRefres
       } else {
         await client.triggerMacro(entry.id, requestId)
       }
+      setErrorMessage(null)
+    } catch {
+      // 接続済み表示のまま切断された直後など、送信時に初めて失敗が分かる場合がある
+      setErrorMessage('送信できませんでした。PCとの接続を確認しています...')
     } finally {
       setTimeout(() => setPendingId(null), 600)
     }
@@ -71,6 +77,21 @@ export default function HomeScreen({ client, status, templates, macros, onRefres
           <Text style={styles.forgetLink}>連携解除</Text>
         </Pressable>
       </View>
+
+      {!connected && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineText}>
+            PCと未接続です。自動で再接続を試みています...{'\n'}
+            PC側のDittoが起動しているか確認してください。
+          </Text>
+        </View>
+      )}
+
+      {connected && errorMessage && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineText}>{errorMessage}</Text>
+        </View>
+      )}
 
       {/* 空でもFlatListを描画する。Viewに差し替えるとRefreshControlごと消え、
           空状態の案内文どおりに引っ張って更新することができなくなる */}
@@ -90,11 +111,15 @@ export default function HomeScreen({ client, status, templates, macros, onRefres
           }
           renderItem={({ item }) => (
             <Pressable
-              style={[styles.cell, item.kind === 'macro' && styles.cellMacro, pendingId === item.id && styles.cellPending]}
+              style={[
+                styles.cell,
+                item.kind === 'macro' && styles.cellMacro,
+                (pendingId === item.id || !connected) && styles.cellPending
+              ]}
               onPress={() => item.kind === 'template' && void activate(item)}
               onLongPress={() => item.kind === 'macro' && void activate(item)}
               delayLongPress={500}
-              disabled={pendingId !== null}
+              disabled={pendingId !== null || !connected}
             >
               {item.kind === 'macro' && <Text style={styles.macroBadge}>⚡</Text>}
               <Text style={styles.cellLabel} numberOfLines={2}>
@@ -126,6 +151,16 @@ const styles = StyleSheet.create({
   statusDotBad: { backgroundColor: '#f2bd5c' },
   statusText: { color: '#9ba0bd', fontSize: 13 },
   forgetLink: { color: '#8b83ff', fontSize: 13 },
+  offlineBanner: {
+    backgroundColor: '#3a2c11',
+    borderColor: '#f2bd5c',
+    borderWidth: 1,
+    borderRadius: 8,
+    marginHorizontal: 14,
+    marginBottom: 10,
+    padding: 10
+  },
+  offlineText: { color: '#f2bd5c', fontSize: 12, lineHeight: 17 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   emptyText: { color: '#9ba0bd', fontSize: 14, textAlign: 'center', lineHeight: 20 },
   grid: { paddingHorizontal: 8, paddingBottom: 24 },
