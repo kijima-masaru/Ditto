@@ -21,11 +21,21 @@ interface RemoteClientEvents {
   onServerMessage?: (msg: RemoteServerMessage) => void
 }
 
+/**
+ * counterを何個ずつ先行して予約(永続化)するか。1メッセージごとにSecureStoreへ
+ * 書き込むのは重いため、ブロック単位で予約しておき、使い切ったら次を予約する。
+ * 予約済みの番号を使い切らずにアプリが落ちた場合は番号が飛ぶだけで実害はない
+ */
+const COUNTER_BLOCK = 1000
+
 export class RemoteClient {
   private ws: WebSocket | null = null
   private sessionKey: AESEncryptionKey | null = null
+  private sessionKeyBase64: string | null = null
   private deviceId: string | null = null
   private counter = 0
+  /** 永続化済みのcounter上限。これに達したら次のブロックを予約する */
+  private counterCeiling = 0
   private host = ''
   private port = 0
   private readonly events: RemoteClientEvents
@@ -69,6 +79,9 @@ export class RemoteClient {
       if (!this.sessionKey) return // 鍵が無い状態で暗号化メッセージは復号しようがない
       try {
         const msg = await decryptPayload<RemoteServerMessage>(parsed as EncryptedEnvelope, this.sessionKey)
+        // 保存済み認証情報での再接続はhandlePaired()を通らないため、認証成立をここで拾って
+        // 'connecting'のままになっている状態表示を'connected'へ進める
+        if (msg.type === 'authOk') this.setStatus('connected')
         this.events.onServerMessage?.(msg)
       } catch {
         // 改ざん・鍵不一致は無視する
@@ -83,10 +96,29 @@ export class RemoteClient {
     this.ws?.send(JSON.stringify(obj))
   }
 
+  /** counterのブロックを予約し、認証情報とあわせて永続化する */
+  private async reserveCounterBlock(from: number): Promise<void> {
+    if (!this.deviceId || !this.sessionKeyBase64) return
+    this.counterCeiling = from + COUNTER_BLOCK
+    await saveCredentials({
+      deviceId: this.deviceId,
+      sessionKeyBase64: this.sessionKeyBase64,
+      host: this.host,
+      port: this.port,
+      counter: this.counterCeiling
+    })
+  }
+
+  private async nextCounter(): Promise<number> {
+    this.counter += 1
+    if (this.counter >= this.counterCeiling) await this.reserveCounterBlock(this.counter)
+    return this.counter
+  }
+
   private async sendEncrypted(payload: OutgoingPayload): Promise<void> {
     if (!this.sessionKey || !this.deviceId) throw new Error('ペアリングされていません')
-    this.counter += 1
-    const message = { v: 1, counter: this.counter, ...payload } as RemoteClientMessage
+    const counter = await this.nextCounter()
+    const message = { v: 1, counter, ...payload } as RemoteClientMessage
     const parts = await encryptPayload(message, this.sessionKey)
     const envelope: EncryptedEnvelope = { deviceId: this.deviceId, ...parts }
     this.sendRaw(envelope)
@@ -106,9 +138,11 @@ export class RemoteClient {
   /** 'paired'メッセージを受け取った後に呼び、以後の暗号化通信を有効化しつつ端末に保存する */
   async handlePaired(deviceId: string, sessionKeyBase64: string): Promise<void> {
     this.deviceId = deviceId
+    this.sessionKeyBase64 = sessionKeyBase64
     this.sessionKey = await importSessionKey(sessionKeyBase64)
+    // ペアリング成立時はPC側もdeviceCountersを0にリセットするため、ここも0から始めてよい
     this.counter = 0
-    await saveCredentials({ deviceId, sessionKeyBase64, host: this.host, port: this.port })
+    await this.reserveCounterBlock(0)
     this.setStatus('connected')
   }
 
@@ -119,8 +153,12 @@ export class RemoteClient {
     this.host = creds.host
     this.port = creds.port
     this.deviceId = creds.deviceId
+    this.sessionKeyBase64 = creds.sessionKeyBase64
     this.sessionKey = await importSessionKey(creds.sessionKeyBase64)
-    this.counter = 0
+    // 保存値は前回のセッションで予約済みだった上限。ここから再開すれば、前回実際に
+    // 送ったどのcounterよりも必ず大きくなるためPC側のリプレイ判定に弾かれない
+    this.counter = creds.counter ?? 0
+    await this.reserveCounterBlock(this.counter)
     this.setStatus('connecting')
     await this.openSocket()
     await this.sendEncrypted({ type: 'auth' })
@@ -148,7 +186,10 @@ export class RemoteClient {
   async forget(): Promise<void> {
     this.disconnect()
     this.sessionKey = null
+    this.sessionKeyBase64 = null
     this.deviceId = null
+    this.counter = 0
+    this.counterCeiling = 0
     await clearCredentials()
   }
 }

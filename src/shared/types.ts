@@ -344,7 +344,11 @@ export type RemoteServerMessage =
       reason: 'invalid-or-expired-code' | 'denied-by-user' | 'timeout' | 'rate-limited'
     }
   | { v: 1; type: 'authOk'; deviceName: string }
-  | { v: 1; type: 'authFailed'; reason: 'unknown-device' | 'decrypt-failed' | 'revoked' | 'rate-limited' }
+  | {
+      v: 1
+      type: 'authFailed'
+      reason: 'unknown-device' | 'decrypt-failed' | 'revoked' | 'rate-limited' | 'stale-counter'
+    }
   | { v: 1; type: 'items'; templates: RemoteTemplateItem[]; macros: RemoteMacroItem[] }
   | { v: 1; type: 'triggerResult'; requestId: string; ok: boolean; message?: string }
   | { v: 1; type: 'error'; message: string }

@@ -418,7 +418,12 @@ async function handleMessage(
 
   if ('counter' in message) {
     const lastCounter = deviceCounters.get(device.id) ?? 0
-    if (message.counter <= lastCounter) return // リプレイとみなし無視
+    if (message.counter <= lastCounter) {
+      // リプレイとみなして処理はしないが、無応答で返すとアプリ側が原因不明のまま
+      // ハングするため、明示的にauthFailedを返す。正規のアプリはこれを受けて
+      // counterを取り直した上で再接続できる
+      return sendEncrypted(ws, device.id, { v: 1, type: 'authFailed', reason: 'stale-counter' }, sessionKey)
+    }
     deviceCounters.set(device.id, message.counter)
   }
 
