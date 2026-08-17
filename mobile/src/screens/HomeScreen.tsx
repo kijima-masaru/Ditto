@@ -3,6 +3,7 @@ import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'rea
 import * as Crypto from 'expo-crypto'
 import type { RemoteClient, ConnectionStatus } from '../lib/wsClient'
 import type { RemoteMacroItem, RemoteTemplateItem } from '../lib/protocol'
+import { SCREEN_TOP_PADDING } from '../lib/layout'
 
 /**
  * ホーム画面。PC側でピン留めされた定型文・マクロをボタングリッドで表示し、
@@ -85,7 +86,15 @@ export default function HomeScreen({ client, status, templates, macros, onRefres
           keyExtractor={(item) => `${item.kind}-${item.id}`}
           numColumns={3}
           contentContainerStyle={styles.grid}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+          refreshControl={
+            // tintColorはiOS専用。既定のグレーのスピナーは暗い背景で見えづらいので明示する
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#8b83ff"
+              colors={['#8b83ff']}
+            />
+          }
           renderItem={({ item }) => (
             <Pressable
               style={[styles.cell, item.kind === 'macro' && styles.cellMacro, pendingId === item.id && styles.cellPending]}
@@ -108,7 +117,7 @@ export default function HomeScreen({ client, status, templates, macros, onRefres
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#15161f', paddingTop: 60 },
+  container: { flex: 1, backgroundColor: '#15161f', paddingTop: SCREEN_TOP_PADDING },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',

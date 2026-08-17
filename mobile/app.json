@@ -8,8 +8,11 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.kijimamasaru.dittoremote",
       "infoPlist": {
-        "NSCameraUsageDescription": "PCとのペアリング用QRコードを読み取るためにカメラを使用します。"
+        "NSCameraUsageDescription": "PCとのペアリング用QRコードを読み取るためにカメラを使用します。",
+        "NSLocalNetworkUsageDescription": "同じWi-Fi上のPC(Ditto)と直接通信して定型文・マクロを実行するため、ローカルネットワークへのアクセスが必要です。",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -19,17 +22,25 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.kijimamasaru.dittoremote"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
+        }
+      ],
       [
         "expo-camera",
         {
-          "cameraPermission": "PCとのペアリング用QRコードを読み取るためにカメラを使用します。"
+          "cameraPermission": "PCとのペアリング用QRコードを読み取るためにカメラを使用します。",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
         }
       ]
     ]
