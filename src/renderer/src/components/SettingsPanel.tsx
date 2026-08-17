@@ -112,6 +112,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const [alwaysOnTop, setAlwaysOnTop] = useState(false)
   const [textExpansionEnabled, setTextExpansionEnabled] = useState(false)
   const [commandPaletteHotkey, setCommandPaletteHotkey] = useState<HotkeyCombo | null>(null)
+  const [commandPaletteMaxPerSection, setCommandPaletteMaxPerSection] = useState(6)
   const [autoMaskSensitiveInfo, setAutoMaskSensitiveInfo] = useState<ScreenshotMaskSettings>({
     enabled: false,
     categories: { phone: false, postalCode: false, email: false, creditCard: false }
@@ -138,6 +139,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
       setAlwaysOnTop(s.alwaysOnTop)
       setTextExpansionEnabled(s.textExpansionEnabled)
       setCommandPaletteHotkey(s.commandPaletteHotkey)
+      setCommandPaletteMaxPerSection(s.commandPaletteMaxPerSection)
       setAutoMaskSensitiveInfo(s.autoMaskSensitiveInfo)
       setClipboardPiiProtection(s.clipboardPiiProtection)
       setLoading(false)
@@ -195,6 +197,14 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     if (capturingId === COMMAND_PALETTE_CAPTURE_ID) await cancelCapture()
     setCommandPaletteHotkey(UNSET_HOTKEY)
     await window.api.setCommandPaletteHotkey(UNSET_HOTKEY)
+  }
+
+  // コマンドパレットに一度に表示する件数(履歴・定型文・マクロそれぞれの区分ごと)の上限
+  const handleCommandPaletteMaxPerSectionChange = async (value: number): Promise<void> => {
+    if (!Number.isFinite(value)) return
+    setCommandPaletteMaxPerSection(value)
+    const settings = await window.api.setCommandPaletteMaxPerSection(value)
+    setCommandPaletteMaxPerSection(settings.commandPaletteMaxPerSection)
   }
 
   const addBinding = (): void => {
@@ -412,6 +422,34 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
                 </button>
               </div>
             )}
+          </div>
+        </div>
+
+        <div className="settings-item">
+          <div className="settings-item-row">
+            <span className="settings-item-label">
+              コマンドパレットの表示件数
+              <HelpIcon
+                text={
+                  'コマンドパレットに一度に表示する件数の上限です。履歴・定型文・マクロそれぞれの\n' +
+                  '区分ごとにこの件数まで表示します(例: 6件なら履歴6件+定型文6件+マクロ6件)。\n' +
+                  '固定指定した定型文・マクロがこの件数を超える場合、超えた分は未入力時の一覧には\n' +
+                  '表示されませんが、検索すれば見つけて選択できます。'
+                }
+              />
+            </span>
+            <div className="settings-item-control">
+              <input
+                type="number"
+                className="command-palette-max-input"
+                min={1}
+                max={30}
+                value={commandPaletteMaxPerSection}
+                onChange={(e) => setCommandPaletteMaxPerSection(Number(e.target.value))}
+                onBlur={(e) => handleCommandPaletteMaxPerSectionChange(Number(e.target.value))}
+              />
+              <span className="hint">件</span>
+            </div>
           </div>
         </div>
 

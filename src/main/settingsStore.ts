@@ -50,7 +50,17 @@ const DEFAULT_SETTINGS: AppSettings = {
   textExpansionEnabled: false,
   // keycode 57はuiohook-napiのUiohookKey.Space。commandPalette.tsに依存を追加しないよう
   // ここでは数値をそのまま持つ(hotkey.tsのformatComboLabelでも'Space'として表示される)
-  commandPaletteHotkey: { ctrl: true, shift: true, alt: false, meta: false, keycode: 57, label: 'Ctrl+Shift+Space' }
+  commandPaletteHotkey: { ctrl: true, shift: true, alt: false, meta: false, keycode: 57, label: 'Ctrl+Shift+Space' },
+  commandPaletteMaxPerSection: 6
+}
+
+// コマンドパレットの表示件数上限として許容する範囲。0や負数、極端に大きい値を防ぐ
+const COMMAND_PALETTE_MAX_PER_SECTION_MIN = 1
+const COMMAND_PALETTE_MAX_PER_SECTION_MAX = 30
+
+function clampCommandPaletteMaxPerSection(value: number): number {
+  const rounded = Math.round(value)
+  return Math.min(Math.max(rounded, COMMAND_PALETTE_MAX_PER_SECTION_MIN), COMMAND_PALETTE_MAX_PER_SECTION_MAX)
 }
 
 // v1.24.9までは単一のboolean(true/false)、v1.24.10〜v1.24.13まではカテゴリだけの
@@ -131,7 +141,11 @@ export async function getSettings(): Promise<AppSettings> {
       autoMaskSensitiveInfo: normalizeScreenshotMaskSettings(parsed.autoMaskSensitiveInfo),
       clipboardPiiProtection: normalizeClipboardPiiProtection(parsed.clipboardPiiProtection),
       textExpansionEnabled: parsed.textExpansionEnabled ?? DEFAULT_SETTINGS.textExpansionEnabled,
-      commandPaletteHotkey: normalizeHotkeyCombo(parsed.commandPaletteHotkey)
+      commandPaletteHotkey: normalizeHotkeyCombo(parsed.commandPaletteHotkey),
+      commandPaletteMaxPerSection:
+        typeof parsed.commandPaletteMaxPerSection === 'number' && Number.isFinite(parsed.commandPaletteMaxPerSection)
+          ? clampCommandPaletteMaxPerSection(parsed.commandPaletteMaxPerSection)
+          : DEFAULT_SETTINGS.commandPaletteMaxPerSection
     }
   } catch {
     return { ...DEFAULT_SETTINGS }
@@ -180,6 +194,13 @@ export async function setTextExpansionEnabled(enabled: boolean): Promise<AppSett
 export async function setCommandPaletteHotkey(hotkey: HotkeyCombo): Promise<AppSettings> {
   const settings = await getSettings()
   settings.commandPaletteHotkey = hotkey
+  await writeSettings(settings)
+  return settings
+}
+
+export async function setCommandPaletteMaxPerSection(value: number): Promise<AppSettings> {
+  const settings = await getSettings()
+  settings.commandPaletteMaxPerSection = clampCommandPaletteMaxPerSection(value)
   await writeSettings(settings)
   return settings
 }

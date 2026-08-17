@@ -408,6 +408,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     return settingsStore.setAutoMaskCategory(category, enabled)
   })
 
+  ipcMain.handle(IPC.setCommandPaletteMaxPerSection, async (_e, value: number) => {
+    return settingsStore.setCommandPaletteMaxPerSection(value)
+  })
+
   ipcMain.handle(IPC.setClipboardPiiProtectionEnabled, async (_e, enabled: boolean) => {
     return settingsStore.setClipboardPiiProtectionEnabled(enabled)
   })

@@ -172,6 +172,8 @@ const api = {
     ipcRenderer.invoke(IPC.setTextExpansionEnabled, enabled),
   setCommandPaletteHotkey: (hotkey: HotkeyCombo): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setCommandPaletteHotkey, hotkey),
+  setCommandPaletteMaxPerSection: (value: number): Promise<AppSettings> =>
+    ipcRenderer.invoke(IPC.setCommandPaletteMaxPerSection, value),
   setAutoMaskEnabled: (enabled: boolean): Promise<AppSettings> => ipcRenderer.invoke(IPC.setAutoMaskEnabled, enabled),
   setAutoMaskSensitiveInfo: (category: AutoMaskCategory, enabled: boolean): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setAutoMaskSensitiveInfo, category, enabled),

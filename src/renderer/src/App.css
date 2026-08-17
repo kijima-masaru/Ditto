@@ -1218,6 +1218,13 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   gap: 8px;
 }
 
+.command-palette-max-input {
+  width: 56px;
+  text-align: right;
+  padding: 5px 8px;
+  font-size: 13px;
+}
+
 /* ホットキー変更・アップデート確認・ログ表示ボタン。全項目でサイズを統一する。
    display:inline-flex + align-items:centerを明示し、フォーム要素のデフォルトの
    ベースライン基準の縦位置合わせに頼らず、確実にテキストを垂直中央に揃える */

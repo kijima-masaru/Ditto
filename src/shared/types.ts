@@ -293,6 +293,9 @@ export interface AppSettings {
    *  キーが未設定(keycode: null かつ修飾キーもすべてfalse)の場合は機能自体が無効になる。
    *  既定値はCtrl+Shift+Space */
   commandPaletteHotkey: HotkeyCombo
+  /** コマンドパレットに一度に表示する件数の上限(履歴・定型文・マクロそれぞれの区分ごと)。
+   *  既定値は6 */
+  commandPaletteMaxPerSection: number
 }
 
 /** 設定画面の「アップデートを確認」ボタンの状態表示に使う */
@@ -476,6 +479,7 @@ export const IPC = {
   // 横断検索できる別ウィンドウ)。検索対象データ自体は既存のlistClipboardHistory等を
   // パレット側から直接呼び出して取得するため、検索専用のIPCは持たない
   setCommandPaletteHotkey: 'settings:set-command-palette-hotkey',
+  setCommandPaletteMaxPerSection: 'settings:set-command-palette-max-per-section',
   commandPaletteShown: 'command-palette:shown', // main -> パレットウィンドウ push(表示するたびに検索状態をリセットさせる)
   hideCommandPalette: 'command-palette:hide', // パレットウィンドウ -> main
   commandPaletteInsertText: 'command-palette:insert-text', // パレットウィンドウ -> main(選択項目を元のウィンドウへ入力する。履歴用、生テキストをそのまま渡す)

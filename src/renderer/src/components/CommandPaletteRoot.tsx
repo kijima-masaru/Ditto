@@ -24,7 +24,7 @@ function sortByPinnedOrder<T extends { pinnedOrder?: number }>(items: T[]): T[] 
   return [...items].sort((a, b) => (a.pinnedOrder ?? Infinity) - (b.pinnedOrder ?? Infinity))
 }
 
-const MAX_PER_SECTION = 6
+const DEFAULT_MAX_PER_SECTION = 6
 
 function truncate(text: string, max = 60): string {
   const oneLine = text.replace(/\s+/g, ' ').trim()
@@ -49,25 +49,26 @@ export default function CommandPaletteRoot(): React.JSX.Element {
   const [history, setHistory] = useState<ClipboardHistoryEntry[]>([])
   const [templates, setTemplates] = useState<ClipboardTemplate[]>([])
   const [macros, setMacros] = useState<MacroCase[]>([])
+  const [maxPerSection, setMaxPerSection] = useState(DEFAULT_MAX_PER_SECTION)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const reload = useCallback(() => {
     Promise.all([
       window.api.listClipboardHistory(),
       window.api.listClipboardTemplates(),
-      window.api.listMacros()
-    ]).then(([h, t, m]) => {
+      window.api.listMacros(),
+      window.api.getSettings()
+    ]).then(([h, t, m, s]) => {
       setHistory(h)
       setTemplates(t)
       setMacros(m)
+      setMaxPerSection(s.commandPaletteMaxPerSection)
+      // メインウィンドウとは別のBrowserWindowなのでdata-theme属性を独自に引き継ぐ必要がある
+      document.documentElement.setAttribute('data-theme', s.theme)
     })
   }, [])
 
   useEffect(() => {
-    // メインウィンドウとは別のBrowserWindowなのでdata-theme属性を独自に引き継ぐ必要がある
-    window.api.getSettings().then((s) => {
-      document.documentElement.setAttribute('data-theme', s.theme)
-    })
     reload()
   }, [reload])
 
@@ -108,14 +109,14 @@ export default function CommandPaletteRoot(): React.JSX.Element {
     const historyResults: PaletteResult[] = isSearching
       ? history
           .filter((h) => h.type === 'text' && matches(query, h.text))
-          .slice(0, MAX_PER_SECTION)
+          .slice(0, maxPerSection)
           .map((h) => ({ kind: 'history', id: h.id, primary: truncate(h.text), insertText: h.text }))
       : []
 
     const templateResults: PaletteResult[] = isSearching
       ? templates
           .filter((t) => matches(query, t.label, t.text, t.trigger))
-          .slice(0, MAX_PER_SECTION)
+          .slice(0, maxPerSection)
           .map((t) => ({
             kind: 'template',
             id: t.id,
@@ -123,7 +124,7 @@ export default function CommandPaletteRoot(): React.JSX.Element {
             secondary: t.label ? truncate(t.text) : t.trigger,
             insertText: t.text
           }))
-      : templateDrag.orderedItems.slice(0, MAX_PER_SECTION).map((t) => ({
+      : templateDrag.orderedItems.slice(0, maxPerSection).map((t) => ({
           kind: 'template',
           id: t.id,
           primary: t.label || truncate(t.text),
@@ -135,9 +136,9 @@ export default function CommandPaletteRoot(): React.JSX.Element {
     const macroResults: PaletteResult[] = isSearching
       ? macros
           .filter((m) => matches(query, m.name))
-          .slice(0, MAX_PER_SECTION)
+          .slice(0, maxPerSection)
           .map((m) => ({ kind: 'macro', id: m.id, primary: m.name }))
-      : macroDrag.orderedItems.slice(0, MAX_PER_SECTION).map((m) => ({
+      : macroDrag.orderedItems.slice(0, maxPerSection).map((m) => ({
           kind: 'macro',
           id: m.id,
           primary: m.name,
@@ -146,7 +147,7 @@ export default function CommandPaletteRoot(): React.JSX.Element {
 
     return [...historyResults, ...templateResults, ...macroResults]
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSearching, query, history, templates, macros, templateDrag.orderedItems, macroDrag.orderedItems])
+  }, [isSearching, query, history, templates, macros, templateDrag.orderedItems, macroDrag.orderedItems, maxPerSection])
 
   useEffect(() => {
     setSelectedIndex((i) => Math.min(i, Math.max(results.length - 1, 0)))
