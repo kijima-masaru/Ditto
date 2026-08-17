@@ -53,6 +53,18 @@ function buildMoveSubmenu(flatFolders: { folder: ClipboardTemplateFolder; depth:
   return items
 }
 
+// 新規フォルダ/新規定型文の作成フォームの想定サイズ。右クリック位置がウィンドウ端に
+// 近い場合でもフォームがウィンドウからはみ出さないよう、この値をもとに位置を補正する
+const CREATE_FORM_WIDTH = 300
+const CREATE_FORM_HEIGHT = 420
+
+/** クリック座標をもとに、フォームがウィンドウからはみ出さない表示位置を計算する */
+function clampCreateFormPos(x: number, y: number): { x: number; y: number } {
+  const maxX = Math.max(8, window.innerWidth - CREATE_FORM_WIDTH - 8)
+  const maxY = Math.max(8, window.innerHeight - CREATE_FORM_HEIGHT - 8)
+  return { x: Math.min(Math.max(x, 8), maxX), y: Math.min(Math.max(y, 8), maxY) }
+}
+
 /** idの並び順を1つ上/下の要素と入れ替えた新しい配列を返す。端で動かせない場合はnull */
 function swapOrder(ids: string[], id: string, direction: 'up' | 'down'): string[] | null {
   const index = ids.indexOf(id)
@@ -92,6 +104,9 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null)
 
   const [creatingFolder, setCreatingFolder] = useState(false)
+  // 新規フォルダ/新規定型文の作成フォームを表示する位置。右クリックした場所の近くに
+  // 出すため、一覧の先頭など固定位置ではなくコンテキストメニューを開いた座標を保持する
+  const [createFormPos, setCreateFormPos] = useState({ x: 20, y: 20 })
   const [newFolderName, setNewFolderName] = useState('')
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
   const [renameFolderInput, setRenameFolderInput] = useState('')
@@ -337,6 +352,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
 
   const handleAreaContextMenu = async (e: React.MouseEvent): Promise<void> => {
     e.preventDefault()
+    const pos = clampCreateFormPos(e.clientX, e.clientY)
     const items: ContextMenuItem[] = []
     if (currentFolderId === null) {
       items.push({ id: 'create-folder', label: '新規フォルダを作成' })
@@ -351,9 +367,11 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
     }
     const result = await window.api.showContextMenu(items)
     if (result === 'create-folder') {
+      setCreateFormPos(pos)
       setCreatingFolder(true)
       setNewFolderName('')
     } else if (result === 'create-template') {
+      setCreateFormPos(pos)
       setCreating(true)
       setNewText('')
       setNewLabel('')
@@ -369,6 +387,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
   const handleFolderContextMenu = async (e: React.MouseEvent, f: ClipboardTemplateFolder): Promise<void> => {
     e.preventDefault()
     e.stopPropagation()
+    const pos = clampCreateFormPos(e.clientX, e.clientY)
     const ids = subfolders.map((sf) => sf.id)
     const index = ids.indexOf(f.id)
     const result = await window.api.showContextMenu([
@@ -382,6 +401,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
     ])
     if (result === 'create-template') {
       setCurrentFolderId(f.id)
+      setCreateFormPos(pos)
       setCreating(true)
       setNewText('')
       setNewLabel('')
@@ -540,7 +560,11 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
           )}
 
           {creatingFolder && (
-            <div className="row inline-form" onContextMenu={(e) => e.stopPropagation()}>
+            <div
+              className="row inline-form popover-form"
+              style={{ left: createFormPos.x, top: createFormPos.y }}
+              onContextMenu={(e) => e.stopPropagation()}
+            >
               <input
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
@@ -634,7 +658,11 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
           )}
 
           {creating && (
-            <div className="panel clip-edit-form" onContextMenu={(e) => e.stopPropagation()}>
+            <div
+              className="panel clip-edit-form popover-form"
+              style={{ left: createFormPos.x, top: createFormPos.y }}
+              onContextMenu={(e) => e.stopPropagation()}
+            >
               <div className="field">
                 <label>ラベル(任意)</label>
                 <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="例: 挨拶文" />

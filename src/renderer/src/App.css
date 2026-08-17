@@ -742,6 +742,8 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   padding: 3px 8px;
 }
 
+/* 定型文タブのフォルダ階層表示。「履歴」タブの2段目ヘッダーと同様に、
+   スクロール時も「履歴/定型文」タブの下に固定表示する */
 .breadcrumb {
   display: flex;
   flex-wrap: wrap;
@@ -749,6 +751,11 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   gap: 4px;
   margin-bottom: 10px;
   font-size: 12px;
+  position: sticky;
+  top: 42px;
+  background: var(--bg);
+  z-index: 2;
+  padding: 4px 0;
 }
 
 .breadcrumb button {
@@ -1119,6 +1126,17 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   flex-direction: column;
   gap: 10px;
   margin-bottom: 8px;
+}
+
+/* 新規フォルダ/新規定型文の作成フォーム。右クリックした位置に浮かせて表示するため、
+   一覧の並びから切り離しwindow内の絶対座標(left/topはインラインstyleで指定)に固定する */
+.popover-form {
+  position: fixed;
+  z-index: 20;
+  width: 300px;
+  max-height: 420px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px var(--shadow);
 }
 
 .inline-form {
