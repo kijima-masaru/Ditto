@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera'
 import type { RemoteClient } from '../lib/wsClient'
@@ -36,7 +36,18 @@ export default function PairingScreen({ client, errorMessage, onErrorDismiss }: 
   const [usbCode, setUsbCode] = useState('')
   const [deviceName, setDeviceName] = useState('Androidスマホ')
 
+  // client.startPairing()は「pairメッセージを送信し終えた」時点で解決するため、PC側に
+  // 拒否された場合はここでは何も起きない。拒否はApp.tsxがerrorMessageとして渡してくるので、
+  // それを合図に待機表示を解除する。これが無いと承認待ちスピナーから永久に戻れない
+  useEffect(() => {
+    if (errorMessage) {
+      setConnecting(false)
+      setScanned(false)
+    }
+  }, [errorMessage])
+
   const startPairing = async (targetHost: string, targetPort: number, targetCode: string): Promise<void> => {
+    onErrorDismiss() // 前回のエラーを消しておかないと、上のeffectが即座に待機表示を解除してしまう
     setConnecting(true)
     try {
       await client.startPairing(targetHost, targetPort, targetCode, deviceName.trim() || 'Androidスマホ')
