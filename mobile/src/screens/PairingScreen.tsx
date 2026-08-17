@@ -1,8 +1,18 @@
 import { useState } from 'react'
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native'
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera'
 import type { RemoteClient } from '../lib/wsClient'
 import type { PairingQrPayload } from '../lib/protocol'
+import { SCREEN_TOP_PADDING } from '../lib/layout'
 
 /**
  * ペアリング画面。QRコードスキャン(expo-camera)か、IP/ポート/コードの手入力の
@@ -18,6 +28,11 @@ interface Props {
 
 type Mode = 'scan' | 'manual'
 
+// PC側のペアリング済み一覧に出る名前なので、実際の端末に合った既定値にする
+const DEFAULT_DEVICE_NAME = Platform.OS === 'ios' ? 'iPhone' : 'Androidスマホ'
+const DEVICE_NAME_PLACEHOLDER =
+  Platform.OS === 'ios' ? '端末名(例: 自分のiPhone)' : '端末名(例: 自分のPixel)'
+
 export default function PairingScreen({ client, errorMessage, onErrorDismiss }: Props): React.JSX.Element {
   const [permission, requestPermission] = useCameraPermissions()
   const [mode, setMode] = useState<Mode>('scan')
@@ -26,12 +41,12 @@ export default function PairingScreen({ client, errorMessage, onErrorDismiss }: 
   const [host, setHost] = useState('')
   const [port, setPort] = useState('58211')
   const [code, setCode] = useState('')
-  const [deviceName, setDeviceName] = useState('Androidスマホ')
+  const [deviceName, setDeviceName] = useState(DEFAULT_DEVICE_NAME)
 
   const startPairing = async (targetHost: string, targetPort: number, targetCode: string): Promise<void> => {
     setConnecting(true)
     try {
-      await client.startPairing(targetHost, targetPort, targetCode, deviceName.trim() || 'Androidスマホ')
+      await client.startPairing(targetHost, targetPort, targetCode, deviceName.trim() || DEFAULT_DEVICE_NAME)
     } catch {
       setConnecting(false)
       setScanned(false)
@@ -63,12 +78,23 @@ export default function PairingScreen({ client, errorMessage, onErrorDismiss }: 
         <ActivityIndicator size="large" color="#5a4fe0" />
         <Text style={styles.statusText}>PC側の承認を待っています...</Text>
         <Text style={styles.hintText}>PC側で表示される確認ダイアログで「許可」を押してください</Text>
+        {Platform.OS === 'ios' && (
+          <Text style={styles.hintText}>
+            この端末で「ローカルネットワーク上のデバイスの検索」の確認が出た場合も「許可」を押してください
+          </Text>
+        )}
       </View>
     )
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      // iOSはキーボードが画面に重なり「連携する」ボタンを覆ってしまう(かつ数字キーパッドには
+      // 閉じるキーが無い)ため、キーボード分だけ画面を押し上げる。Androidはウィンドウ自体が
+      // リサイズされるので従来どおり何もしない
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <Text style={styles.title}>Ditto Remote</Text>
       <Text style={styles.subtitle}>PCとペアリングしてください</Text>
 
@@ -95,10 +121,12 @@ export default function PairingScreen({ client, errorMessage, onErrorDismiss }: 
 
       <TextInput
         style={styles.input}
-        placeholder="端末名(例: 自分のPixel)"
+        placeholder={DEVICE_NAME_PLACEHOLDER}
         placeholderTextColor="#888"
         value={deviceName}
         onChangeText={setDeviceName}
+        returnKeyType="done"
+        keyboardAppearance="dark"
       />
 
       {mode === 'scan' ? (
@@ -130,6 +158,9 @@ export default function PairingScreen({ client, errorMessage, onErrorDismiss }: 
             value={host}
             onChangeText={setHost}
             autoCapitalize="none"
+            keyboardType={Platform.OS === 'ios' ? 'numbers-and-punctuation' : 'default'}
+            returnKeyType="done"
+            keyboardAppearance="dark"
           />
           <TextInput
             style={styles.input}
@@ -138,6 +169,7 @@ export default function PairingScreen({ client, errorMessage, onErrorDismiss }: 
             value={port}
             onChangeText={setPort}
             keyboardType="number-pad"
+            keyboardAppearance="dark"
           />
           <TextInput
             style={styles.input}
@@ -147,18 +179,19 @@ export default function PairingScreen({ client, errorMessage, onErrorDismiss }: 
             onChangeText={setCode}
             keyboardType="number-pad"
             maxLength={6}
+            keyboardAppearance="dark"
           />
           <TouchableOpacity style={styles.primaryButton} onPress={handleManualSubmit}>
             <Text style={styles.primaryButtonText}>連携する</Text>
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </KeyboardAvoidingView>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#15161f', padding: 20, paddingTop: 60 },
+  container: { flex: 1, backgroundColor: '#15161f', padding: 20, paddingTop: SCREEN_TOP_PADDING },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 20 },
   title: { color: '#e9eaf3', fontSize: 24, fontWeight: '700' },
   subtitle: { color: '#9ba0bd', fontSize: 14, marginTop: 4, marginBottom: 16 },

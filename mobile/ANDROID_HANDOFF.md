@@ -8,6 +8,11 @@ PC側(Ditto本体)とAndroidアプリ(`mobile/`)は実装済みですが、**実
 - **PC側(`src/main/remoteServer.ts`ほか)**: 完全に実装・検証済み。`scripts/simulate-remote-client.mjs`(Node製のスマホ代替クライアント)を使い、ペアリング→暗号化された`listItems`/`triggerTemplate`/`triggerMacro`→デバイス失効まで、実際に動いているDittoアプリに対して一通り成功を確認済み。追加で、不正な6桁コードの拒否(`invalid-or-expired-code`)、同一IPからの5回失敗によるレート制限(`rate-limited`、60秒ブロック)も実機(このWindows PC)で再確認済み。
 - **Android側(`mobile/`)**: Expo(React Native, TypeScript)でペアリング画面・ホーム画面・暗号通信クライアントを実装済み。`npx tsc --noEmit`はエラーなし、`npm install`も完了済み(このリポジトリをcloneし直した場合は`node_modules`が無いので`cd mobile && npm install`が必要)。
 - **静的に確認済み(実機なしでの追加検証)**: `mobile/node_modules/expo-crypto`と`mobile/node_modules/expo-camera`にインストールされている実際の`.d.ts`型定義を直接読み、`mobile/src/lib/crypto.ts`(`AESEncryptionKey.import`/`AESSealedData.fromParts`/`aesEncryptAsync`/`aesDecryptAsync`)と`mobile/src/screens/PairingScreen.tsx`(`CameraView`の`barcodeScannerSettings`/`onBarcodeScanned`/`facing`、`useCameraPermissions`)の呼び出しシグネチャが実際のパッケージのAPIと完全に一致することを確認済み。ドキュメント調査ベースではなく、インストール済みパッケージの型定義と1行ずつ突き合わせた結果なので、API不一致による`decrypt-failed`等は考えにくい。
+- **iOS対応で共通コードに変更が入っている(2026-08-17)**: `mobile/IOS_HANDOFF.md`のとおりiOS固有の対応を入れた際、iOS/Android共通のファイルにも手が入っている。**Androidの挙動は変えていないつもりだが、検証時に違和感があればここを疑うこと**。
+  - `src/lib/wsClient.ts`: 接続処理を`openSocketOnce()`に切り出し、**iOSのみ**再試行+タイムアウトを行うようにした(`Platform.OS === 'ios'`で分岐。Androidは従来どおり1回で判定)。併せて、再試行で見捨てたソケットのcloseが生きている接続を切断扱いにしないようガードを追加した。
+  - `src/lib/secureStorage.ts`: `keychainAccessible`オプションを追加(**iOS専用オプションのためAndroidでは無視される**)。
+  - `src/screens/PairingScreen.tsx` / `HomeScreen.tsx`: 上端余白を`src/lib/layout.ts`の`SCREEN_TOP_PADDING`に切り出した(**Androidは従来と同じ60**)。ペアリング画面を`KeyboardAvoidingView`化したが`behavior`はiOSのみ指定(Androidは`undefined`=素のView相当)。既定の端末名は`Platform.OS`で分岐(Androidは従来どおり`Androidスマホ`)。
+  - `app.json`: 追加した設定は`ios`セクションと各config pluginのiOS向けpropsのみ。ただし`npm run android`が`expo start --android`から`expo run:android`に変わっている(`expo prebuild`実行時にExpoが自動で書き換えたもの。このメモが指示している`npx expo run:android`と同じ動作になる)。
 - **未検証(このPCでの最優先タスク)**: 上記の静的検証によりAPI不一致の可能性は低いと考えられるが、それでも物理Android端末/エミュレータ上での実際の動作(ネイティブモジュールの実行時挙動、パーミッションダイアログ、実際のLAN通信)はまだ一度も試していない。特に:
   1. `expo-crypto`のAES-GCM暗号化/復号が実機で実際に成功するか(型は合っているが、ネイティブ実装側の挙動は未確認)。
   2. `expo-camera`のQRスキャンが実機で実際に反応するか(SDKバージョンによっては無効化される不具合が報告されている。型は合っている)。
