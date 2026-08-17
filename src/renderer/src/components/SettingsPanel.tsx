@@ -149,6 +149,10 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     qrDataUrl: string
   } | null>(null)
   const [pairingLoading, setPairingLoading] = useState(false)
+  // ペアリングコードの残り有効時間(バー表示用)。pairingTotalMsはコード取得時点での
+  // 残り時間を初期値として固定し、以後はそれを100%とした割合を計算する基準にする
+  const [pairingRemainingMs, setPairingRemainingMs] = useState(0)
+  const [pairingTotalMs, setPairingTotalMs] = useState(0)
 
   useEffect(() => {
     window.api.getSettings().then((s) => {
@@ -241,8 +245,20 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     setPairingLoading(true)
     const info = await window.api.getRemotePairingInfo()
     setPairingInfo(info)
+    const remaining = Math.max(0, info.expiresAtMs - Date.now())
+    setPairingTotalMs(remaining)
+    setPairingRemainingMs(remaining)
     setPairingLoading(false)
   }
+
+  // モーダル表示中、コードの残り有効時間を一定間隔で更新してバーに反映する
+  useEffect(() => {
+    if (!showRemotePairing || !pairingInfo) return
+    const timer = setInterval(() => {
+      setPairingRemainingMs(Math.max(0, pairingInfo.expiresAtMs - Date.now()))
+    }, 250)
+    return () => clearInterval(timer)
+  }, [showRemotePairing, pairingInfo])
 
   const revokeRemoteDevice = async (deviceId: string): Promise<void> => {
     const devices = await window.api.revokeRemoteDevice(deviceId)
@@ -517,14 +533,14 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
               <HelpIcon
                 text={
                   '同一Wi-Fi内のAndroidアプリから、PC側の定型文入力・マクロ実行を\n' +
-                  'ワンタップで起動できます。「ペアリングコードを表示」でQRコード/数字コードを\n' +
+                  'ワンタップで起動できます。「接続」でQRコード/数字コードを\n' +
                   '表示し、スマホ側アプリで読み取ってください。連携にはPC側での明示的な\n' +
                   '許可(ダイアログ表示)が必要です。'
                 }
               />
             </span>
             <button className="settings-action-btn" onClick={openRemotePairing}>
-              ペアリングコードを表示
+              接続
             </button>
           </div>
 
@@ -793,12 +809,6 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
       {showRemotePairing && (
         <div className="debug-log-overlay" onClick={() => setShowRemotePairing(false)}>
           <div className="remote-pairing-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="debug-log-modal-header">
-              <span className="settings-subitem-label">Ditto Remote ペアリング</span>
-              <button className="debug-log-close-btn" onClick={() => setShowRemotePairing(false)} title="閉じる">
-                ×
-              </button>
-            </div>
             <div className="remote-pairing-modal-body">
               {pairingLoading || !pairingInfo ? (
                 <p className="hint">コードを生成しています...</p>
@@ -806,10 +816,18 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
                 <>
                   <img className="remote-pairing-qr" src={pairingInfo.qrDataUrl} alt="ペアリング用QRコード" />
                   <p className="remote-pairing-code">{pairingInfo.code}</p>
-                  <p className="hint">
-                    スマホアプリでQRコードを読み取るか、上記の数字コードを入力してください。
-                    2分間有効です。読み取り後、このPC側で表示される確認ダイアログで「許可」を
-                    押すと連携が完了します。
+                  <div className="remote-pairing-progress">
+                    <div
+                      className="remote-pairing-progress-fill"
+                      style={{
+                        width: `${pairingTotalMs > 0 ? Math.min(100, (pairingRemainingMs / pairingTotalMs) * 100) : 0}%`
+                      }}
+                    />
+                  </div>
+                  <p className="remote-pairing-hint">
+                    {'スマホアプリでQRコードを読み取るか、上記の数字コードを入力してください。\n' +
+                      '2分間有効です。\n' +
+                      '読み取り後、このPC側で表示される確認ダイアログで「許可」を押すと連携が完了します。'}
                   </p>
                 </>
               )}
