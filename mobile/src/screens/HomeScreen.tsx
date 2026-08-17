@@ -72,20 +72,22 @@ export default function HomeScreen({ client, status, templates, macros, onRefres
         </Pressable>
       </View>
 
-      {entries.length === 0 ? (
-        <View style={styles.empty}>
-          <Text style={styles.emptyText}>
-            PC側でコマンドパレットに固定した定型文・マクロがここに表示されます。{'\n'}
-            下に引っ張って更新できます。
-          </Text>
-        </View>
-      ) : (
-        <FlatList
+      {/* 空でもFlatListを描画する。Viewに差し替えるとRefreshControlごと消え、
+          空状態の案内文どおりに引っ張って更新することができなくなる */}
+      <FlatList
           data={entries}
           keyExtractor={(item) => `${item.kind}-${item.id}`}
           numColumns={3}
-          contentContainerStyle={styles.grid}
+          contentContainerStyle={[styles.grid, entries.length === 0 && styles.gridEmpty]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>
+                PC側でコマンドパレットに固定した定型文・マクロがここに表示されます。{'\n'}
+                下に引っ張って更新できます。
+              </Text>
+            </View>
+          }
           renderItem={({ item }) => (
             <Pressable
               style={[styles.cell, item.kind === 'macro' && styles.cellMacro, pendingId === item.id && styles.cellPending]}
@@ -102,7 +104,6 @@ export default function HomeScreen({ client, status, templates, macros, onRefres
             </Pressable>
           )}
         />
-      )}
     </View>
   )
 }
@@ -125,6 +126,7 @@ const styles = StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   emptyText: { color: '#9ba0bd', fontSize: 14, textAlign: 'center', lineHeight: 20 },
   grid: { paddingHorizontal: 8, paddingBottom: 24 },
+  gridEmpty: { flexGrow: 1 },
   cell: {
     flex: 1 / 3,
     margin: 6,

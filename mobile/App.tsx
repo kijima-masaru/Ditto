@@ -24,6 +24,21 @@ function pairRejectedMessage(reason: Extract<RemoteServerMessage, { type: 'pairR
   }
 }
 
+function authFailedMessage(reason: Extract<RemoteServerMessage, { type: 'authFailed' }>['reason']): string | null {
+  switch (reason) {
+    case 'unknown-device':
+    case 'revoked':
+      return 'PC側で連携が解除されました。もう一度ペアリングしてください。'
+    case 'decrypt-failed':
+      return '通信の復号に失敗しました。もう一度ペアリングしてください。'
+    case 'rate-limited':
+      return '試行回数が多すぎます。しばらく待ってから再度お試しください。'
+    case 'stale-counter':
+      // 認証情報自体は有効なので再ペアリングは不要。接続し直せば復帰する
+      return '接続順序の不整合を検出しました。アプリを再起動して接続し直してください。'
+  }
+}
+
 export default function App(): React.JSX.Element {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected')
   const [paired, setPaired] = useState(false)
@@ -55,6 +70,7 @@ export default function App(): React.JSX.Element {
         break
       case 'authFailed':
         setPaired(false)
+        setPairError(authFailedMessage(msg.reason))
         if (msg.reason === 'unknown-device' || msg.reason === 'revoked') {
           void c.forget()
         }
