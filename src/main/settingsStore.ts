@@ -12,6 +12,7 @@ import type {
   CommandPalettePerSectionCategory,
   HotkeyBinding,
   HotkeyCombo,
+  PairedDevice,
   ScreenshotMaskSettings,
   ThemeMode
 } from '../shared/types'
@@ -53,7 +54,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   // keycode 57はuiohook-napiのUiohookKey.Space。commandPalette.tsに依存を追加しないよう
   // ここでは数値をそのまま持つ(hotkey.tsのformatComboLabelでも'Space'として表示される)
   commandPaletteHotkey: { ctrl: true, shift: true, alt: false, meta: false, keycode: 57, label: 'Ctrl+Shift+Space' },
-  commandPaletteMaxPerSection: { history: 6, templates: 6, macros: 6 }
+  commandPaletteMaxPerSection: { history: 6, templates: 6, macros: 6 },
+  pairedDevices: []
 }
 
 // コマンドパレットの表示件数上限として許容する範囲。0や負数、極端に大きい値を防ぐ
@@ -172,7 +174,8 @@ export async function getSettings(): Promise<AppSettings> {
       clipboardPiiProtection: normalizeClipboardPiiProtection(parsed.clipboardPiiProtection),
       textExpansionEnabled: parsed.textExpansionEnabled ?? DEFAULT_SETTINGS.textExpansionEnabled,
       commandPaletteHotkey: normalizeHotkeyCombo(parsed.commandPaletteHotkey),
-      commandPaletteMaxPerSection: normalizeCommandPaletteMaxPerSection(parsed.commandPaletteMaxPerSection)
+      commandPaletteMaxPerSection: normalizeCommandPaletteMaxPerSection(parsed.commandPaletteMaxPerSection),
+      pairedDevices: Array.isArray(parsed.pairedDevices) ? parsed.pairedDevices : []
     }
   } catch {
     return { ...DEFAULT_SETTINGS }
@@ -186,6 +189,13 @@ async function writeSettings(settings: AppSettings): Promise<void> {
 export async function setHotkeyBindings(hotkeyBindings: HotkeyBinding[]): Promise<AppSettings> {
   const settings = await getSettings()
   settings.hotkeyBindings = hotkeyBindings
+  await writeSettings(settings)
+  return settings
+}
+
+export async function setPairedDevices(pairedDevices: PairedDevice[]): Promise<AppSettings> {
+  const settings = await getSettings()
+  settings.pairedDevices = pairedDevices
   await writeSettings(settings)
   return settings
 }

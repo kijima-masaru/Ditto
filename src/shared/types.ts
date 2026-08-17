@@ -296,6 +296,69 @@ export interface AppSettings {
   /** コマンドパレットに一度に表示する件数の上限。履歴・定型文・マクロそれぞれの区分ごとに
    *  個別に指定できる。既定値はいずれも6 */
   commandPaletteMaxPerSection: CommandPaletteMaxPerSection
+  /** Ditto Remote(スマホ連携)でペアリング済みのデバイス一覧 */
+  pairedDevices: PairedDevice[]
+}
+
+/**
+ * Ditto Remote: ペアリング済みデバイス(settings.jsonへ永続化)。
+ * AES-256-GCMのセッション鍵はデバイスごとの唯一の秘密であり、これを持っている
+ * (=暗号化メッセージを正しく復号できる)こと自体が認証を兼ねる。生の鍵は保存せず、
+ * Electronの`safeStorage`(OS DPAPI等)で暗号化した状態でのみ保存する
+ */
+export interface PairedDevice {
+  id: string
+  name: string
+  sessionKeyEncrypted: string
+  pairedAt: string
+  lastSeenAt: string | null
+}
+
+/**
+ * Ditto Remote: WebSocket(/ws)でやり取りするメッセージ。`pair`/`paired`/`pairPending`/
+ * `pairRejected`のみ平文で送受信し(セッション鍵がまだ確立していないため)、それ以外は
+ * すべてAES-256-GCMで暗号化した`EncryptedEnvelope`に包んで送受信する。envelopeの外側に
+ * `deviceId`を平文で持たせることで、サーバー側は復号を試みる前にどのデバイスの
+ * セッション鍵を使うべきか判別できる
+ */
+export interface EncryptedEnvelope {
+  deviceId: string
+  iv: string
+  tag: string
+  data: string
+}
+
+export type RemoteClientMessage =
+  | { v: 1; type: 'pair'; code: string; deviceName: string }
+  | { v: 1; type: 'auth'; counter: number }
+  | { v: 1; type: 'listItems'; counter: number }
+  | { v: 1; type: 'triggerTemplate'; templateId: string; requestId: string; counter: number }
+  | { v: 1; type: 'triggerMacro'; macroId: string; requestId: string; confirmed: true; counter: number }
+
+export type RemoteServerMessage =
+  | { v: 1; type: 'pairPending' }
+  | { v: 1; type: 'paired'; deviceId: string; sessionKey: string }
+  | {
+      v: 1
+      type: 'pairRejected'
+      reason: 'invalid-or-expired-code' | 'denied-by-user' | 'timeout' | 'rate-limited'
+    }
+  | { v: 1; type: 'authOk'; deviceName: string }
+  | { v: 1; type: 'authFailed'; reason: 'unknown-device' | 'decrypt-failed' | 'revoked' | 'rate-limited' }
+  | { v: 1; type: 'items'; templates: RemoteTemplateItem[]; macros: RemoteMacroItem[] }
+  | { v: 1; type: 'triggerResult'; requestId: string; ok: boolean; message?: string }
+  | { v: 1; type: 'error'; message: string }
+
+export interface RemoteTemplateItem {
+  id: string
+  label: string
+  preview: string
+}
+
+export interface RemoteMacroItem {
+  id: string
+  name: string
+  stepCount: number
 }
 
 /** コマンドパレットの区分ごとの表示件数上限 */
@@ -502,5 +565,12 @@ export const IPC = {
   setMacroPinned: 'macros:set-pinned',
   // コマンドパレット内でのピン留め項目同士の並び替え(フォルダ内並び順とは別管理)
   reorderPinnedClipboardTemplates: 'clipboard:reorder-pinned-templates',
-  reorderPinnedMacros: 'macros:reorder-pinned'
+  reorderPinnedMacros: 'macros:reorder-pinned',
+
+  // Ditto Remote(スマホからの定型文入力・マクロ実行のリモート操作)。実際の操作メッセージは
+  // WebSocket(remoteServer.ts)経由で、設定画面向けのペアリング管理のみIPCで行う
+  getRemotePairingInfo: 'remote:get-pairing-info',
+  listPairedRemoteDevices: 'remote:list-devices',
+  revokeRemoteDevice: 'remote:revoke-device',
+  remoteDeviceEvent: 'remote:device-event' // main -> renderer push(ペアリング成立/切断のたびに一覧再取得を促す)
 } as const

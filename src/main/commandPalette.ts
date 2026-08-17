@@ -7,6 +7,7 @@ import { ensureGlobalHookStarted, keepGlobalHookAlive } from './adapters/windowT
 import * as win32 from './win32'
 import * as settingsStore from './settingsStore'
 import { resolveTemplateText } from './templateVariables'
+import { injectText } from './textInjector'
 import { IPC, type HotkeyCombo } from '../shared/types'
 
 /**
@@ -115,15 +116,9 @@ function toggle(): void {
   else show()
 }
 
-// 1回のSendInputで送るUnicode文字数。長文を1回にまとめて送出すると、対象アプリの
-// メッセージループが処理しきれず一部の文字が欠落・入れ替わることがあるため、
-// 適度な塊に分けて少し間隔を空けながら送る(textExpansion.tsのexpand()と同じ対策)
-const TYPE_CHUNK_SIZE = 15
-
 /** パレットで選択した履歴/定型文のテキストを、パレットを開く前にフォーカスされていた
- *  ウィンドウへ直接入力する。文字化けを避けるためSendInput+KEYEVENTF_UNICODEで
- *  直接注入する(textExpansion.tsと同じ方式)。自プロセスのグローバルフックが自ら
- *  注入したイベントを拾ってしまう競合を避けるため、注入中はフックを一時停止する。
+ *  ウィンドウへ直接入力する。実際のキー入力注入(SendInput+KEYEVENTF_UNICODE)は
+ *  textInjector.tsに集約されており、Ditto Remoteからのリモート入力とも共有する。
  *  入力に加えてクリップボードにも同じ内容をコピーしておき、他の画面でも
  *  Ctrl+Vで貼り付けられるようにする */
 async function insertText(text: string): Promise<void> {
@@ -140,16 +135,7 @@ async function insertText(text: string): Promise<void> {
     }
   }
   await wait(150)
-  uIOhook.stop()
-  try {
-    for (let i = 0; i < text.length; i += TYPE_CHUNK_SIZE) {
-      win32.typeUnicodeText(text.slice(i, i + TYPE_CHUNK_SIZE))
-      await wait(20)
-    }
-    await wait(100)
-  } finally {
-    uIOhook.start()
-  }
+  await injectText(text)
 }
 
 /** パレットで選択した定型文を入力する。{{date}}/{{seq}}/{{clipboard}}等の動的変数を

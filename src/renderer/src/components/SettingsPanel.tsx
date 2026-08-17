@@ -10,6 +10,7 @@ import type {
   HotkeyBinding,
   HotkeyCombo,
   NavigationTarget,
+  PairedDevice,
   PreviewKind,
   ScreenshotMaskSettings,
   MacroFolder,
@@ -138,6 +139,17 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const [appVersion, setAppVersion] = useState('')
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null)
 
+  const [remoteDevices, setRemoteDevices] = useState<PairedDevice[]>([])
+  const [showRemotePairing, setShowRemotePairing] = useState(false)
+  const [pairingInfo, setPairingInfo] = useState<{
+    urls: string[]
+    port: number
+    code: string
+    expiresAtMs: number
+    qrDataUrl: string
+  } | null>(null)
+  const [pairingLoading, setPairingLoading] = useState(false)
+
   useEffect(() => {
     window.api.getSettings().then((s) => {
       setHotkeyBindings(s.hotkeyBindings)
@@ -153,6 +165,13 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     window.api.getAppVersion().then(setAppVersion)
     window.api.listClipboardTemplateFolders().then(setClipboardFolders)
     window.api.listFolders().then(setMacroFolders)
+    window.api.listPairedRemoteDevices().then(setRemoteDevices)
+  }, [])
+
+  useEffect(() => {
+    return window.api.onRemoteDeviceEvent(() => {
+      window.api.listPairedRemoteDevices().then(setRemoteDevices)
+    })
   }, [])
 
   useEffect(() => {
@@ -214,6 +233,20 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     setCommandPaletteMaxPerSection((prev) => ({ ...prev, [category]: value }))
     const settings = await window.api.setCommandPaletteMaxPerSection(category, value)
     setCommandPaletteMaxPerSection(settings.commandPaletteMaxPerSection)
+  }
+
+  // Ditto Remote(スマホ連携)。ペアリングコード表示・ペアリング済みデバイスの失効
+  const openRemotePairing = async (): Promise<void> => {
+    setShowRemotePairing(true)
+    setPairingLoading(true)
+    const info = await window.api.getRemotePairingInfo()
+    setPairingInfo(info)
+    setPairingLoading(false)
+  }
+
+  const revokeRemoteDevice = async (deviceId: string): Promise<void> => {
+    const devices = await window.api.revokeRemoteDevice(deviceId)
+    setRemoteDevices(devices)
   }
 
   const addBinding = (): void => {
@@ -479,6 +512,44 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
 
         <div className="settings-item">
           <div className="settings-item-row">
+            <span className="settings-item-label">
+              スマホ連携(Ditto Remote)
+              <HelpIcon
+                text={
+                  '同一Wi-Fi内のAndroidアプリから、PC側の定型文入力・マクロ実行を\n' +
+                  'ワンタップで起動できます。「ペアリングコードを表示」でQRコード/数字コードを\n' +
+                  '表示し、スマホ側アプリで読み取ってください。連携にはPC側での明示的な\n' +
+                  '許可(ダイアログ表示)が必要です。'
+                }
+              />
+            </span>
+            <button className="settings-action-btn" onClick={openRemotePairing}>
+              ペアリングコードを表示
+            </button>
+          </div>
+
+          {remoteDevices.length === 0 ? (
+            <p className="hint">ペアリング済みのデバイスはありません。</p>
+          ) : (
+            <div className="settings-subitem-list">
+              {remoteDevices.map((device) => (
+                <div className="settings-subitem-row" key={device.id}>
+                  <span className="settings-subitem-label">{device.name}</span>
+                  <button
+                    className="hotkey-binding-delete-btn"
+                    onClick={() => revokeRemoteDevice(device.id)}
+                    title="このデバイスの連携を解除"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="settings-item">
+          <div className="settings-item-row">
             <span className="settings-item-label">テーマカラー</span>
             <div className="settings-item-control">
               <span className="toggle-state-label">{theme === 'dark' ? 'ダーク' : 'ライト'}</span>
@@ -715,6 +786,34 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
                   ? 'ログはまだありません。'
                   : filteredLogText.trim() || '選択したレベルのログはありません。'}
             </pre>
+          </div>
+        </div>
+      )}
+
+      {showRemotePairing && (
+        <div className="debug-log-overlay" onClick={() => setShowRemotePairing(false)}>
+          <div className="remote-pairing-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="debug-log-modal-header">
+              <span className="settings-subitem-label">Ditto Remote ペアリング</span>
+              <button className="debug-log-close-btn" onClick={() => setShowRemotePairing(false)} title="閉じる">
+                ×
+              </button>
+            </div>
+            <div className="remote-pairing-modal-body">
+              {pairingLoading || !pairingInfo ? (
+                <p className="hint">コードを生成しています...</p>
+              ) : (
+                <>
+                  <img className="remote-pairing-qr" src={pairingInfo.qrDataUrl} alt="ペアリング用QRコード" />
+                  <p className="remote-pairing-code">{pairingInfo.code}</p>
+                  <p className="hint">
+                    スマホアプリでQRコードを読み取るか、上記の数字コードを入力してください。
+                    2分間有効です。読み取り後、このPC側で表示される確認ダイアログで「許可」を
+                    押すと連携が完了します。
+                  </p>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

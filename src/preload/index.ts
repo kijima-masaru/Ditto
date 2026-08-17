@@ -14,6 +14,7 @@ import {
   type HotkeyBinding,
   type HotkeyCombo,
   type NavigationTarget,
+  type PairedDevice,
   type RecordedStep,
   type RecordingFrameBounds,
   type RecordingFrameFooterAction,
@@ -279,6 +280,17 @@ const api = {
     const listener = (_e: unknown, macroId: string): void => cb(macroId)
     ipcRenderer.on(IPC.openMacroForPlayback, listener)
     return () => ipcRenderer.removeListener(IPC.openMacroForPlayback, listener)
+  },
+
+  getRemotePairingInfo: (): Promise<{ urls: string[]; port: number; code: string; expiresAtMs: number; qrDataUrl: string }> =>
+    ipcRenderer.invoke(IPC.getRemotePairingInfo),
+  listPairedRemoteDevices: (): Promise<PairedDevice[]> => ipcRenderer.invoke(IPC.listPairedRemoteDevices),
+  revokeRemoteDevice: (deviceId: string): Promise<PairedDevice[]> =>
+    ipcRenderer.invoke(IPC.revokeRemoteDevice, deviceId),
+  onRemoteDeviceEvent: (cb: () => void): (() => void) => {
+    const listener = (): void => cb()
+    ipcRenderer.on(IPC.remoteDeviceEvent, listener)
+    return () => ipcRenderer.removeListener(IPC.remoteDeviceEvent, listener)
   }
 }
 

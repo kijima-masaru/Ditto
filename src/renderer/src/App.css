@@ -1546,6 +1546,48 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   color: var(--text-secondary);
 }
 
+/* Ditto Remote(スマホ連携)のペアリングモーダル。debug-log-modalと同じ枠組みを使い、
+   中身だけQRコード+数字コード用に差し替える */
+.remote-pairing-modal {
+  margin: 10px auto;
+  max-width: 320px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 10px 28px var(--shadow);
+  overflow: hidden;
+}
+
+.remote-pairing-modal-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+  text-align: center;
+}
+
+.remote-pairing-qr {
+  width: 200px;
+  height: 200px;
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px;
+}
+
+.remote-pairing-code {
+  font-family: Consolas, 'SFMono-Regular', Menlo, monospace;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--text);
+  margin: 0;
+}
+
 /* スクリーンショット撮影後の確認・注釈編集画面。Ditto本体とは別のOSウィンドウとして
    PC画面いっぱいに最大化して表示するため、モーダルではなくページ全体のレイアウトにする */
 .screenshot-editor-page {

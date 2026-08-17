@@ -14,6 +14,8 @@ import { initPreviewWindows } from './previewWindow'
 import { initScreenshotEditorWindow } from './screenshotEditorWindow'
 import * as textExpansion from './textExpansion'
 import { initCommandPalette, setHotkey as setCommandPaletteHotkey } from './commandPalette'
+import { TargetManager } from './targetManager'
+import * as remoteServer from './remoteServer'
 import log from './logger'
 import { pruneOldLogs } from './debugLog'
 
@@ -40,6 +42,9 @@ let mainWindow: BrowserWindow | null = null
 // トレイに常駐させるため、ウィンドウを閉じても既定ではアプリを終了しない。
 // トレイメニューの「終了」からのみ本当に終了する。
 let isQuitting = false
+// Ditto Remote(スマホ連携)のローカルサーバー。before-quitで停止するためモジュール
+// スコープに保持する
+let remoteServerHandle: { stop(): void } | null = null
 
 // ウィンドウをマウスカーソル位置(中心が合うよう)に移動する。カーソルがいる
 // ディスプレイの作業領域からはみ出さないようクランプする
@@ -171,7 +176,8 @@ app.whenReady().then(async () => {
   })
 
   createWindow()
-  registerIpcHandlers(() => mainWindow)
+  const targetManager = new TargetManager()
+  registerIpcHandlers(() => mainWindow, targetManager)
   initPreviewWindows(() => mainWindow)
   initScreenshotEditorWindow(() => mainWindow)
 
@@ -198,6 +204,7 @@ app.whenReady().then(async () => {
   textExpansion.setEnabled(settings.textExpansionEnabled)
   initCommandPalette((macroId) => void openMacroForPlayback(macroId))
   setCommandPaletteHotkey(settings.commandPaletteHotkey)
+  remoteServerHandle = remoteServer.initRemoteServer(() => mainWindow, targetManager)
 
   // ウィンドウが閉じられていてもクリップボード履歴を記録し続けるため、常時監視する
   startClipboardWatcher((entry) => {
@@ -218,4 +225,5 @@ app.on('before-quit', () => {
   isQuitting = true
   recordingFrame.destroy()
   clickHighlight.stop()
+  remoteServerHandle?.stop()
 })

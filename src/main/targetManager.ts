@@ -27,6 +27,11 @@ function createAdapter(target: MacroTarget): TargetAdapter {
   return target.kind === 'web' ? createBrowserAdapter(target) : createDesktopAdapter(target)
 }
 
+/** UI操作(録画/再生)とリモート(Ditto Remote)からの再生要求が同時に走ると、
+ *  disposeAll()経由で片方のセッションが無警告に破棄されてしまうため、
+ *  この状態を見て早期にErrorを投げ、二重実行を防ぐ */
+export type TargetManagerStatus = 'idle' | 'recording' | 'playing'
+
 /**
  * 複数対象(WEBアプリ/デスクトップアプリ)の記録・再生を統括する。
  * どの対象が「アクティブ」か(=最前面表示され、操作を受け付けているか)を管理し、
@@ -43,9 +48,15 @@ export class TargetManager {
   private lastStepTime: number | null = null
   private onStepPush: ((step: RecordedStep) => void) | null = null
   private aborted = false
+  private status: TargetManagerStatus = 'idle'
+
+  getStatus(): TargetManagerStatus {
+    return this.status
+  }
 
   async startRecording(targets: MacroTarget[], onStep: (step: RecordedStep) => void): Promise<void> {
     if (targets.length === 0) throw new Error('対象が指定されていません')
+    if (this.status === 'playing') throw new Error('マクロ再生中は録画を開始できません')
     await this.disposeAll()
     this.recordedSteps = []
     this.lastStepTime = null
@@ -63,10 +74,12 @@ export class TargetManager {
       // 一部の対象だけ起動済みのまま残ると、最小化されたウィンドウが孤立して
       // ユーザーが操作できなくなるため、失敗時は必ず全て破棄する
       await this.disposeAll()
+      this.status = 'idle'
       throw err
     }
 
     this.recording = true
+    this.status = 'recording'
     await this.setActiveTarget(targets[0].id)
   }
 
@@ -107,10 +120,24 @@ export class TargetManager {
     this.recordedSteps = []
     this.onStepPush = null
     await this.disposeAll()
+    this.status = 'idle'
     return steps
   }
 
   async runPlayback(
+    macroCase: MacroCase,
+    onProgress: (progress: PlaybackProgress) => void
+  ): Promise<PlaybackResult> {
+    if (this.status !== 'idle') throw new Error('録画または再生中です')
+    this.status = 'playing'
+    try {
+      return await this.runPlaybackInner(macroCase, onProgress)
+    } finally {
+      this.status = 'idle'
+    }
+  }
+
+  private async runPlaybackInner(
     macroCase: MacroCase,
     onProgress: (progress: PlaybackProgress) => void
   ): Promise<PlaybackResult> {

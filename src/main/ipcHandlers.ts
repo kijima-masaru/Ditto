@@ -22,7 +22,7 @@ import {
   type MacroTarget
 } from '../shared/types'
 import * as store from './store'
-import { TargetManager } from './targetManager'
+import type { TargetManager } from './targetManager'
 import * as recordingFrame from './recordingFrame'
 import * as clickHighlight from './clickHighlight'
 import * as screenCapture from './screenCapture'
@@ -35,10 +35,9 @@ import { setHotkeyBindingsRuntime, startHotkeyCapture, cancelHotkeyCapture } fro
 import * as textExpansion from './textExpansion'
 import * as debugLog from './debugLog'
 import { checkForUpdates } from './autoUpdater'
+import * as remoteServer from './remoteServer'
 
-export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
-  const manager = new TargetManager()
-
+export function registerIpcHandlers(getWindow: () => BrowserWindow | null, manager: TargetManager): void {
   ipcMain.handle(IPC.listMacros, async () => store.listMacros())
 
   ipcMain.handle(IPC.saveMacro, async (_e, macroCase: Parameters<typeof store.saveMacro>[0]) =>
@@ -427,6 +426,14 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   ipcMain.handle(IPC.setClipboardPiiProtectionMode, async (_e, mode: ClipboardPiiProtectionMode) => {
     return settingsStore.setClipboardPiiProtectionMode(mode)
   })
+
+  // Ditto Remote(スマホ連携)。ペアリング情報の生成・デバイス管理はremoteServer.ts側で
+  // 状態を持つため、ここでは薄い窓口としてそちらの関数を呼ぶだけにする
+  ipcMain.handle(IPC.getRemotePairingInfo, async () => remoteServer.getPairingInfo())
+
+  ipcMain.handle(IPC.listPairedRemoteDevices, async () => remoteServer.listPairedDevices())
+
+  ipcMain.handle(IPC.revokeRemoteDevice, async (_e, deviceId: string) => remoteServer.revokeDevice(deviceId))
 
   ipcMain.handle(IPC.readDebugLog, async () => debugLog.readLog())
 
