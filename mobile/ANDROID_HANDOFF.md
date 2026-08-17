@@ -13,6 +13,11 @@ PC側(Ditto本体)とAndroidアプリ(`mobile/`)は実装済みですが、**実
   - `src/lib/secureStorage.ts`: `keychainAccessible`オプションを追加(**iOS専用オプションのためAndroidでは無視される**)。
   - `src/screens/PairingScreen.tsx` / `HomeScreen.tsx`: 上端余白を`src/lib/layout.ts`の`SCREEN_TOP_PADDING`に切り出した(**Androidは従来と同じ60**)。ペアリング画面を`KeyboardAvoidingView`化したが`behavior`はiOSのみ指定(Androidは`undefined`=素のView相当)。既定の端末名は`Platform.OS`で分岐(Androidは従来どおり`Androidスマホ`)。
   - `app.json`: 追加した設定は`ios`セクションと各config pluginのiOS向けpropsのみ。ただし`npm run android`が`expo start --android`から`expo run:android`に変わっている(`expo prebuild`実行時にExpoが自動で書き換えたもの。このメモが指示している`npx expo run:android`と同じ動作になる)。
+- **APK(ネイティブ)ビルドは一度も成功していない(2026-08-17時点)**: 「Androidバンドルの生成を確認済み」と書いてあるのは`expo export`によるJSバンドルの生成のことで、**Gradleを回してAPKを作る工程は未実施**。JSバンドル生成とネイティブプロジェクト生成(`expo prebuild --platform android`)までは通ることを確認済み。
+  - Linuxコンテナ上で実際にAPKビルドを試みたが、**組織のegressポリシーで`dl.google.com`が403で遮断されており断念した**。Android SDK本体も、`google()`Mavenリポジトリの実体(`maven.google.com`→`dl.google.com/dl/android/maven2`へリダイレクト)も同じホストにあるため、SDKの取得もAGP/androidxの依存解決もできない。`services.gradle.org`と`repo1.maven.org`は到達可能なので、遮断されているのはGoogleのホストだけ。
+  - **Android Studioのある通常のPC(Windows/Mac/Linuxいずれでも可)なら普通にビルドできるはず**なので、このPCでは`npx expo run:android`をそのまま実行すればよい。
+- **`android.package`を`com.kijimamasaru.dittoremote`に固定した**: `expo prebuild`が生成するapplication idを明示的にピン留めしたもの(iOS側の`bundleIdentifier`と対になる)。
+- **不要だった`RECORD_AUDIO`権限を落とした**: `expo-camera`のconfig pluginは`recordAudioAndroid`が既定`true`のため、指定しないと生成されるAndroidManifestに`android.permission.RECORD_AUDIO`が入る。このアプリはQRスキャンにしかカメラを使わず音声は一切扱わないため`recordAudioAndroid: false`を指定した。生成されるAndroidManifestから`RECORD_AUDIO`が消え、`CAMERA`と`INTERNET`だけになることを確認済み。
 - **未検証(このPCでの最優先タスク)**: 上記の静的検証によりAPI不一致の可能性は低いと考えられるが、それでも物理Android端末/エミュレータ上での実際の動作(ネイティブモジュールの実行時挙動、パーミッションダイアログ、実際のLAN通信)はまだ一度も試していない。特に:
   1. `expo-crypto`のAES-GCM暗号化/復号が実機で実際に成功するか(型は合っているが、ネイティブ実装側の挙動は未確認)。
   2. `expo-camera`のQRスキャンが実機で実際に反応するか(SDKバージョンによっては無効化される不具合が報告されている。型は合っている)。

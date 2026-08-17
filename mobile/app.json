@@ -22,7 +22,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.kijimamasaru.dittoremote"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -38,7 +39,8 @@
         "expo-camera",
         {
           "cameraPermission": "PCとのペアリング用QRコードを読み取るためにカメラを使用します。",
-          "microphonePermission": false
+          "microphonePermission": false,
+          "recordAudioAndroid": false
         }
       ]
     ]
