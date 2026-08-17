@@ -28,11 +28,11 @@ const DEFAULT_PORT = '58211'
 const USB_HOST = '127.0.0.1'
 /** PC側のペアリング済み一覧にそのまま表示されるため、プラットフォームに合った既定値にする */
 const DEFAULT_DEVICE_NAME = Platform.OS === 'ios' ? 'iPhone' : 'Androidスマホ'
+const DIRECT_TAB_LABEL = Platform.OS === 'ios' ? '直接接続' : 'USB接続'
 /**
  * 直結モードの案内文。Androidは`adb reverse`でトンネルを張る前提。iOSにはadb相当が
  * 無いため実機では使えず、シミュレータがMacのlocalhostへ直接到達できるケース専用になる
  */
-const DIRECT_TAB_LABEL = Platform.OS === 'ios' ? '直接接続' : 'USB接続'
 const DIRECT_HINT =
   Platform.OS === 'ios'
     ? 'iOSシミュレータからMac上のDittoへ直接接続する場合に使います。実機のiPhoneでは使えないため、「手入力」タブでPCのIPアドレスを指定してください。'
