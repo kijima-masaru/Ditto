@@ -361,12 +361,20 @@ export interface RemoteTemplateItem {
   id: string
   label: string
   preview: string
+  /**
+   * コマンドパレットにピン留めされているか。スマホ側は「まだボタンを設定していない
+   * ときの自動配置」にこれがtrueのものだけを使い、設定モードでの割り当て候補には
+   * 全件を出す(候補をピン留め済みに絞るとPC側でピン留めを敷き直す手間が残るため)
+   */
+  pinned: boolean
 }
 
 export interface RemoteMacroItem {
   id: string
   name: string
   stepCount: number
+  /** RemoteTemplateItem.pinned と同じ用途 */
+  pinned: boolean
 }
 
 /** コマンドパレットの区分ごとの表示件数上限 */

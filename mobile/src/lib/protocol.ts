@@ -34,12 +34,20 @@ export interface RemoteTemplateItem {
   id: string
   label: string
   preview: string
+  /**
+   * PC側のコマンドパレットにピン留めされているか。itemsはピン留めで絞らず全件届くので、
+   * 自動配置(gridLayout.tsのautoItems)ではこれがtrueのものだけを並べ、設定モードの
+   * 割り当て候補には全件を出す
+   */
+  pinned: boolean
 }
 
 export interface RemoteMacroItem {
   id: string
   name: string
   stepCount: number
+  /** RemoteTemplateItem.pinned と同じ用途 */
+  pinned: boolean
 }
 
 export interface EncryptedEnvelope {

@@ -266,12 +266,23 @@ async function handlePairMessageInner(
 
 async function buildItemsMessage(): Promise<Extract<RemoteServerMessage, { type: 'items' }>> {
   const [templates, macros] = await Promise.all([clipboardStore.listTemplates(), store.listMacros()])
-  const templateItems: RemoteTemplateItem[] = templates
-    .filter((t) => t.pinned)
-    .map((t) => ({ id: t.id, label: t.label || t.text.slice(0, 40), preview: t.text.slice(0, 80) }))
-  const macroItems: RemoteMacroItem[] = macros
-    .filter((m) => m.pinned)
-    .map((m) => ({ id: m.id, name: m.name, stepCount: m.steps.length }))
+  // ピン留めで絞り込まず全件返し、ピン留めかどうかはフラグで伝える。スマホ側は
+  // 設定モードでどのボタンに何を割り当てるかを自由に決められる作りなので、候補を
+  // ピン留め済みに絞るとPC側でピン留めを敷き直す手間が残ってしまう。
+  // 並び順は絞り込んでいた頃と同じ(listTemplates/listMacrosの順)なので、
+  // スマホ側の自動配置(pinnedのみを使う)の見え方は変わらない
+  const templateItems: RemoteTemplateItem[] = templates.map((t) => ({
+    id: t.id,
+    label: t.label || t.text.slice(0, 40),
+    preview: t.text.slice(0, 80),
+    pinned: t.pinned === true
+  }))
+  const macroItems: RemoteMacroItem[] = macros.map((m) => ({
+    id: m.id,
+    name: m.name,
+    stepCount: m.steps.length,
+    pinned: m.pinned === true
+  }))
   return { v: 1, type: 'items', templates: templateItems, macros: macroItems }
 }
 
