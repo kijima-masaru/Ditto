@@ -21,13 +21,16 @@ const isScreenshotEditorWindow = new URLSearchParams(window.location.search).get
 // コマンドパレット用の別ウィンドウも同様に?commandPalette=1で判別する(commandPalette.ts参照)
 const isCommandPaletteWindow = new URLSearchParams(window.location.search).get('commandPalette') === '1'
 
-type View =
-  | { name: 'target-select'; folderId: string | null }
-  | { name: 'recording'; targets: MacroTarget[]; folderId: string | null }
-  | { name: 'macro-list' }
-  | { name: 'playback'; macroCase: MacroCase }
-  | { name: 'clipboard' }
-  | { name: 'settings' }
+type View = { name: 'macro-list' } | { name: 'clipboard' } | { name: 'settings' }
+
+// マクロ作成(対象選択→記録)・再生は、それぞれ独立した画面ではなくマクロ一覧の上に
+// 重ねるモーダルとして表示する(一覧を表示し続けたまま行える)。作成の2ステップは
+// 同じモーダル内で内容を差し替えて進む(モーダルの開閉なしに遷移する)
+type MacroModal =
+  | { kind: 'select'; folderId: string | null }
+  | { kind: 'recording'; targets: MacroTarget[]; folderId: string | null }
+  | { kind: 'playback'; macroCase: MacroCase }
+  | null
 
 function formatElapsed(ms: number): string {
   const total = Math.floor(ms / 1000)
@@ -47,6 +50,7 @@ export default function App(): React.JSX.Element {
 
 function MainApp(): React.JSX.Element {
   const [view, setView] = useState<View>({ name: 'clipboard' })
+  const [macroModal, setMacroModal] = useState<MacroModal>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [theme, setTheme] = useState<ThemeMode>('light')
   // 設定画面で登録したホットキーの遷移先(タブ+フォルダ)へジャンプするための状態。
@@ -83,7 +87,10 @@ function MainApp(): React.JSX.Element {
     return window.api.onOpenMacroForPlayback((macroId) => {
       window.api.listMacros().then((list) => {
         const macroCase = list.find((m) => m.id === macroId)
-        if (macroCase) setView({ name: 'playback', macroCase })
+        if (macroCase) {
+          setView({ name: 'macro-list' })
+          setMacroModal({ kind: 'playback', macroCase })
+        }
       })
     })
   }, [])
@@ -112,20 +119,16 @@ function MainApp(): React.JSX.Element {
     return window.api.onScreenshotEditorSaved((path) => setScreenshotSavedPath(path))
   }, [])
 
-  const goHome = useCallback(() => {
+  // マクロ作成モーダルを閉じるだけ(一覧はモーダルの下に表示され続けているので画面遷移は不要)
+  const closeMacroModal = useCallback(() => {
+    setMacroModal(null)
+  }, [])
+
+  // 保存完了時は一覧を作り直した上でモーダルを閉じる
+  const closeMacroModalAndRefresh = useCallback(() => {
     setRefreshKey((k) => k + 1)
-    setView({ name: 'macro-list' })
+    setMacroModal(null)
   }, [])
-
-  // 再生画面の「戻る」は「マクロ」トップではなく、実行したマクロが実際に置かれている
-  // フォルダの階層へ戻す(ホットキーからの遷移と同じtopPageFolderId/topPageNonceの仕組みを使う)
-  const goToMacroFolder = useCallback((folderId: string | null) => {
-    setTopPageFolderId(folderId)
-    setTopPageNonce((n) => n + 1)
-    setView({ name: 'macro-list' })
-  }, [])
-
-  const isWorkspace = view.name === 'recording' || view.name === 'playback' || view.name === 'target-select'
 
   return (
     <div className="app">
@@ -206,26 +209,14 @@ function MainApp(): React.JSX.Element {
         </div>
       )}
 
-      <main className={`app-main${isWorkspace ? ' app-main--workspace' : ''}`}>
-        {view.name === 'target-select' && (
-          <TargetSelect onStart={(targets) => setView({ name: 'recording', targets, folderId: view.folderId })} />
-        )}
-
-        {view.name === 'recording' && (
-          <Recording targets={view.targets} folderId={view.folderId} onDone={goHome} onCancel={goHome} />
-        )}
-
+      <main className="app-main">
         {view.name === 'macro-list' && (
           <MacroList
             key={`${refreshKey}-${topPageNonce}`}
             initialFolderId={topPageFolderId}
-            onRun={(macroCase) => setView({ name: 'playback', macroCase })}
-            onCreateMacro={(folderId) => setView({ name: 'target-select', folderId })}
+            onRun={(macroCase) => setMacroModal({ kind: 'playback', macroCase })}
+            onCreateMacro={(folderId) => setMacroModal({ kind: 'select', folderId })}
           />
-        )}
-
-        {view.name === 'playback' && (
-          <Playback macroCase={view.macroCase} onBack={() => goToMacroFolder(view.macroCase.folderId ?? null)} />
         )}
 
         {view.name === 'clipboard' && (
@@ -238,6 +229,27 @@ function MainApp(): React.JSX.Element {
 
         {view.name === 'settings' && <SettingsPanel theme={theme} onThemeChange={setTheme} />}
       </main>
+
+      {macroModal && (
+        <div className="macro-modal-overlay" onClick={closeMacroModal}>
+          <div className="macro-modal" onClick={(e) => e.stopPropagation()}>
+            {macroModal.kind === 'select' && (
+              <TargetSelect
+                onStart={(targets) => setMacroModal({ kind: 'recording', targets, folderId: macroModal.folderId })}
+              />
+            )}
+            {macroModal.kind === 'recording' && (
+              <Recording
+                targets={macroModal.targets}
+                folderId={macroModal.folderId}
+                onDone={closeMacroModalAndRefresh}
+                onCancel={closeMacroModal}
+              />
+            )}
+            {macroModal.kind === 'playback' && <Playback macroCase={macroModal.macroCase} />}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

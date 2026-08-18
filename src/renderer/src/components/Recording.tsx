@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { RecordedStep, MacroTarget } from '../../../shared/types'
 import TargetTabs from './TargetTabs'
 import HelpIcon from './HelpIcon'
-import { PlayIcon, PauseIcon, StopIcon, BackIcon } from './icons'
+import { PlayIcon, PauseIcon, StopIcon } from './icons'
 
 const RECORDING_HELP_TEXT =
   '選択中のタブの対象がOS上で最前面に表示されます。\n' +
@@ -27,6 +27,11 @@ export default function Recording({ targets, folderId, onDone, onCancel }: Props
   const [activeTargetId, setActiveTargetId] = useState<string>(targets[0]?.id ?? '')
   const [paused, setPaused] = useState(false)
   const started = useRef(false)
+  const statusRef = useRef(status)
+
+  useEffect(() => {
+    statusRef.current = status
+  }, [status])
 
   useEffect(() => {
     if (started.current) return
@@ -40,6 +45,16 @@ export default function Recording({ targets, folderId, onDone, onCancel }: Props
       unsubscribe()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // モーダルが外側クリック等で閉じられ、このコンポーネントがアンマウントされた際に
+  // 記録中(または開始・停止処理中)のバックエンドセッションが残り続けないようにする
+  useEffect(() => {
+    return () => {
+      if (statusRef.current !== 'idle' && statusRef.current !== 'stopped') {
+        void window.api.stopRecording()
+      }
+    }
   }, [])
 
   // 「選択完了」の時点では記録を開始せず、このボタンを押した時点で初めて開始する
@@ -94,11 +109,11 @@ export default function Recording({ targets, folderId, onDone, onCancel }: Props
     onCancel()
   }
 
-  const handleCancel = async (): Promise<void> => {
-    try {
-      await window.api.stopRecording()
-    } finally {
-      onCancel()
+  const handlePlayPauseClick = async (): Promise<void> => {
+    if (status === 'idle') {
+      await handleStartRecording()
+    } else if (status === 'recording') {
+      await handleTogglePause()
     }
   }
 
@@ -117,8 +132,23 @@ export default function Recording({ targets, folderId, onDone, onCancel }: Props
           <HelpIcon text={RECORDING_HELP_TEXT} />
         </div>
         <div className="row">
-          <button className="icon-btn" onClick={handleCancel} title="戻る" aria-label="戻る">
-            <BackIcon />
+          <button
+            className="primary icon-btn"
+            onClick={handlePlayPauseClick}
+            disabled={status !== 'idle' && status !== 'recording'}
+            title={status === 'recording' && !paused ? '一時停止' : status === 'recording' ? '記録を再開' : '開始'}
+            aria-label={status === 'recording' && !paused ? '一時停止' : status === 'recording' ? '記録を再開' : '開始'}
+          >
+            {status === 'recording' && !paused ? <PauseIcon /> : <PlayIcon />}
+          </button>
+          <button
+            className="icon-btn"
+            onClick={handleStop}
+            disabled={status !== 'recording'}
+            title="録画を停止する"
+            aria-label="録画を停止する"
+          >
+            <StopIcon />
           </button>
           {status === 'starting' && <span className="status-line">起動中...</span>}
           {status === 'recording' && !paused && <span className="status-line">{`記録中 (${steps.length} ステップ)`}</span>}
@@ -144,38 +174,6 @@ export default function Recording({ targets, folderId, onDone, onCancel }: Props
             </li>
           ))}
         </ul>
-
-        {status !== 'stopped' && (
-          <div className="row">
-            <button
-              className="primary icon-btn"
-              onClick={handleStartRecording}
-              disabled={status !== 'idle'}
-              title="開始"
-              aria-label="開始"
-            >
-              <PlayIcon />
-            </button>
-            <button
-              className="icon-btn"
-              onClick={handleTogglePause}
-              disabled={status !== 'recording'}
-              title={paused ? '記録を再開' : '一時停止'}
-              aria-label={paused ? '記録を再開' : '一時停止'}
-            >
-              {paused ? <PlayIcon /> : <PauseIcon />}
-            </button>
-            <button
-              className="primary icon-btn"
-              onClick={handleStop}
-              disabled={status !== 'recording'}
-              title="録画を停止する"
-              aria-label="録画を停止する"
-            >
-              <StopIcon />
-            </button>
-          </div>
-        )}
 
         {status === 'stopped' && (
           <div className="row">

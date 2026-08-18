@@ -1,25 +1,39 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { PlaybackProgress, MacroCase } from '../../../shared/types'
 import TargetTabs from './TargetTabs'
 import HelpIcon from './HelpIcon'
-import { PlayIcon, PauseIcon, StopIcon, BackIcon } from './icons'
+import { PlayIcon, PauseIcon, StopIcon } from './icons'
 
 interface Props {
   macroCase: MacroCase
-  onBack: () => void
 }
 
 const PLAYBACK_HELP_TEXT =
   'アクティブなタブの対象がOS上で最前面に表示され、そのウィンドウに対して操作を再生します。\n' +
   '各操作の間隔は記録時に実際に空いていた時間をそのまま再現します。'
 
-export default function Playback({ macroCase, onBack }: Props): React.JSX.Element {
+export default function Playback({ macroCase }: Props): React.JSX.Element {
   const [phase, setPhase] = useState<'idle' | 'running' | 'done'>('idle')
   const [paused, setPaused] = useState(false)
   const [progress, setProgress] = useState<PlaybackProgress[]>([])
   const [activeTargetId, setActiveTargetId] = useState<string>(macroCase.targets[0]?.id ?? '')
   const [success, setSuccess] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const phaseRef = useRef(phase)
+
+  useEffect(() => {
+    phaseRef.current = phase
+  }, [phase])
+
+  // モーダルが外側クリック等で閉じられ、このコンポーネントがアンマウントされた際に
+  // 実行中の再生がバックグラウンドに残り続けないようにする
+  useEffect(() => {
+    return () => {
+      if (phaseRef.current === 'running') {
+        void window.api.abortPlayback()
+      }
+    }
+  }, [])
 
   const handleStart = async (): Promise<void> => {
     setPhase('running')
@@ -59,6 +73,14 @@ export default function Playback({ macroCase, onBack }: Props): React.JSX.Elemen
     await window.api.abortPlayback()
   }
 
+  const handlePlayPauseClick = async (): Promise<void> => {
+    if (phase === 'running') {
+      await handleTogglePause()
+    } else {
+      await handleStart()
+    }
+  }
+
   const labelFor = (id?: string): string => macroCase.targets.find((t) => t.id === id)?.label ?? ''
 
   return (
@@ -69,8 +91,22 @@ export default function Playback({ macroCase, onBack }: Props): React.JSX.Elemen
           <HelpIcon text={PLAYBACK_HELP_TEXT} />
         </div>
         <div className="row">
-          <button className="icon-btn" onClick={onBack} title="戻る" aria-label="戻る">
-            <BackIcon />
+          <button
+            className="primary icon-btn"
+            onClick={handlePlayPauseClick}
+            title={phase === 'running' && !paused ? '一時停止' : phase === 'done' ? 'もう一度実行' : '再生を開始'}
+            aria-label={phase === 'running' && !paused ? '一時停止' : phase === 'done' ? 'もう一度実行' : '再生を開始'}
+          >
+            {phase === 'running' && !paused ? <PauseIcon /> : <PlayIcon />}
+          </button>
+          <button
+            className="icon-btn"
+            onClick={handleStop}
+            disabled={phase !== 'running'}
+            title="停止"
+            aria-label="停止"
+          >
+            <StopIcon />
           </button>
           {phase === 'running' && <span className="status-line">実行中...</span>}
           {phase === 'done' && (
@@ -107,36 +143,6 @@ export default function Playback({ macroCase, onBack }: Props): React.JSX.Elemen
             )
           })}
         </ol>
-
-        <div className="row">
-          <button
-            className="primary icon-btn"
-            onClick={handleStart}
-            disabled={phase === 'running'}
-            title={phase === 'done' ? 'もう一度実行' : '再生を開始'}
-            aria-label={phase === 'done' ? 'もう一度実行' : '再生を開始'}
-          >
-            <PlayIcon />
-          </button>
-          <button
-            className="icon-btn"
-            onClick={handleTogglePause}
-            disabled={phase !== 'running'}
-            title={paused ? '再生を再開' : '一時停止'}
-            aria-label={paused ? '再生を再開' : '一時停止'}
-          >
-            {paused ? <PlayIcon /> : <PauseIcon />}
-          </button>
-          <button
-            className="icon-btn"
-            onClick={handleStop}
-            disabled={phase !== 'running'}
-            title="停止"
-            aria-label="停止"
-          >
-            <StopIcon />
-          </button>
-        </div>
       </div>
     </div>
   )
