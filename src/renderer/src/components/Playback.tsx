@@ -11,10 +11,8 @@ interface Props {
 
 const PLAYBACK_HELP_TEXT =
   'アクティブなタブの対象がOS上で最前面に表示され、そのウィンドウに対して操作を再生します。\n' +
-  '各操作の間隔は記録時に実際に空いていた時間をそのまま再現します。'
-
-const STOP_HOTKEY_HELP_TEXT =
-  'クリックしてキーを押すと、そのキーを「停止キー」として設定できます。\n' +
+  '各操作の間隔は記録時に実際に空いていた時間をそのまま再現します。\n' +
+  '停止キーの欄をクリックしてキーを押すと、そのキーを「停止キー」として設定できます。\n' +
   '設定した停止キーを押すと、対象アプリを操作中でもDittoに切り替えずに再生を停止できます。'
 
 export default function Playback({ macroCase }: Props): React.JSX.Element {
@@ -97,9 +95,6 @@ export default function Playback({ macroCase }: Props): React.JSX.Element {
       <div className="workspace-header">
         <div className="row">
           <TargetTabs targets={macroCase.targets} activeId={activeTargetId} onSelect={() => {}} disabled />
-          <HelpIcon text={PLAYBACK_HELP_TEXT} />
-        </div>
-        <div className="row">
           <button
             className="primary icon-btn"
             onClick={handlePlayPauseClick}
@@ -118,9 +113,8 @@ export default function Playback({ macroCase }: Props): React.JSX.Element {
               onClick={startCapture}
               onBlur={cancelCapture}
             />
-            <HelpIcon text={STOP_HOTKEY_HELP_TEXT} />
           </div>
-          {phase === 'running' && <span className="status-line">実行中...</span>}
+          <HelpIcon text={PLAYBACK_HELP_TEXT} />
           {phase === 'done' && !success && (
             <span className="status-line">{`失敗しました${error ? ` (${error})` : ''}`}</span>
           )}

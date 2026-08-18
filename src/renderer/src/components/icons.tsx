@@ -30,3 +30,7 @@ export function PauseIcon(): React.JSX.Element {
     </span>
   )
 }
+
+export function StopIcon(): React.JSX.Element {
+  return <span style={{ display: 'inline-block', width: 11, height: 11, background: 'currentColor', flexShrink: 0 }} />
+}
