@@ -24,6 +24,16 @@ const SEARCH_MARGIN = 15
  * 余裕を持たせた値にしている
  */
 const MATCH_THRESHOLD = 40
+/**
+ * 記録座標(ドリフト0)から1px離れるごとにスコアへ加えるペナルティ(論理px換算)。
+ * 実機検証(電話キーパッド)で、探索範囲を縮小した後もなお隣接ボタンの方が
+ * 数点だけスコアが良く誤って選ばれるケースが残った(例: 記録位置がスコア38.8、
+ * 15px離れた位置がスコア33で僅差により誤検出)。同一アプリでも数十点スコアが
+ * ばらつくほどテンプレートが不安定なため、スコア差だけで比較すると際どい勝負に
+ * なりやすい。記録座標に近いほど有利になるようペナルティを加えることで、
+ * 僅差での誤検出を防ぎつつ、明確に良い一致であれば従来通り補正できるようにする
+ */
+const DRIFT_PENALTY_PER_PX = 3
 
 interface Rect {
   x: number
@@ -146,30 +156,39 @@ export async function findTemplateMatch(
     const searchBitmap = searchImage.toBitmap()
     const templateBitmap = template.toBitmap()
 
+    // 記録座標(ドリフト0)に一致するoffsetを求めておく(画面端でsearchRectがクランプされている
+    // 場合を考慮し、marginPhysをそのまま使わずsearchRect.xからの相対位置で計算する)
+    const centerOx = centerPhysX - tSize.width / 2 - searchRect.x
+    const centerOy = centerPhysY - tSize.height / 2 - searchRect.y
+
     let bestScore = Infinity
+    let bestRawScore = Infinity
     let bestOffsetX = 0
     let bestOffsetY = 0
     const maxOffsetX = searchSize.width - tSize.width
     const maxOffsetY = searchSize.height - tSize.height
     for (let oy = 0; oy <= maxOffsetY; oy++) {
       for (let ox = 0; ox <= maxOffsetX; ox++) {
-        const score = averageChannelDiff(templateBitmap, tSize.width, tSize.height, searchBitmap, searchSize.width, ox, oy)
+        const rawScore = averageChannelDiff(templateBitmap, tSize.width, tSize.height, searchBitmap, searchSize.width, ox, oy)
+        const driftLogical = Math.hypot(ox - centerOx, oy - centerOy) / sf
+        const score = rawScore + driftLogical * DRIFT_PENALTY_PER_PX
         if (score < bestScore) {
           bestScore = score
+          bestRawScore = rawScore
           bestOffsetX = ox
           bestOffsetY = oy
         }
       }
     }
 
-    if (bestScore > MATCH_THRESHOLD) return null
+    if (bestRawScore > MATCH_THRESHOLD) return null
 
     const matchPhysX = searchRect.x + bestOffsetX + tSize.width / 2
     const matchPhysY = searchRect.y + bestOffsetY + tSize.height / 2
     return {
       x: display.bounds.x + matchPhysX / sf,
       y: display.bounds.y + matchPhysY / sf,
-      score: bestScore
+      score: bestRawScore
     }
   } catch (err) {
     log.warn('findTemplateMatch failed', err)
