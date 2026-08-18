@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import type { PlaybackProgress, MacroCase } from '../../../shared/types'
 import TargetTabs from './TargetTabs'
 import HelpIcon from './HelpIcon'
-import { PlayIcon, PauseIcon, StopIcon } from './icons'
+import { PlayIcon, PauseIcon } from './icons'
+import { useStopHotkey } from '../hooks/useStopHotkey'
 
 interface Props {
   macroCase: MacroCase
@@ -11,6 +12,10 @@ interface Props {
 const PLAYBACK_HELP_TEXT =
   'アクティブなタブの対象がOS上で最前面に表示され、そのウィンドウに対して操作を再生します。\n' +
   '各操作の間隔は記録時に実際に空いていた時間をそのまま再現します。'
+
+const STOP_HOTKEY_HELP_TEXT =
+  'クリックしてキーを押すと、そのキーを「停止キー」として設定できます。\n' +
+  '設定した停止キーを押すと、対象アプリを操作中でもDittoに切り替えずに再生を停止できます。'
 
 export default function Playback({ macroCase }: Props): React.JSX.Element {
   const [phase, setPhase] = useState<'idle' | 'running' | 'done'>('idle')
@@ -81,6 +86,10 @@ export default function Playback({ macroCase }: Props): React.JSX.Element {
     }
   }
 
+  const { stopHotkey, capturing, previewLabel, startCapture, cancelCapture } = useStopHotkey(() => {
+    if (phaseRef.current === 'running') void handleStop()
+  })
+
   const labelFor = (id?: string): string => macroCase.targets.find((t) => t.id === id)?.label ?? ''
 
   return (
@@ -99,20 +108,21 @@ export default function Playback({ macroCase }: Props): React.JSX.Element {
           >
             {phase === 'running' && !paused ? <PauseIcon /> : <PlayIcon />}
           </button>
-          <button
-            className="icon-btn"
-            onClick={handleStop}
-            disabled={phase !== 'running'}
-            title="停止"
-            aria-label="停止"
-          >
-            <StopIcon />
-          </button>
+          <div className="stop-hotkey-field">
+            <input
+              type="text"
+              readOnly
+              value={capturing ? previewLabel : (stopHotkey?.label ?? '')}
+              placeholder="停止キー"
+              className={capturing ? 'capturing' : ''}
+              onClick={startCapture}
+              onBlur={cancelCapture}
+            />
+            <HelpIcon text={STOP_HOTKEY_HELP_TEXT} />
+          </div>
           {phase === 'running' && <span className="status-line">実行中...</span>}
-          {phase === 'done' && (
-            <span className="status-line">
-              {success ? '完了しました' : `失敗しました${error ? ` (${error})` : ''}`}
-            </span>
+          {phase === 'done' && !success && (
+            <span className="status-line">{`失敗しました${error ? ` (${error})` : ''}`}</span>
           )}
         </div>
       </div>

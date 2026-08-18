@@ -459,6 +459,12 @@ export const IPC = {
   playbackSetPaused: 'playback:setPaused',
   playbackProgress: 'playback:progress', // main -> renderer push
 
+  // 記録・再生中に任意のキーを「停止キー」として設定できる。対象アプリにフォーカスが
+  // ある状態でも、Dittoへ切り替えずそのキー1つで停止できる(グローバルホットキー)
+  setStopHotkey: 'stop-hotkey:set',
+  clearStopHotkey: 'stop-hotkey:clear',
+  stopHotkeyTriggered: 'stop-hotkey:triggered', // main -> renderer push
+
   // 画面上に表示する録画範囲の枠(オーバーレイウィンドウ)
   recordingFrameShow: 'recording-frame:show',
   recordingFrameHide: 'recording-frame:hide',

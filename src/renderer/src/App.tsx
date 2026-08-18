@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MacroCase, MacroTarget, ThemeMode } from '../../shared/types'
 import TargetSelect from './components/TargetSelect'
 import Recording from './components/Recording'
@@ -130,6 +130,22 @@ function MainApp(): React.JSX.Element {
     setMacroModal(null)
   }, [])
 
+  // モーダルはヘッダー・フォルダ階層と被らないようにするため、overlay自体は
+  // それらの上には描画されない(macro-modal-overlayのtop offset参照)。そのため
+  // クリックを閉じる判定はoverlayのonClickだけでは不十分で、モーダル本体の外側を
+  // クリックした場合は document 側で拾って閉じる(ヘッダー・フォルダ階層クリックも含む)
+  const macroModalRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!macroModal) return
+    const handlePointerDown = (e: MouseEvent): void => {
+      if (macroModalRef.current && !macroModalRef.current.contains(e.target as Node)) {
+        closeMacroModal()
+      }
+    }
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
+  }, [macroModal, closeMacroModal])
+
   return (
     <div className="app">
       <video ref={recorder.videoRef} className="offscreen-media" muted playsInline />
@@ -231,8 +247,8 @@ function MainApp(): React.JSX.Element {
       </main>
 
       {macroModal && (
-        <div className="macro-modal-overlay" onClick={closeMacroModal}>
-          <div className="macro-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="macro-modal-overlay">
+          <div className="macro-modal" ref={macroModalRef}>
             {macroModal.kind === 'select' && (
               <TargetSelect
                 onStart={(targets) => setMacroModal({ kind: 'recording', targets, folderId: macroModal.folderId })}

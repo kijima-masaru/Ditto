@@ -17,6 +17,7 @@ import {
   type CommandPalettePerSectionCategory,
   type ContextMenuItem,
   type HotkeyBinding,
+  type HotkeyCombo,
   type ThemeMode,
   type MacroCase,
   type MacroTarget
@@ -31,7 +32,13 @@ import * as clipboardTransforms from './clipboardTransforms'
 import { resolveTemplateText } from './templateVariables'
 import * as settingsStore from './settingsStore'
 import * as targetHistoryStore from './targetHistoryStore'
-import { setHotkeyBindingsRuntime, startHotkeyCapture, cancelHotkeyCapture } from './hotkey'
+import {
+  setHotkeyBindingsRuntime,
+  startHotkeyCapture,
+  cancelHotkeyCapture,
+  setStopHotkey,
+  clearStopHotkey
+} from './hotkey'
 import * as textExpansion from './textExpansion'
 import * as debugLog from './debugLog'
 import { checkForUpdates } from './autoUpdater'
@@ -118,6 +125,17 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, manag
 
   ipcMain.handle(IPC.playbackSetPaused, async (_e, paused: boolean) => {
     manager.setPaused(paused)
+  })
+
+  ipcMain.handle(IPC.setStopHotkey, async (_e, combo: HotkeyCombo) => {
+    const w = getWindow()
+    setStopHotkey(combo, () => {
+      w?.webContents.send(IPC.stopHotkeyTriggered)
+    })
+  })
+
+  ipcMain.handle(IPC.clearStopHotkey, async () => {
+    clearStopHotkey()
   })
 
   ipcMain.handle(IPC.recordingFrameShow, async () => {

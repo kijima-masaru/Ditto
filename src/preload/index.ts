@@ -74,6 +74,13 @@ const api = {
   runPlayback: (macroCase: MacroCase): Promise<PlaybackResult> => ipcRenderer.invoke(IPC.playbackRun, macroCase),
   abortPlayback: (): Promise<void> => ipcRenderer.invoke(IPC.playbackAbort),
   setPlaybackPaused: (paused: boolean): Promise<void> => ipcRenderer.invoke(IPC.playbackSetPaused, paused),
+  setStopHotkey: (combo: HotkeyCombo): Promise<void> => ipcRenderer.invoke(IPC.setStopHotkey, combo),
+  clearStopHotkey: (): Promise<void> => ipcRenderer.invoke(IPC.clearStopHotkey),
+  onStopHotkeyTriggered: (cb: () => void): (() => void) => {
+    const listener = (): void => cb()
+    ipcRenderer.on(IPC.stopHotkeyTriggered, listener)
+    return () => ipcRenderer.removeListener(IPC.stopHotkeyTriggered, listener)
+  },
   onPlaybackProgress: (cb: (progress: PlaybackProgress) => void): (() => void) => {
     const listener = (_e: unknown, progress: PlaybackProgress): void => cb(progress)
     ipcRenderer.on(IPC.playbackProgress, listener)

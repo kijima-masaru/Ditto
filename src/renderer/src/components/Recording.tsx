@@ -2,12 +2,17 @@ import { useEffect, useRef, useState } from 'react'
 import type { RecordedStep, MacroTarget } from '../../../shared/types'
 import TargetTabs from './TargetTabs'
 import HelpIcon from './HelpIcon'
-import { PlayIcon, PauseIcon, StopIcon } from './icons'
+import { PlayIcon, PauseIcon } from './icons'
+import { useStopHotkey } from '../hooks/useStopHotkey'
 
 const RECORDING_HELP_TEXT =
   '選択中のタブの対象がOS上で最前面に表示されます。\n' +
   'そちらに切り替えて実際に操作してください。\n' +
-  'ログインなど記録に残したくない操作の間は、下の「一時停止」で記録を止められます。'
+  'ログインなど記録に残したくない操作の間は、上の一時停止アイコンで記録を止められます。'
+
+const STOP_HOTKEY_HELP_TEXT =
+  'クリックしてキーを押すと、そのキーを「停止キー」として設定できます。\n' +
+  '設定した停止キーを押すと、対象アプリを操作中でもDittoに切り替えずに記録を停止できます。'
 
 interface Props {
   targets: MacroTarget[]
@@ -117,6 +122,10 @@ export default function Recording({ targets, folderId, onDone, onCancel }: Props
     }
   }
 
+  const { stopHotkey, capturing, previewLabel, startCapture, cancelCapture } = useStopHotkey(() => {
+    if (statusRef.current === 'recording') void handleStop()
+  })
+
   const labelFor = (id: string): string => targets.find((t) => t.id === id)?.label ?? id
 
   return (
@@ -141,15 +150,18 @@ export default function Recording({ targets, folderId, onDone, onCancel }: Props
           >
             {status === 'recording' && !paused ? <PauseIcon /> : <PlayIcon />}
           </button>
-          <button
-            className="icon-btn"
-            onClick={handleStop}
-            disabled={status !== 'recording'}
-            title="録画を停止する"
-            aria-label="録画を停止する"
-          >
-            <StopIcon />
-          </button>
+          <div className="stop-hotkey-field">
+            <input
+              type="text"
+              readOnly
+              value={capturing ? previewLabel : (stopHotkey?.label ?? '')}
+              placeholder="停止キー"
+              className={capturing ? 'capturing' : ''}
+              onClick={startCapture}
+              onBlur={cancelCapture}
+            />
+            <HelpIcon text={STOP_HOTKEY_HELP_TEXT} />
+          </div>
           {status === 'starting' && <span className="status-line">起動中...</span>}
           {status === 'recording' && !paused && <span className="status-line">{`記録中 (${steps.length} ステップ)`}</span>}
           {status === 'recording' && paused && (

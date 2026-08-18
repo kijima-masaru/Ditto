@@ -5,6 +5,7 @@ import * as win32 from '../win32'
 import type { RecordedStep, TargetAdapter } from '../../shared/types'
 import { captureTemplateAt, findTemplateMatch } from '../imageMatch'
 import { resolveTemplateText } from '../templateVariables'
+import { matchesStopHotkey } from '../hotkey'
 import log from '../logger'
 
 // 1回のSendInputで送るUnicode文字数。commandPalette.ts/textExpansion.tsと同じ対策
@@ -162,6 +163,7 @@ export abstract class WindowTargetAdapterBase implements TargetAdapter {
 
   private handleKeydown = (e: UiohookKeyboardEvent): void => {
     if (!this.recording || !this.active) return
+    if (matchesStopHotkey(e)) return
     const key = KEYCODE_TO_NAME[e.keycode] ?? `Keycode${e.keycode}`
     this.emit({ type: 'keypress', key })
   }

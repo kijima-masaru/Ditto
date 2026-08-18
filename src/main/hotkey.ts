@@ -194,3 +194,65 @@ export function cancelHotkeyCapture(): void {
   captureCleanup?.()
   captureCleanup = null
 }
+
+// --- 記録・再生中の「停止キー」。ナビゲーション用ホットキー(runtimeBindings)とは別に、
+//     録画/再生モーダルを開いている間だけ有効な単一のグローバルホットキーとして扱う ---
+interface StopHotkeyState {
+  combo: HotkeyCombo
+  onTrigger: () => void
+  lastPressAt: number
+}
+let stopHotkeyState: StopHotkeyState | null = null
+const stopHeldKeycodes = new Set<number>()
+let stopHotkeyListenersAttached = false
+
+function handleStopHotkeyKeydown(e: UiohookKeyboardEvent): void {
+  if (!stopHotkeyState) return
+  const isRepeat = stopHeldKeycodes.has(e.keycode)
+  stopHeldKeycodes.add(e.keycode)
+  if (isRepeat) return
+
+  const { combo } = stopHotkeyState
+  if (combo.keycode === null) {
+    const watched = watchedKeycodesForModifierOnly(combo)
+    if (watched.length === 0 || !watched.includes(e.keycode)) return
+    const now = Date.now()
+    if (now - stopHotkeyState.lastPressAt <= DOUBLE_PRESS_WINDOW_MS) {
+      stopHotkeyState.lastPressAt = 0
+      stopHotkeyState.onTrigger()
+    } else {
+      stopHotkeyState.lastPressAt = now
+    }
+  } else if (e.keycode === combo.keycode && matchesModifiers(e, combo)) {
+    stopHotkeyState.onTrigger()
+  }
+}
+
+function handleStopHotkeyKeyup(e: UiohookKeyboardEvent): void {
+  stopHeldKeycodes.delete(e.keycode)
+}
+
+export function setStopHotkey(combo: HotkeyCombo, onTrigger: () => void): void {
+  stopHotkeyState = { combo, onTrigger, lastPressAt: 0 }
+  ensureGlobalHookStarted()
+  keepGlobalHookAlive()
+  if (!stopHotkeyListenersAttached) {
+    uIOhook.on('keydown', handleStopHotkeyKeydown)
+    uIOhook.on('keyup', handleStopHotkeyKeyup)
+    stopHotkeyListenersAttached = true
+  }
+}
+
+export function clearStopHotkey(): void {
+  stopHotkeyState = null
+}
+
+/** 記録中のキー入力ステップとして拾わないよう、停止キーと一致するイベントかを判定する
+ *  (対象アプリにフォーカスがある状態で停止キーを押すと、録画のキー入力フックにも
+ *  同じイベントが届いてしまうため) */
+export function matchesStopHotkey(e: UiohookKeyboardEvent): boolean {
+  if (!stopHotkeyState) return false
+  const { combo } = stopHotkeyState
+  if (combo.keycode === null) return false
+  return e.keycode === combo.keycode && matchesModifiers(e, combo)
+}

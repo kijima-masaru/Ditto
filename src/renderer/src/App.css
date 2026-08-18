@@ -1540,6 +1540,34 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   overflow: hidden;
 }
 
+/* 記録・再生モーダルの「停止キー」入力欄。クリックするとキャプチャモードになり、
+   次に押したキーがそのままグローバルホットキー(停止キー)として登録される。
+   対象アプリにフォーカスがある間でも、Dittoへ切り替えずそのキーで停止できる */
+.stop-hotkey-field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stop-hotkey-field input {
+  width: 84px;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 12px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.stop-hotkey-field input::placeholder {
+  color: var(--text-muted);
+}
+
+.stop-hotkey-field input.capturing {
+  border-color: var(--accent);
+  color: var(--accent);
+  cursor: default;
+}
+
 .debug-log-close-btn {
   flex-shrink: 0;
   width: 24px;
