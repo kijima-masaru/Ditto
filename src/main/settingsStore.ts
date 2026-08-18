@@ -55,7 +55,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   // ここでは数値をそのまま持つ(hotkey.tsのformatComboLabelでも'Space'として表示される)
   commandPaletteHotkey: { ctrl: true, shift: true, alt: false, meta: false, keycode: 57, label: 'Ctrl+Shift+Space' },
   commandPaletteMaxPerSection: { history: 6, templates: 6, macros: 6 },
-  pairedDevices: []
+  pairedDevices: [],
+  windowPosition: null
 }
 
 // コマンドパレットの表示件数上限として許容する範囲。0や負数、極端に大きい値を防ぐ
@@ -154,6 +155,13 @@ function normalizeHotkeyCombo(value: unknown): HotkeyCombo {
   }
 }
 
+function normalizeWindowPosition(value: unknown): { x: number; y: number } | null {
+  if (!value || typeof value !== 'object') return null
+  const v = value as Partial<{ x: number; y: number }>
+  if (typeof v.x !== 'number' || typeof v.y !== 'number' || !Number.isFinite(v.x) || !Number.isFinite(v.y)) return null
+  return { x: v.x, y: v.y }
+}
+
 function settingsFilePath(): string {
   return path.join(app.getPath('userData'), 'settings.json')
 }
@@ -175,7 +183,8 @@ export async function getSettings(): Promise<AppSettings> {
       textExpansionEnabled: parsed.textExpansionEnabled ?? DEFAULT_SETTINGS.textExpansionEnabled,
       commandPaletteHotkey: normalizeHotkeyCombo(parsed.commandPaletteHotkey),
       commandPaletteMaxPerSection: normalizeCommandPaletteMaxPerSection(parsed.commandPaletteMaxPerSection),
-      pairedDevices: Array.isArray(parsed.pairedDevices) ? parsed.pairedDevices : []
+      pairedDevices: Array.isArray(parsed.pairedDevices) ? parsed.pairedDevices : [],
+      windowPosition: normalizeWindowPosition(parsed.windowPosition)
     }
   } catch {
     return { ...DEFAULT_SETTINGS }
@@ -288,6 +297,13 @@ export async function setClipboardPiiProtectionCategory(
 export async function setClipboardPiiProtectionMode(mode: ClipboardPiiProtectionMode): Promise<AppSettings> {
   const settings = await getSettings()
   settings.clipboardPiiProtection = { ...settings.clipboardPiiProtection, mode }
+  await writeSettings(settings)
+  return settings
+}
+
+export async function setWindowPosition(position: { x: number; y: number } | null): Promise<AppSettings> {
+  const settings = await getSettings()
+  settings.windowPosition = position
   await writeSettings(settings)
   return settings
 }

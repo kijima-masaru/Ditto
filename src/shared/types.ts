@@ -298,6 +298,10 @@ export interface AppSettings {
   commandPaletteMaxPerSection: CommandPaletteMaxPerSection
   /** Ditto Remote(スマホ連携)でペアリング済みのデバイス一覧 */
   pairedDevices: PairedDevice[]
+  /** ウィンドウを最後に表示していた位置(画面左上基準のスクリーン座標)。ウィンドウを
+   *  移動するたびに自動保存され、次回起動時にこの位置で開く。未保存ならElectronの
+   *  既定(画面中央)で開く */
+  windowPosition: { x: number; y: number } | null
 }
 
 /**

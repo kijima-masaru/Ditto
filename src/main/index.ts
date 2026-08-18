@@ -57,6 +57,16 @@ function positionAtCursor(win: BrowserWindow): void {
   win.setPosition(x, y)
 }
 
+// 保存済みの座標(x, y)を、現在のディスプレイ構成の作業領域に収まるようクランプする。
+// 外部モニターを繋いだ状態で保存し、後で外した場合など、画面外に出てしまうのを防ぐ
+function clampPositionToWorkArea(x: number, y: number, width: number, height: number): { x: number; y: number } {
+  const { workArea } = screen.getDisplayNearestPoint({ x, y })
+  return {
+    x: Math.min(Math.max(x, workArea.x), workArea.x + workArea.width - width),
+    y: Math.min(Math.max(y, workArea.y), workArea.y + workArea.height - height)
+  }
+}
+
 async function showMainWindow(): Promise<BrowserWindow | undefined> {
   if (!mainWindow || mainWindow.isDestroyed()) {
     await createWindow()
@@ -132,8 +142,22 @@ async function createWindow(): Promise<void> {
     }
   })
 
+  if (settings.windowPosition) {
+    const [width, height] = mainWindow.getSize()
+    const { x, y } = clampPositionToWorkArea(settings.windowPosition.x, settings.windowPosition.y, width, height)
+    mainWindow.setPosition(x, y)
+  }
+
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
+  })
+
+  // ウィンドウを移動するたびに座標を自動保存し、次回起動時にその位置で開けるようにする。
+  // Windowsでは'moved'はドラッグ終了時に一度だけ発火するため、ドラッグ中の連続保存は起きない
+  mainWindow.on('moved', () => {
+    if (!mainWindow) return
+    const [x, y] = mainWindow.getPosition()
+    void settingsStore.setWindowPosition({ x, y })
   })
 
   // クリップボード履歴の監視等をバックグラウンドで継続するため、Xボタンでは終了せず
