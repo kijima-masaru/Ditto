@@ -348,6 +348,18 @@ button.primary {
   cursor: pointer;
 }
 
+/* 録画画面の操作ボタン(開始/一時停止/停止/キャンセル)。文言ではなくアイコンのみを
+   表示する正方形のボタン。titleでツールチップ・aria-labelで読み上げを補う */
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  flex-shrink: 0;
+}
+
 button.primary:disabled {
   background: var(--accent-disabled);
   cursor: not-allowed;

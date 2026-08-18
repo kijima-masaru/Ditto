@@ -68,13 +68,9 @@ export class DesktopTargetAdapter extends WindowTargetAdapterBase {
 
   async dispose(): Promise<void> {
     await this.stopRecording()
-    if (this.child) {
-      try {
-        this.child.kill()
-      } catch {
-        // 既に終了している場合は無視
-      }
-    }
+    // 対象アプリはdetached+unref()で起動しておりDitto本体から独立して動き続ける想定のため、
+    // ここでは終了させない(記録・再生の完了直後に対象アプリが勝手に閉じてしまう不具合の原因だった)。
+    // Ditto側の追跡情報を手放すだけに留める
     this.child = null
     this.hwnd = null
     this.windowId = null
