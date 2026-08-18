@@ -348,14 +348,17 @@ button.primary {
   cursor: pointer;
 }
 
-/* 録画画面の操作ボタン(開始/一時停止/停止/キャンセル)。文言ではなくアイコンのみを
-   表示する正方形のボタン。titleでツールチップ・aria-labelで読み上げを補う */
-.icon-btn {
+/* 録画・再生画面の操作ボタン(開始/一時停止/停止/戻る)。文言ではなくアイコンのみを
+   表示する正方形のボタン。titleでツールチップ・aria-labelで読み上げを補う。
+   button.primaryのpadding指定より詳細度を上げるため、"button.icon-btn"というセレクタで
+   上書きしている(".icon-btn"単体だとbutton.primary側のpaddingが優先されてしまい、
+   固定幅の中にpaddingが残ってアイコンが偏って見える不具合があった) */
+button.icon-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   flex-shrink: 0;
 }

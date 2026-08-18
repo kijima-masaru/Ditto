@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import type { RecordedStep, MacroTarget } from '../../../shared/types'
 import TargetTabs from './TargetTabs'
-import { PlayIcon, PauseIcon, StopIcon, CancelIcon } from './icons'
+import HelpIcon from './HelpIcon'
+import { PlayIcon, PauseIcon, StopIcon, BackIcon } from './icons'
+
+const RECORDING_HELP_TEXT =
+  '選択中のタブの対象がOS上で最前面に表示されます。\n' +
+  'そちらに切り替えて実際に操作してください。\n' +
+  'ログインなど記録に残したくない操作の間は、下の「一時停止」で記録を止められます。'
 
 interface Props {
   targets: MacroTarget[]
@@ -101,28 +107,30 @@ export default function Recording({ targets, folderId, onDone, onCancel }: Props
   return (
     <div className="workspace">
       <div className="workspace-header">
-        <TargetTabs
-          targets={targets}
-          activeId={activeTargetId}
-          onSelect={handleSelectTarget}
-          disabled={status !== 'idle' && status !== 'recording'}
-        />
-        <span className="status-line">
-          {status === 'idle' && '「開始」を押すと記録を開始します'}
-          {status === 'starting' && '起動中...'}
-          {status === 'recording' && !paused && `記録中 (${steps.length} ステップ)`}
-          {status === 'recording' && paused && `一時停止中 (${steps.length} ステップ)`}
-          {status === 'stopping' && '停止処理中...'}
-          {status === 'stopped' && `記録を停止しました (${steps.length} ステップ)`}
-          {status === 'error' && `録画の開始に失敗しました: ${error}`}
-        </span>
-      </div>
-
-      <div className="notice-panel">
-        <p>
-          選択中のタブの対象がOS上で最前面に表示されます。そちらに切り替えて実際に操作してください。
-          ログインなど記録に残したくない操作の間は、下の「一時停止」で記録を止められます。
-        </p>
+        <div className="row">
+          <TargetTabs
+            targets={targets}
+            activeId={activeTargetId}
+            onSelect={handleSelectTarget}
+            disabled={status !== 'idle' && status !== 'recording'}
+          />
+          <HelpIcon text={RECORDING_HELP_TEXT} />
+        </div>
+        <div className="row">
+          <button className="icon-btn" onClick={handleCancel} title="戻る" aria-label="戻る">
+            <BackIcon />
+          </button>
+          {status === 'starting' && <span className="status-line">起動中...</span>}
+          {status === 'recording' && !paused && <span className="status-line">{`記録中 (${steps.length} ステップ)`}</span>}
+          {status === 'recording' && paused && (
+            <span className="status-line">{`一時停止中 (${steps.length} ステップ)`}</span>
+          )}
+          {status === 'stopping' && <span className="status-line">停止処理中...</span>}
+          {status === 'stopped' && (
+            <span className="status-line">{`記録を停止しました (${steps.length} ステップ)`}</span>
+          )}
+          {status === 'error' && <span className="status-line">{`録画の開始に失敗しました: ${error}`}</span>}
+        </div>
       </div>
 
       <div className="workspace-footer">
@@ -165,9 +173,6 @@ export default function Recording({ targets, folderId, onDone, onCancel }: Props
               aria-label="録画を停止する"
             >
               <StopIcon />
-            </button>
-            <button className="icon-btn" onClick={handleCancel} title="キャンセル" aria-label="キャンセル">
-              <CancelIcon />
             </button>
           </div>
         )}
