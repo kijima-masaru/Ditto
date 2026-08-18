@@ -117,7 +117,7 @@ function MainApp(): React.JSX.Element {
     setView({ name: 'macro-list' })
   }, [])
 
-  const isWorkspace = view.name === 'recording' || view.name === 'playback'
+  const isWorkspace = view.name === 'recording' || view.name === 'playback' || view.name === 'target-select'
 
   return (
     <div className="app">

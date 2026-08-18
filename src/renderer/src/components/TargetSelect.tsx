@@ -74,7 +74,8 @@ export default function TargetSelect({ onStart }: Props): React.JSX.Element {
   const historyForKind = history.filter((h) => h.kind === kind)
 
   return (
-    <div className="panel">
+    <div className="target-select-workspace">
+      <div className="panel target-select-scroll">
       <div className="target-type-toggle">
         <button className={kind === 'web' ? 'active' : ''} onClick={() => setKind('web')}>
           WEBアプリ
@@ -157,10 +158,13 @@ export default function TargetSelect({ onStart }: Props): React.JSX.Element {
         ※記録・再生は画面座標 ベースのため、ウィンドウのサイズ・表示スケールが記録時と大きく異なると再生に失敗する場合があります。
       </p>
       <p className="hint">※ログイン操作など記録に残したくない部分は、録画画面の「一時停止」で記録を止められます。</p>
+      </div>
 
-      <button className="primary" disabled={targets.length === 0} onClick={() => onStart(targets)}>
-        録画を開始 ({targets.length}件の対象)
-      </button>
+      <div className="target-select-footer">
+        <button className="primary" disabled={targets.length === 0} onClick={() => onStart(targets)}>
+          選択完了
+        </button>
+      </div>
     </div>
   )
 }

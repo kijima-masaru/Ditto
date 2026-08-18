@@ -550,6 +550,27 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   gap: 10px;
 }
 
+/* 対象選択フォーム。フォーム部分だけをスクロールさせ、「選択完了」ボタンは
+   常に画面下部に固定表示する(フォームが長くなってもボタンを探してスクロールしなくて済むように) */
+.target-select-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 10px;
+}
+
+.target-select-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.target-select-footer {
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 .workspace-header {
   display: flex;
   align-items: center;

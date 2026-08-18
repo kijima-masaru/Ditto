@@ -11,7 +11,7 @@ interface Props {
 
 export default function Recording({ targets, folderId, onDone, onCancel }: Props): React.JSX.Element {
   const [steps, setSteps] = useState<RecordedStep[]>([])
-  const [status, setStatus] = useState<'starting' | 'recording' | 'stopping' | 'stopped' | 'error'>('starting')
+  const [status, setStatus] = useState<'idle' | 'starting' | 'recording' | 'stopping' | 'stopped' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
   const [macroName, setMacroName] = useState('')
   const [nameError, setNameError] = useState(false)
@@ -29,21 +29,23 @@ export default function Recording({ targets, folderId, onDone, onCancel }: Props
       setSteps((prev) => [...prev, step])
     })
 
-    void (async () => {
-      try {
-        await window.api.startRecording(targets)
-        setStatus('recording')
-      } catch (e) {
-        setStatus('error')
-        setError((e as Error).message)
-      }
-    })()
-
     return () => {
       unsubscribe()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // 「選択完了」の時点では記録を開始せず、このボタンを押した時点で初めて開始する
+  const handleStartRecording = async (): Promise<void> => {
+    setStatus('starting')
+    try {
+      await window.api.startRecording(targets)
+      setStatus('recording')
+    } catch (e) {
+      setStatus('error')
+      setError((e as Error).message)
+    }
+  }
 
   const handleSelectTarget = async (id: string): Promise<void> => {
     setActiveTargetId(id)
@@ -102,9 +104,10 @@ export default function Recording({ targets, folderId, onDone, onCancel }: Props
           targets={targets}
           activeId={activeTargetId}
           onSelect={handleSelectTarget}
-          disabled={status !== 'recording'}
+          disabled={status !== 'idle' && status !== 'recording'}
         />
         <span className="status-line">
+          {status === 'idle' && '「開始」を押すと記録を開始します'}
           {status === 'starting' && '起動中...'}
           {status === 'recording' && !paused && `記録中 (${steps.length} ステップ)`}
           {status === 'recording' && paused && `一時停止中 (${steps.length} ステップ)`}
@@ -135,6 +138,9 @@ export default function Recording({ targets, folderId, onDone, onCancel }: Props
 
         {status !== 'stopped' && (
           <div className="row">
+            <button className="primary" onClick={handleStartRecording} disabled={status !== 'idle'}>
+              開始
+            </button>
             <button onClick={handleTogglePause} disabled={status !== 'recording'}>
               {paused ? '記録を再開' : '一時停止'}
             </button>
