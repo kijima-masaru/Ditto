@@ -456,6 +456,7 @@ export const IPC = {
 
   playbackRun: 'playback:run',
   playbackAbort: 'playback:abort',
+  playbackSetPaused: 'playback:setPaused',
   playbackProgress: 'playback:progress', // main -> renderer push
 
   // 画面上に表示する録画範囲の枠(オーバーレイウィンドウ)

@@ -117,6 +117,14 @@ function MainApp(): React.JSX.Element {
     setView({ name: 'macro-list' })
   }, [])
 
+  // 再生画面の「戻る」は「マクロ」トップではなく、実行したマクロが実際に置かれている
+  // フォルダの階層へ戻す(ホットキーからの遷移と同じtopPageFolderId/topPageNonceの仕組みを使う)
+  const goToMacroFolder = useCallback((folderId: string | null) => {
+    setTopPageFolderId(folderId)
+    setTopPageNonce((n) => n + 1)
+    setView({ name: 'macro-list' })
+  }, [])
+
   const isWorkspace = view.name === 'recording' || view.name === 'playback' || view.name === 'target-select'
 
   return (
@@ -216,7 +224,9 @@ function MainApp(): React.JSX.Element {
           />
         )}
 
-        {view.name === 'playback' && <Playback macroCase={view.macroCase} onDone={goHome} />}
+        {view.name === 'playback' && (
+          <Playback macroCase={view.macroCase} onBack={() => goToMacroFolder(view.macroCase.folderId ?? null)} />
+        )}
 
         {view.name === 'clipboard' && (
           <ClipboardPanel

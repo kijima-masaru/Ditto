@@ -116,6 +116,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, manag
     manager.abort()
   })
 
+  ipcMain.handle(IPC.playbackSetPaused, async (_e, paused: boolean) => {
+    manager.setPaused(paused)
+  })
+
   ipcMain.handle(IPC.recordingFrameShow, async () => {
     recordingFrame.show()
   })

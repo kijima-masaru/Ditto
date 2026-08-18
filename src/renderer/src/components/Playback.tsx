@@ -1,15 +1,22 @@
 import { useEffect, useState } from 'react'
 import type { PlaybackProgress, MacroCase, ClipboardTemplate } from '../../../shared/types'
 import TargetTabs from './TargetTabs'
+import HelpIcon from './HelpIcon'
+import { PlayIcon, PauseIcon, StopIcon, BackIcon } from './icons'
 
 interface Props {
   macroCase: MacroCase
-  onDone: () => void
+  onBack: () => void
 }
 
-export default function Playback({ macroCase: initialMacroCase, onDone }: Props): React.JSX.Element {
+const PLAYBACK_HELP_TEXT =
+  'アクティブなタブの対象がOS上で最前面に表示され、そのウィンドウに対して操作を再生します。\n' +
+  '各操作の間隔は記録時に実際に空いていた時間をそのまま再現します。'
+
+export default function Playback({ macroCase: initialMacroCase, onBack }: Props): React.JSX.Element {
   const [macroCase, setMacroCase] = useState<MacroCase>(initialMacroCase)
   const [phase, setPhase] = useState<'idle' | 'running' | 'done'>('idle')
+  const [paused, setPaused] = useState(false)
   const [progress, setProgress] = useState<PlaybackProgress[]>([])
   const [activeTargetId, setActiveTargetId] = useState<string>(macroCase.targets[0]?.id ?? '')
   const [success, setSuccess] = useState<boolean | null>(null)
@@ -47,6 +54,7 @@ export default function Playback({ macroCase: initialMacroCase, onDone }: Props)
 
   const handleStart = async (): Promise<void> => {
     setPhase('running')
+    setPaused(false)
     setProgress([])
     setError(null)
 
@@ -67,8 +75,19 @@ export default function Playback({ macroCase: initialMacroCase, onDone }: Props)
       setSuccess(false)
     } finally {
       setPhase('done')
+      setPaused(false)
       unsubscribe()
     }
+  }
+
+  const handleTogglePause = async (): Promise<void> => {
+    const next = !paused
+    setPaused(next)
+    await window.api.setPlaybackPaused(next)
+  }
+
+  const handleStop = async (): Promise<void> => {
+    await window.api.abortPlayback()
   }
 
   const labelFor = (id?: string): string => macroCase.targets.find((t) => t.id === id)?.label ?? ''
@@ -76,13 +95,14 @@ export default function Playback({ macroCase: initialMacroCase, onDone }: Props)
   return (
     <div className="workspace">
       <div className="workspace-header">
-        <TargetTabs targets={macroCase.targets} activeId={activeTargetId} onSelect={() => {}} disabled />
         <div className="row">
-          {(phase === 'idle' || phase === 'done') && (
-            <button className="primary" onClick={handleStart}>
-              {phase === 'done' ? 'もう一度実行' : '再生を開始'}
-            </button>
-          )}
+          <TargetTabs targets={macroCase.targets} activeId={activeTargetId} onSelect={() => {}} disabled />
+          <HelpIcon text={PLAYBACK_HELP_TEXT} />
+        </div>
+        <div className="row">
+          <button className="icon-btn" onClick={onBack} title="戻る" aria-label="戻る">
+            <BackIcon />
+          </button>
           {phase === 'running' && <span className="status-line">実行中...</span>}
           {phase === 'done' && (
             <span className="status-line">
@@ -90,13 +110,6 @@ export default function Playback({ macroCase: initialMacroCase, onDone }: Props)
             </span>
           )}
         </div>
-      </div>
-
-      <div className="notice-panel">
-        <p>
-          アクティブなタブの対象がOS上で最前面に表示され、そのウィンドウに対して操作を再生します。
-          各操作の間隔は記録時に実際に空いていた時間をそのまま再現します。
-        </p>
       </div>
 
       <div className="workspace-footer">
@@ -154,9 +167,35 @@ export default function Playback({ macroCase: initialMacroCase, onDone }: Props)
           </div>
         )}
 
-        <button className="primary" onClick={onDone}>
-          マクロに戻る
-        </button>
+        <div className="row">
+          <button
+            className="primary icon-btn"
+            onClick={handleStart}
+            disabled={phase === 'running'}
+            title={phase === 'done' ? 'もう一度実行' : '再生を開始'}
+            aria-label={phase === 'done' ? 'もう一度実行' : '再生を開始'}
+          >
+            <PlayIcon />
+          </button>
+          <button
+            className="icon-btn"
+            onClick={handleTogglePause}
+            disabled={phase !== 'running'}
+            title={paused ? '再生を再開' : '一時停止'}
+            aria-label={paused ? '再生を再開' : '一時停止'}
+          >
+            {paused ? <PlayIcon /> : <PauseIcon />}
+          </button>
+          <button
+            className="icon-btn"
+            onClick={handleStop}
+            disabled={phase !== 'running'}
+            title="停止"
+            aria-label="停止"
+          >
+            <StopIcon />
+          </button>
+        </div>
       </div>
     </div>
   )

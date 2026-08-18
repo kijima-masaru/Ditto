@@ -23,6 +23,13 @@ async function interruptibleSleep(ms: number, isAborted: () => boolean): Promise
   }
 }
 
+/** 再生の一時停止中は、次のステップに進む前でここに留まる */
+async function waitWhilePaused(isPaused: () => boolean, isAborted: () => boolean): Promise<void> {
+  while (isPaused() && !isAborted()) {
+    await sleep(100)
+  }
+}
+
 function createAdapter(target: MacroTarget): TargetAdapter {
   return target.kind === 'web' ? createBrowserAdapter(target) : createDesktopAdapter(target)
 }
@@ -143,6 +150,7 @@ export class TargetManager {
   ): Promise<PlaybackResult> {
     await this.disposeAll()
     this.aborted = false
+    this.paused = false
     const log: PlaybackProgress[] = []
     const push = (p: PlaybackProgress): void => {
       log.push(p)
@@ -169,6 +177,7 @@ export class TargetManager {
 
     let success = true
     for (let i = 0; i < macroCase.steps.length; i++) {
+      await waitWhilePaused(() => this.paused, () => this.aborted)
       if (this.aborted) {
         push({ stepIndex: i, status: 'skipped', message: '中断されました' })
         success = false
