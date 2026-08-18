@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow, screen } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { IPC, type NavigationTarget } from '../shared/types'
+import { DITTO_REMOTE_ENABLED } from '../shared/featureFlags'
 import { registerIpcHandlers } from './ipcHandlers'
 import { setupAutoUpdater, checkForUpdates } from './autoUpdater'
 import * as recordingFrame from './recordingFrame'
@@ -228,7 +229,9 @@ app.whenReady().then(async () => {
   textExpansion.setEnabled(settings.textExpansionEnabled)
   initCommandPalette((macroId) => void openMacroForPlayback(macroId))
   setCommandPaletteHotkey(settings.commandPaletteHotkey)
-  remoteServerHandle = remoteServer.initRemoteServer(() => mainWindow, targetManager)
+  if (DITTO_REMOTE_ENABLED) {
+    remoteServerHandle = remoteServer.initRemoteServer(() => mainWindow, targetManager)
+  }
 
   // ウィンドウが閉じられていてもクリップボード履歴を記録し続けるため、常時監視する
   startClipboardWatcher((entry) => {

@@ -17,6 +17,7 @@ import type {
   ThemeMode,
   UpdateStatus
 } from '../../../shared/types'
+import { DITTO_REMOTE_ENABLED } from '../../../shared/featureFlags'
 import { flattenFolders } from '../folderTree'
 
 interface Props {
@@ -526,43 +527,45 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
           </div>
         </div>
 
-        <div className="settings-item">
-          <div className="settings-item-row">
-            <span className="settings-item-label">
-              スマホ連携(Ditto Remote)
-              <HelpIcon
-                text={
-                  '同一Wi-Fi内のAndroidアプリから、PC側の定型文入力・マクロ実行を\n' +
-                  'ワンタップで起動できます。「接続」でQRコード/数字コードを\n' +
-                  '表示し、スマホ側アプリで読み取ってください。連携にはPC側での明示的な\n' +
-                  '許可(ダイアログ表示)が必要です。'
-                }
-              />
-            </span>
-            <button className="settings-action-btn" onClick={openRemotePairing}>
-              接続
-            </button>
-          </div>
-
-          {remoteDevices.length === 0 ? (
-            <p className="hint">ペアリング済みのデバイスはありません。</p>
-          ) : (
-            <div className="settings-subitem-list">
-              {remoteDevices.map((device) => (
-                <div className="settings-subitem-row" key={device.id}>
-                  <span className="settings-subitem-label">{device.name}</span>
-                  <button
-                    className="hotkey-binding-delete-btn"
-                    onClick={() => revokeRemoteDevice(device.id)}
-                    title="このデバイスの連携を解除"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
+        {DITTO_REMOTE_ENABLED && (
+          <div className="settings-item">
+            <div className="settings-item-row">
+              <span className="settings-item-label">
+                スマホ連携(Ditto Remote)
+                <HelpIcon
+                  text={
+                    '同一Wi-Fi内のAndroidアプリから、PC側の定型文入力・マクロ実行を\n' +
+                    'ワンタップで起動できます。「接続」でQRコード/数字コードを\n' +
+                    '表示し、スマホ側アプリで読み取ってください。連携にはPC側での明示的な\n' +
+                    '許可(ダイアログ表示)が必要です。'
+                  }
+                />
+              </span>
+              <button className="settings-action-btn" onClick={openRemotePairing}>
+                接続
+              </button>
             </div>
-          )}
-        </div>
+
+            {remoteDevices.length === 0 ? (
+              <p className="hint">ペアリング済みのデバイスはありません。</p>
+            ) : (
+              <div className="settings-subitem-list">
+                {remoteDevices.map((device) => (
+                  <div className="settings-subitem-row" key={device.id}>
+                    <span className="settings-subitem-label">{device.name}</span>
+                    <button
+                      className="hotkey-binding-delete-btn"
+                      onClick={() => revokeRemoteDevice(device.id)}
+                      title="このデバイスの連携を解除"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="settings-item">
           <div className="settings-item-row">
