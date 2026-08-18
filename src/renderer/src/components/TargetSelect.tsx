@@ -78,10 +78,10 @@ export default function TargetSelect({ onStart }: Props): React.JSX.Element {
       <div className="panel target-select-scroll">
       <div className="target-type-toggle">
         <button className={kind === 'web' ? 'active' : ''} onClick={() => setKind('web')}>
-          WEBアプリ
+          WEB
         </button>
         <button className={kind === 'desktop' ? 'active' : ''} onClick={() => setKind('desktop')}>
-          デスクトップアプリ
+          アプリ
         </button>
       </div>
 
@@ -123,9 +123,11 @@ export default function TargetSelect({ onStart }: Props): React.JSX.Element {
         </div>
       )}
 
-      <button onClick={addTarget} disabled={!canAdd}>
-        対象をリストに追加
-      </button>
+      <div className="add-target-row">
+        <button onClick={addTarget} disabled={!canAdd}>
+          対象をリストに追加
+        </button>
+      </div>
 
       {targets.length > 0 && (
         <div className="target-list">

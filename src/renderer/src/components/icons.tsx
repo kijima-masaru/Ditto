@@ -16,21 +16,23 @@ export function PlayIcon(): React.JSX.Element {
   )
 }
 
+// SVGのrect/pathによる塗りつぶしは、このアプリの実行環境で意図したCSS px通りの
+// 大きさに描画されない不具合が確認された(例: 24単位viewBox中16単位幅のrectを
+// 指定しても実際は半分程度の見た目にしかならない。rect/pathいずれでも発生し、
+// 色のコントラストにも依存しなかったため、SVGの塗りつぶし描画特有の問題と判断)。
+// 塗りつぶし系のアイコン(一時停止バー・停止四角)は、素のCSSボックス(background)で
+// 描画することで指定したピクセルサイズ通りに表示させている
 export function PauseIcon(): React.JSX.Element {
   return (
-    <IconBase>
-      <rect x="6" y="4" width="4" height="16" fill="currentColor" stroke="none" />
-      <rect x="14" y="4" width="4" height="16" fill="currentColor" stroke="none" />
-    </IconBase>
+    <span style={{ display: 'inline-flex', gap: 3, flexShrink: 0 }}>
+      <span style={{ display: 'inline-block', width: 4, height: 11, background: 'currentColor' }} />
+      <span style={{ display: 'inline-block', width: 4, height: 11, background: 'currentColor' }} />
+    </span>
   )
 }
 
 export function StopIcon(): React.JSX.Element {
-  return (
-    <IconBase>
-      <rect x="5" y="5" width="14" height="14" fill="currentColor" stroke="none" />
-    </IconBase>
-  )
+  return <span style={{ display: 'inline-block', width: 11, height: 11, background: 'currentColor', flexShrink: 0 }} />
 }
 
 export function CancelIcon(): React.JSX.Element {

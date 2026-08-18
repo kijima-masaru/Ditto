@@ -282,6 +282,12 @@ body {
   font-weight: 600;
 }
 
+.add-target-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
 .target-list h3 {
   font-size: 13px;
   margin-bottom: 6px;
@@ -1505,11 +1511,16 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 }
 
 /* マクロ作成(対象選択→記録)・マクロ再生を一覧の上に重ねるモーダル。
-   debug-log-overlay/-modalと同じ「ほぼ全画面」パターンを使い、内側クリックは
-   e.stopPropagation()で外側のonClick(閉じる)へ伝播させない */
+   debug-log-overlay/-modalと同じ「ほぼ全画面」パターンを使うが、上部は
+   ヘッダー(クリップボード/マクロタブ、約48px)とマクロ一覧のフォルダ階層表示
+   (breadcrumb、約33px)に被らないよう、その高さぶん(約92px)を空けて開始する。
+   内側クリックはe.stopPropagation()で外側のonClick(閉じる)へ伝播させない */
 .macro-modal-overlay {
   position: fixed;
-  inset: 0;
+  top: 92px;
+  right: 0;
+  bottom: 0;
+  left: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   z-index: 100;
