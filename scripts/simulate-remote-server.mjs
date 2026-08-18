@@ -61,15 +61,20 @@ const AUTO_DENY = args.includes('--auto-deny')
 const portArgIndex = args.indexOf('--port')
 const PORT = portArgIndex >= 0 ? Number(args[portArgIndex + 1]) : DEFAULT_PORT
 
+/**
+ * pinnedは本物のremoteServer.tsと同じ意味。itemsはピン留めで絞らず全件返し、
+ * スマホ側は「まだボタンを設定していないときの自動配置」にpinnedのものだけを使う。
+ * ここでは両方の挙動を試せるよう、pinned:trueとfalseを混ぜてある
+ */
 const DEFAULT_ITEMS = {
   templates: [
-    { id: 'tpl-mock-1', label: 'メールの署名', preview: '株式会社サンプル 木島\nkijima@example.com' },
-    { id: 'tpl-mock-2', label: '長文テスト(日本語)', preview: 'これは日本語を含む定型文の入力テストです。' },
-    { id: 'tpl-mock-3', label: 'ASCIIテスト', preview: 'Hello from Ditto Remote' }
+    { id: 'tpl-mock-1', label: 'メールの署名', preview: '株式会社サンプル 木島\nkijima@example.com', pinned: true },
+    { id: 'tpl-mock-2', label: '長文テスト(日本語)', preview: 'これは日本語を含む定型文の入力テストです。', pinned: true },
+    { id: 'tpl-mock-3', label: 'ASCIIテスト', preview: 'Hello from Ditto Remote', pinned: false }
   ],
   macros: [
-    { id: 'macro-mock-1', name: 'ログイン手順', stepCount: 12 },
-    { id: 'macro-mock-2', name: '日次チェック', stepCount: 34 }
+    { id: 'macro-mock-1', name: 'ログイン手順', stepCount: 12, pinned: true },
+    { id: 'macro-mock-2', name: '日次チェック', stepCount: 34, pinned: false }
   ]
 }
 
@@ -353,7 +358,13 @@ async function handleEnvelope(ws, ip, envelope) {
         {
           v: 1,
           type: 'items',
-          templates: items.templates.map((t) => ({ id: t.id, label: t.label, preview: t.preview })),
+          // textは本文の実体でプロトコルには含めないため、明示した項目だけを送る
+          templates: items.templates.map((t) => ({
+            id: t.id,
+            label: t.label,
+            preview: t.preview,
+            pinned: t.pinned === true
+          })),
           macros: items.macros
         },
         sessionKey

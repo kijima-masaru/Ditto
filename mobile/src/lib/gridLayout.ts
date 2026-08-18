@@ -74,11 +74,19 @@ function toGridItem(templates: RemoteTemplateItem[], macros: RemoteMacroItem[], 
   return m ? { kind: 'macro', id: m.id, label: m.name } : null
 }
 
-/** 割り当てなしのときに並べる既定の順序。PC側でピン留めした順(定型文→マクロ)をそのまま使う */
+/**
+ * 割り当てなしのときに並べる既定の順序。PC側でピン留めした順(定型文→マクロ)をそのまま使う。
+ * itemsはピン留めで絞らず全件届く(設定モードの割り当て候補に使うため)ので、
+ * 自動配置に使うぶんはここでpinnedのものだけに絞る
+ */
 export function autoItems(templates: RemoteTemplateItem[], macros: RemoteMacroItem[]): GridItem[] {
+  // pinnedを送らない古いPC(ピン留め済みだけを返していた頃のDitto)に繋いだ場合、
+  // 値はundefinedになる。=== trueで判定すると全件が弾かれて自動配置が空になるため、
+  // 「falseと明示されたものだけ除く」という判定にして旧サーバーでも従来どおり動かす
+  const isPinned = (item: { pinned?: boolean }): boolean => item.pinned !== false
   return [
-    ...templates.map((t): GridItem => ({ kind: 'template', id: t.id, label: t.label })),
-    ...macros.map((m): GridItem => ({ kind: 'macro', id: m.id, label: m.name }))
+    ...templates.filter(isPinned).map((t): GridItem => ({ kind: 'template', id: t.id, label: t.label })),
+    ...macros.filter(isPinned).map((m): GridItem => ({ kind: 'macro', id: m.id, label: m.name }))
   ]
 }
 
