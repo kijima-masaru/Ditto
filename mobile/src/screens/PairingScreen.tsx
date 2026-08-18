@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera'
 import type { RemoteClient } from '../lib/wsClient'
 import type { PairingQrPayload } from '../lib/protocol'
@@ -11,7 +11,9 @@ import type { PairingQrPayload } from '../lib/protocol'
  *  - IP/ポート/コードの手入力(同一Wi-Fi)
  *  - USB接続。`adb reverse tcp:58211 tcp:58211`でPCのlocalhost:58211をスマホ側の
  *    localhostへトンネルする前提で、host=127.0.0.1固定・コードのみ入力する。
- *    PC側のremoteServer.tsは通常の同一LAN接続と区別せず扱えるため変更不要
+ *    PC側のremoteServer.tsは通常の同一LAN接続と区別せず扱えるため変更不要。
+ *    iOSにはadb相当のトンネルが無いため実機では使えないが、iOSシミュレータは
+ *    Macのネットワークスタックをそのまま使うので127.0.0.1でPCに直接到達できる
  */
 
 interface Props {
@@ -24,6 +26,17 @@ type Mode = 'scan' | 'manual' | 'usb'
 
 const DEFAULT_PORT = '58211'
 const USB_HOST = '127.0.0.1'
+/** PC側のペアリング済み一覧にそのまま表示されるため、プラットフォームに合った既定値にする */
+const DEFAULT_DEVICE_NAME = Platform.OS === 'ios' ? 'iPhone' : 'Androidスマホ'
+const DIRECT_TAB_LABEL = Platform.OS === 'ios' ? '直接接続' : 'USB接続'
+/**
+ * 直結モードの案内文。Androidは`adb reverse`でトンネルを張る前提。iOSにはadb相当が
+ * 無いため実機では使えず、シミュレータがMacのlocalhostへ直接到達できるケース専用になる
+ */
+const DIRECT_HINT =
+  Platform.OS === 'ios'
+    ? 'iOSシミュレータからMac上のDittoへ直接接続する場合に使います。実機のiPhoneでは使えないため、「手入力」タブでPCのIPアドレスを指定してください。'
+    : `USBケーブルでPCに接続し、PC側で以下を実行してから連携してください:\nadb reverse tcp:58211 tcp:58211`
 
 export default function PairingScreen({ client, errorMessage, onErrorDismiss }: Props): React.JSX.Element {
   const [permission, requestPermission] = useCameraPermissions()
@@ -34,7 +47,7 @@ export default function PairingScreen({ client, errorMessage, onErrorDismiss }: 
   const [port, setPort] = useState(DEFAULT_PORT)
   const [code, setCode] = useState('')
   const [usbCode, setUsbCode] = useState('')
-  const [deviceName, setDeviceName] = useState('Androidスマホ')
+  const [deviceName, setDeviceName] = useState(DEFAULT_DEVICE_NAME)
 
   // client.startPairing()は「pairメッセージを送信し終えた」時点で解決するため、PC側に
   // 拒否された場合はここでは何も起きない。拒否はApp.tsxがerrorMessageとして渡してくるので、
@@ -50,7 +63,7 @@ export default function PairingScreen({ client, errorMessage, onErrorDismiss }: 
     onErrorDismiss() // 前回のエラーを消しておかないと、上のeffectが即座に待機表示を解除してしまう
     setConnecting(true)
     try {
-      await client.startPairing(targetHost, targetPort, targetCode, deviceName.trim() || 'Androidスマホ')
+      await client.startPairing(targetHost, targetPort, targetCode, deviceName.trim() || DEFAULT_DEVICE_NAME)
     } catch {
       setConnecting(false)
       setScanned(false)
@@ -119,13 +132,13 @@ export default function PairingScreen({ client, errorMessage, onErrorDismiss }: 
           style={[styles.modeButton, mode === 'usb' && styles.modeButtonActive]}
           onPress={() => setMode('usb')}
         >
-          <Text style={mode === 'usb' ? styles.modeButtonTextActive : styles.modeButtonText}>USB接続</Text>
+          <Text style={mode === 'usb' ? styles.modeButtonTextActive : styles.modeButtonText}>{DIRECT_TAB_LABEL}</Text>
         </TouchableOpacity>
       </View>
 
       <TextInput
         style={styles.input}
-        placeholder="端末名(例: 自分のPixel)"
+        placeholder="端末名(例: 自分のスマホ)"
         placeholderTextColor="#888"
         value={deviceName}
         onChangeText={setDeviceName}
@@ -188,10 +201,7 @@ export default function PairingScreen({ client, errorMessage, onErrorDismiss }: 
 
       {mode === 'usb' && (
         <View style={styles.form}>
-          <Text style={styles.hintText}>
-            USBケーブルでPCに接続し、PC側で以下を実行してから連携してください:{'\n'}
-            {'adb reverse tcp:58211 tcp:58211'}
-          </Text>
+          <Text style={styles.hintText}>{DIRECT_HINT}</Text>
           <TextInput
             style={[styles.input, styles.usbCodeInput]}
             placeholder="6桁コード"
@@ -210,8 +220,15 @@ export default function PairingScreen({ client, errorMessage, onErrorDismiss }: 
   )
 }
 
+/**
+ * 上端の余白。AndroidではSafeAreaViewが実質何もしないため画面側で稼ぐ必要があるが、
+ * iOSではApp.tsxのSafeAreaViewがセーフエリア分(Dynamic Islandで約59pt)を既に空けており、
+ * 同じ60ptを足すと二重取りになるため小さくする
+ */
+const TOP_PADDING = Platform.OS === 'ios' ? 12 : 60
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#15161f', padding: 20, paddingTop: 60 },
+  container: { flex: 1, backgroundColor: '#15161f', padding: 20, paddingTop: TOP_PADDING },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 20 },
   title: { color: '#e9eaf3', fontSize: 24, fontWeight: '700' },
   subtitle: { color: '#9ba0bd', fontSize: 14, marginTop: 4, marginBottom: 16 },
