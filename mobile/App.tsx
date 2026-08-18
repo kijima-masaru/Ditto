@@ -3,12 +3,16 @@ import { StatusBar } from 'expo-status-bar'
 import { SafeAreaView, StyleSheet } from 'react-native'
 import { RemoteClient, type ConnectionStatus } from './src/lib/wsClient'
 import type { RemoteMacroItem, RemoteServerMessage, RemoteTemplateItem } from './src/lib/protocol'
-import PairingScreen from './src/screens/PairingScreen'
+import { createDefaultLayout, loadLayout, saveLayout, type ButtonLayout } from './src/lib/buttonConfig'
 import HomeScreen from './src/screens/HomeScreen'
+import ConnectModal from './src/components/ConnectModal'
+import SettingsModal from './src/components/SettingsModal'
+import { colors } from './src/theme'
 
 /**
- * Ditto Remoteのルート。ペアリング済みかどうかでPairingScreen/HomeScreenを出し分ける。
- * WebSocket接続(RemoteClient)は1つだけ生成し、両画面で共有する。
+ * Ditto Remoteのルート。ホーム画面(ボタングリッド)を常に表示し、接続と設定は
+ * ヘッダーのアイコンから開くモーダルで行う。WebSocket接続(RemoteClient)は
+ * 1つだけ生成して各画面で共有する。
  */
 
 function pairRejectedMessage(reason: Extract<RemoteServerMessage, { type: 'pairRejected' }>['reason']): string {
@@ -41,11 +45,12 @@ function authFailedMessage(reason: Extract<RemoteServerMessage, { type: 'authFai
 
 export default function App(): React.JSX.Element {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected')
-  const [paired, setPaired] = useState(false)
-  const [checkingSavedCredentials, setCheckingSavedCredentials] = useState(true)
   const [pairError, setPairError] = useState<string | null>(null)
   const [templates, setTemplates] = useState<RemoteTemplateItem[]>([])
   const [macros, setMacros] = useState<RemoteMacroItem[]>([])
+  const [layout, setLayout] = useState<ButtonLayout>(createDefaultLayout)
+  const [connectOpen, setConnectOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   // RemoteClientのイベントハンドラはコンストラクタに一度だけ渡すため、useCallbackで
   // 参照を固定した上でuseRefの遅延初期化パターンでインスタンスを1つだけ生成する。
@@ -56,8 +61,8 @@ export default function App(): React.JSX.Element {
     switch (msg.type) {
       case 'paired':
         void c.handlePaired(msg.deviceId, msg.sessionKey).then(() => {
-          setPaired(true)
           setPairError(null)
+          setConnectOpen(false) // 接続できたらモーダルを閉じてホームに戻す
           void c.requestItems()
         })
         break
@@ -65,14 +70,15 @@ export default function App(): React.JSX.Element {
         setPairError(pairRejectedMessage(msg.reason))
         break
       case 'authOk':
-        setPaired(true)
         void c.requestItems()
         break
       case 'authFailed':
-        setPaired(false)
         setPairError(authFailedMessage(msg.reason))
         if (msg.reason === 'unknown-device' || msg.reason === 'revoked') {
           void c.forget()
+          setTemplates([])
+          setMacros([])
+          setConnectOpen(true) // 再ペアリングが必要なので接続モーダルを開く
         }
         break
       case 'items':
@@ -92,47 +98,63 @@ export default function App(): React.JSX.Element {
   }
 
   useEffect(() => {
-    client
-      .current!.connectWithSavedCredentials()
-      .catch(() => false)
-      .finally(() => setCheckingSavedCredentials(false))
+    void loadLayout().then(setLayout)
+    client.current!.connectWithSavedCredentials().catch(() => false)
+  }, [])
+
+  const handleLayoutChange = useCallback((next: ButtonLayout): void => {
+    setLayout(next)
+    void saveLayout(next)
   }, [])
 
   const handleForget = useCallback((): void => {
     void client.current!.forget().then(() => {
-      setPaired(false)
       setTemplates([])
       setMacros([])
+      setSettingsOpen(false)
+      setConnectOpen(true)
     })
   }, [])
 
-  const handleRefresh = useCallback((): void => {
-    void client.current!.requestItems()
+  const handleOpenSettings = useCallback((): void => {
+    // 割り当て候補を最新にしてから開く
+    void client.current!.requestItems().catch(() => undefined)
+    setSettingsOpen(true)
   }, [])
-
-  if (checkingSavedCredentials) {
-    return <SafeAreaView style={styles.root} />
-  }
 
   return (
     <SafeAreaView style={styles.root}>
       <StatusBar style="light" />
-      {paired ? (
-        <HomeScreen
-          client={client.current}
-          status={status}
-          templates={templates}
-          macros={macros}
-          onRefresh={handleRefresh}
-          onForget={handleForget}
-        />
-      ) : (
-        <PairingScreen client={client.current} errorMessage={pairError} onErrorDismiss={() => setPairError(null)} />
-      )}
+      <HomeScreen
+        client={client.current}
+        status={status}
+        layout={layout}
+        templates={templates}
+        macros={macros}
+        onOpenConnect={() => setConnectOpen(true)}
+        onOpenSettings={handleOpenSettings}
+      />
+      <ConnectModal
+        visible={connectOpen}
+        client={client.current}
+        errorMessage={pairError}
+        onErrorDismiss={() => setPairError(null)}
+        onClose={() => setConnectOpen(false)}
+      />
+      <SettingsModal
+        visible={settingsOpen}
+        layout={layout}
+        templates={templates}
+        macros={macros}
+        connected={status === 'connected'}
+        onChange={handleLayoutChange}
+        onClose={() => setSettingsOpen(false)}
+        onForget={handleForget}
+      />
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#15161f' }
+  root: { flex: 1, backgroundColor: colors.bg }
 })

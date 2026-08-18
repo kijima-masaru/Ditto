@@ -266,12 +266,19 @@ async function handlePairMessageInner(
 
 async function buildItemsMessage(): Promise<Extract<RemoteServerMessage, { type: 'items' }>> {
   const [templates, macros] = await Promise.all([clipboardStore.listTemplates(), store.listMacros()])
-  const templateItems: RemoteTemplateItem[] = templates
-    .filter((t) => t.pinned)
-    .map((t) => ({ id: t.id, label: t.label || t.text.slice(0, 40), preview: t.text.slice(0, 80) }))
-  const macroItems: RemoteMacroItem[] = macros
-    .filter((m) => m.pinned)
-    .map((m) => ({ id: m.id, name: m.name, stepCount: m.steps.length }))
+  // ピン留めで絞り込まず全件返す。スマホ側はどのボタンに何を割り当てるかを
+  // アプリの設定モードで自由に決める作りなので、候補を絞るとPC側でピン留めを
+  // 敷き直す手間が残ってしまうため
+  const templateItems: RemoteTemplateItem[] = templates.map((t) => ({
+    id: t.id,
+    label: t.label || t.text.slice(0, 40),
+    preview: t.text.slice(0, 80)
+  }))
+  const macroItems: RemoteMacroItem[] = macros.map((m) => ({
+    id: m.id,
+    name: m.name,
+    stepCount: m.steps.length
+  }))
   return { v: 1, type: 'items', templates: templateItems, macros: macroItems }
 }
 

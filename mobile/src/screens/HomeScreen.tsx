@@ -1,185 +1,226 @@
 import { useState } from 'react'
-import { FlatList, Platform, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
+import { LayoutChangeEvent, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import * as Crypto from 'expo-crypto'
 import type { RemoteClient, ConnectionStatus } from '../lib/wsClient'
 import type { RemoteMacroItem, RemoteTemplateItem } from '../lib/protocol'
+import { GRID_COLUMNS, type ButtonLayout } from '../lib/buttonConfig'
+import { GearIcon, LinkIcon, PlusIcon } from '../components/Icons'
+import { colors } from '../theme'
 
 /**
- * ホーム画面。PC側でピン留めされた定型文・マクロをボタングリッドで表示し、
- * タップ(マクロは長押し確認)でリモートトリガーする「テンキー」本体。
+ * ホーム画面。設定したボタンをグリッドに並べ、タップ(マクロは長押し)で
+ * PC側の定型文入力・マクロ実行をリモートで起こす「テンキー」本体。
+ *
+ * ボタンの大きさと間隔は固定値を持たず、実際に描画された領域のサイズとボタン数から
+ * 毎回算出する。端末の画面サイズが違ってもボタン数を変えても、常に画面を使い切った
+ * 正方形のボタンが並ぶようにするため。
  */
-
-type GridEntry =
-  | { kind: 'template'; id: string; label: string; preview: string }
-  | { kind: 'macro'; id: string; label: string; stepCount: number }
 
 interface Props {
   client: RemoteClient
   status: ConnectionStatus
+  layout: ButtonLayout
   templates: RemoteTemplateItem[]
   macros: RemoteMacroItem[]
-  onRefresh: () => void
-  onForget: () => void
+  onOpenConnect: () => void
+  onOpenSettings: () => void
 }
 
-const STATUS_LABEL: Record<ConnectionStatus, string> = {
-  disconnected: '未接続',
-  connecting: '接続中...',
-  pairing: 'ペアリング中...',
-  connected: '接続済み',
-  error: 'エラー'
+/** ボタン下に置く名称の高さ。セルの高さを決める計算で使う */
+const LABEL_HEIGHT = 20
+
+interface GridMetrics {
+  size: number
+  gap: number
+  columns: number
 }
 
-export default function HomeScreen({ client, status, templates, macros, onRefresh, onForget }: Props): React.JSX.Element {
-  const [refreshing, setRefreshing] = useState(false)
-  const [pendingId, setPendingId] = useState<string | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+/**
+ * 描画領域(width x height)にcount個の正方形ボタンを、名称の分の高さも確保しつつ
+ * 詰め込むときの一辺と間隔を求める。幅と高さのどちらが先に頭打ちになっても
+ * はみ出さないよう、両方から出した候補の小さい方を採用する
+ */
+function computeGrid(width: number, height: number, count: number): GridMetrics {
+  const columns = Math.min(GRID_COLUMNS, Math.max(1, count))
+  const rows = Math.ceil(count / columns)
+  // 間隔は画面幅に比例させる。狭い端末で間隔が支配的にならないよう上下限を設ける
+  const gap = Math.max(6, Math.min(14, Math.round(width * 0.03)))
+  const fromWidth = (width - gap * (columns - 1)) / columns
+  const fromHeight = (height - gap * (rows - 1) - rows * LABEL_HEIGHT) / rows
+  const size = Math.max(0, Math.floor(Math.min(fromWidth, fromHeight)))
+  return { size, gap, columns }
+}
+
+export default function HomeScreen({
+  client,
+  status,
+  layout,
+  templates,
+  macros,
+  onOpenConnect,
+  onOpenSettings
+}: Props): React.JSX.Element {
+  const [pendingIndex, setPendingIndex] = useState<number | null>(null)
+  const [area, setArea] = useState<{ width: number; height: number } | null>(null)
   const connected = status === 'connected'
 
-  const handleRefresh = (): void => {
-    setRefreshing(true)
-    onRefresh()
-    setTimeout(() => setRefreshing(false), 500)
+  const handleArea = (e: LayoutChangeEvent): void => {
+    const { width, height } = e.nativeEvent.layout
+    setArea({ width, height })
   }
 
-  const entries: GridEntry[] = [
-    ...templates.map((t): GridEntry => ({ kind: 'template', id: t.id, label: t.label, preview: t.preview })),
-    ...macros.map((m): GridEntry => ({ kind: 'macro', id: m.id, label: m.name, stepCount: m.stepCount }))
-  ]
+  /** PCから受け取った最新の名称を優先し、未接続なら保存時のキャッシュを使う */
+  const resolveLabel = (slot: NonNullable<ButtonLayout['slots'][number]>): string => {
+    if (slot.kind === 'template') {
+      return templates.find((t) => t.id === slot.id)?.label ?? slot.label
+    }
+    return macros.find((m) => m.id === slot.id)?.name ?? slot.label
+  }
 
-  const activate = async (entry: GridEntry): Promise<void> => {
-    if (pendingId) return
-    setPendingId(entry.id)
+  const activate = async (index: number): Promise<void> => {
+    const slot = layout.slots[index]
+    if (!slot || pendingIndex !== null || !connected) return
+    setPendingIndex(index)
     try {
       const requestId = Crypto.randomUUID()
-      if (entry.kind === 'template') {
-        await client.triggerTemplate(entry.id, requestId)
+      if (slot.kind === 'template') {
+        await client.triggerTemplate(slot.id, requestId)
       } else {
-        await client.triggerMacro(entry.id, requestId)
+        await client.triggerMacro(slot.id, requestId)
       }
-      setErrorMessage(null)
     } catch {
-      // 接続済み表示のまま切断された直後など、送信時に初めて失敗が分かる場合がある
-      setErrorMessage('送信できませんでした。PCとの接続を確認しています...')
+      // 送信できなかった場合は未接続表示に変わるため、ここでは何も出さない
     } finally {
-      setTimeout(() => setPendingId(null), 600)
+      setTimeout(() => setPendingIndex(null), 600)
     }
   }
+
+  const metrics = area ? computeGrid(area.width, area.height, layout.count) : null
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.statusRow}>
-          <View style={[styles.statusDot, status === 'connected' ? styles.statusDotOk : styles.statusDotBad]} />
-          <Text style={styles.statusText}>{STATUS_LABEL[status]}</Text>
-        </View>
-        <Pressable onPress={onForget} hitSlop={8}>
-          <Text style={styles.forgetLink}>連携解除</Text>
-        </Pressable>
+        {/* 用途が決まるまでの予約領域。空でも場所を確保しておく */}
+        <View style={styles.headerPlaceholder} />
+        <TouchableOpacity style={styles.iconButton} onPress={onOpenConnect} hitSlop={6}>
+          <LinkIcon color={connected ? colors.success : colors.textMuted} size={22} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.iconButton} onPress={onOpenSettings} hitSlop={6}>
+          <GearIcon color={colors.textSecondary} size={22} />
+        </TouchableOpacity>
       </View>
 
-      {!connected && (
-        <View style={styles.offlineBanner}>
-          <Text style={styles.offlineText}>
-            PCと未接続です。自動で再接続を試みています...{'\n'}
-            PC側のDittoが起動しているか確認してください。
-          </Text>
-        </View>
-      )}
-
-      {connected && errorMessage && (
-        <View style={styles.offlineBanner}>
-          <Text style={styles.offlineText}>{errorMessage}</Text>
-        </View>
-      )}
-
-      {/* 空でもFlatListを描画する。Viewに差し替えるとRefreshControlごと消え、
-          空状態の案内文どおりに引っ張って更新することができなくなる */}
-      <FlatList
-          data={entries}
-          keyExtractor={(item) => `${item.kind}-${item.id}`}
-          numColumns={3}
-          contentContainerStyle={[styles.grid, entries.length === 0 && styles.gridEmpty]}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={styles.emptyText}>
-                PC側でコマンドパレットに固定した定型文・マクロがここに表示されます。{'\n'}
-                下に引っ張って更新できます。
-              </Text>
+      {/* onLayoutが返すのはpaddingを含んだ外側のサイズなので、余白の内側に測定用の
+          Viewを挟んでコンテンツ領域そのものを測る。外側で測るとpadding分だけ
+          ボタンが大きく算出され、3列目が入りきらず折り返してしまう */}
+      <View style={styles.gridArea}>
+        <View style={styles.gridInner} onLayout={handleArea}>
+          {metrics && metrics.size > 0 && (
+          <View style={[styles.grid, { gap: metrics.gap }]}>
+            {layout.slots.map((slot, index) => {
+              const label = slot ? resolveLabel(slot) : ''
+              const isMacro = slot?.kind === 'macro'
+              const disabled = !slot || !connected || pendingIndex !== null
+              return (
+                <View key={index} style={{ width: metrics.size }}>
+                  <Pressable
+                    style={[
+                      styles.button,
+                      {
+                        width: metrics.size,
+                        height: metrics.size,
+                        // borderStyleはスタイル配列から出し入れすると再描画されないことが
+                        // あるため(未割り当て→割り当て済みにしても破線のまま残る)、
+                        // どちらの状態でも必ず値を指定する
+                        borderStyle: slot ? 'solid' : 'dashed'
+                      },
+                      isMacro && styles.buttonMacro,
+                      !slot && styles.buttonEmpty,
+                      (pendingIndex === index || (slot && !connected)) && styles.buttonDimmed
+                    ]}
+                    onPress={() => slot?.kind === 'template' && void activate(index)}
+                    onLongPress={() => slot?.kind === 'macro' && void activate(index)}
+                    delayLongPress={500}
+                    disabled={disabled}
+                  >
+                    {!slot && <PlusIcon color={colors.textMuted} size={Math.min(22, metrics.size * 0.3)} />}
+                    {isMacro && <Text style={styles.macroHint}>長押し</Text>}
+                  </Pressable>
+                  <Text style={styles.buttonLabel} numberOfLines={1}>
+                    {slot ? label || '(名称なし)' : ''}
+                  </Text>
+                </View>
+              )
+            })}
             </View>
-          }
-          renderItem={({ item }) => (
-            <Pressable
-              style={[
-                styles.cell,
-                item.kind === 'macro' && styles.cellMacro,
-                (pendingId === item.id || !connected) && styles.cellPending
-              ]}
-              onPress={() => item.kind === 'template' && void activate(item)}
-              onLongPress={() => item.kind === 'macro' && void activate(item)}
-              delayLongPress={500}
-              disabled={pendingId !== null || !connected}
-            >
-              {item.kind === 'macro' && <Text style={styles.macroBadge}>⚡</Text>}
-              <Text style={styles.cellLabel} numberOfLines={2}>
-                {item.label}
-              </Text>
-              {item.kind === 'macro' && <Text style={styles.cellSub}>長押しで実行</Text>}
-            </Pressable>
           )}
-        />
+        </View>
+      </View>
     </View>
   )
 }
 
-/** PairingScreenと同じ理由でiOSだけ小さくする(App.tsxのSafeAreaViewとの二重取り回避) */
-const TOP_PADDING = Platform.OS === 'ios' ? 12 : 60
+/** iOS側はApp.tsxのSafeAreaViewが上端を空けるため、こちらでは重ねて取らない */
+const TOP_PADDING = Platform.OS === 'ios' ? 8 : 40
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#15161f', paddingTop: TOP_PADDING },
+  container: { flex: 1, backgroundColor: colors.bg, paddingTop: TOP_PADDING },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 12
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+    gap: 8
   },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusDotOk: { backgroundColor: '#4fdb9d' },
-  statusDotBad: { backgroundColor: '#f2bd5c' },
-  statusText: { color: '#9ba0bd', fontSize: 13 },
-  forgetLink: { color: '#8b83ff', fontSize: 13 },
-  offlineBanner: {
-    backgroundColor: '#3a2c11',
-    borderColor: '#f2bd5c',
+  headerPlaceholder: {
+    flex: 1,
+    height: 42,
+    backgroundColor: colors.panel,
     borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8
+  },
+  iconButton: {
+    width: 42,
+    height: 42,
     borderRadius: 8,
-    marginHorizontal: 14,
-    marginBottom: 10,
-    padding: 10
-  },
-  offlineText: { color: '#f2bd5c', fontSize: 12, lineHeight: 17 },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  emptyText: { color: '#9ba0bd', fontSize: 14, textAlign: 'center', lineHeight: 20 },
-  grid: { paddingHorizontal: 8, paddingBottom: 24 },
-  gridEmpty: { flexGrow: 1 },
-  cell: {
-    flex: 1 / 3,
-    margin: 6,
-    aspectRatio: 1,
-    backgroundColor: '#1d1f2b',
     borderWidth: 1,
-    borderColor: '#363a56',
-    borderRadius: 12,
+    borderColor: colors.border,
+    backgroundColor: colors.panel,
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 8
+    justifyContent: 'center'
   },
-  cellMacro: { backgroundColor: '#3a2c11', borderColor: '#f2bd5c' },
-  cellPending: { opacity: 0.5 },
-  macroBadge: { fontSize: 16, marginBottom: 4 },
-  cellLabel: { color: '#e9eaf3', fontSize: 12, textAlign: 'center' },
-  cellSub: { color: '#f2bd5c', fontSize: 9, marginTop: 4 }
+  gridArea: {
+    flex: 1,
+    backgroundColor: colors.panelAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    margin: 14,
+    marginTop: 0,
+    padding: 12
+  },
+  // ボタンが少ないときは幅で大きさが決まるため下側に余白が残る。上寄せのままだと
+  // 中途半端に見えるので、余白を上下に均等に分けて中央に置く
+  gridInner: { flex: 1, justifyContent: 'center' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start' },
+  button: {
+    backgroundColor: colors.panel,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  buttonMacro: { borderColor: colors.success },
+  buttonEmpty: { backgroundColor: 'transparent', borderColor: colors.border },
+  buttonDimmed: { opacity: 0.45 },
+  macroHint: { color: colors.success, fontSize: 10 },
+  buttonLabel: {
+    height: LABEL_HEIGHT,
+    lineHeight: LABEL_HEIGHT,
+    color: colors.textSecondary,
+    fontSize: 11,
+    textAlign: 'center'
+  }
 })
