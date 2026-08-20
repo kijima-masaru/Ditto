@@ -1568,14 +1568,6 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   cursor: default;
 }
 
-/* 停止キー入力欄とその?チップは1つの単位として近づけて配置する
-   (.rowの通常のgapより狭い間隔にするため、この2つだけを別途グループ化する) */
-.stop-hotkey-group {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
 /* マクロ再生画面の再生速度入力欄。再生中に変更すると次のステップ間隔から即座に反映する */
 .playback-speed-field {
   display: flex;
@@ -1589,6 +1581,14 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   padding: 0 4px;
   font-size: 12px;
   text-align: center;
+}
+
+/* 再生・倍速・停止キーの操作系はまとめて右寄せにする(アプリ名・?チップは左のまま) */
+.playback-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 
 .debug-log-close-btn {
