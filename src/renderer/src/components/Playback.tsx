@@ -110,38 +110,38 @@ export default function Playback({ macroCase }: Props): React.JSX.Element {
         <div className="row">
           <TargetTabs targets={macroCase.targets} activeId={activeTargetId} onSelect={() => {}} disabled />
           <HelpIcon text={PLAYBACK_HELP_TEXT} />
-          <div className="playback-controls-right">
-            <button
-              className="primary icon-btn"
-              onClick={handlePlayPauseClick}
-              title={phase === 'running' && !paused ? '一時停止' : phase === 'done' ? 'もう一度実行' : '再生を開始'}
-              aria-label={phase === 'running' && !paused ? '一時停止' : phase === 'done' ? 'もう一度実行' : '再生を開始'}
-            >
-              {phase === 'running' && !paused ? <PauseIcon /> : <PlayIcon />}
-            </button>
-            <div className="playback-speed-field">
-              <input
-                type="number"
-                min="0.5"
-                max="10"
-                step="0.5"
-                value={speed}
-                onChange={(e) => handleSpeedChange(e.target.value)}
-                title="再生速度"
-                aria-label="再生速度"
-              />
-            </div>
-            <div className="stop-hotkey-field">
-              <input
-                type="text"
-                readOnly
-                value={capturing ? previewLabel : (stopHotkey?.label ?? '')}
-                placeholder="停止キー"
-                className={capturing ? 'capturing' : ''}
-                onClick={startCapture}
-                onBlur={cancelCapture}
-              />
-            </div>
+        </div>
+        <div className="row">
+          <button
+            className="primary icon-btn"
+            onClick={handlePlayPauseClick}
+            title={phase === 'running' && !paused ? '一時停止' : phase === 'done' ? 'もう一度実行' : '再生を開始'}
+            aria-label={phase === 'running' && !paused ? '一時停止' : phase === 'done' ? 'もう一度実行' : '再生を開始'}
+          >
+            {phase === 'running' && !paused ? <PauseIcon /> : <PlayIcon />}
+          </button>
+          <div className="playback-speed-field">
+            <input
+              type="number"
+              min="0.5"
+              max="10"
+              step="0.5"
+              value={speed}
+              onChange={(e) => handleSpeedChange(e.target.value)}
+              title="再生速度"
+              aria-label="再生速度"
+            />
+          </div>
+          <div className="stop-hotkey-field">
+            <input
+              type="text"
+              readOnly
+              value={capturing ? previewLabel : (stopHotkey?.label ?? '')}
+              placeholder="停止キー"
+              className={capturing ? 'capturing' : ''}
+              onClick={startCapture}
+              onBlur={cancelCapture}
+            />
           </div>
           {phase === 'done' && !success && (
             <span className="status-line">{`失敗しました${error ? ` (${error})` : ''}`}</span>

@@ -1583,14 +1583,6 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   text-align: center;
 }
 
-/* 再生・倍速・停止キーの操作系はまとめて右寄せにする(アプリ名・?チップは左のまま) */
-.playback-controls-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-}
-
 .debug-log-close-btn {
   flex-shrink: 0;
   width: 24px;
