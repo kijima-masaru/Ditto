@@ -16,8 +16,9 @@ export default function TargetTabs({ targets, activeId, onSelect, disabled }: Pr
           className={t.id === activeId ? 'active' : ''}
           disabled={disabled}
           onClick={() => onSelect(t.id)}
+          title={t.label}
         >
-          <span className="badge">{t.kind === 'web' ? 'WEB' : 'APP'}</span> {t.label}
+          <span className="badge">{t.kind === 'web' ? 'WEB' : 'APP'}</span>
         </button>
       ))}
     </div>

@@ -9,6 +9,12 @@ interface Props {
   macroCase: MacroCase
 }
 
+function parseSpeed(value: string): number {
+  const parsed = Number.parseFloat(value)
+  if (!Number.isFinite(parsed) || parsed <= 0) return 1
+  return parsed
+}
+
 const PLAYBACK_HELP_TEXT =
   'アクティブなタブの対象がOS上で最前面に表示され、そのウィンドウに対して操作を再生します。\n' +
   '各操作の間隔は記録時に実際に空いていた時間をそのまま再現します。\n' +
@@ -22,6 +28,7 @@ export default function Playback({ macroCase }: Props): React.JSX.Element {
   const [activeTargetId, setActiveTargetId] = useState<string>(macroCase.targets[0]?.id ?? '')
   const [success, setSuccess] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [speed, setSpeed] = useState('1')
   const phaseRef = useRef(phase)
 
   useEffect(() => {
@@ -43,6 +50,7 @@ export default function Playback({ macroCase }: Props): React.JSX.Element {
     setPaused(false)
     setProgress([])
     setError(null)
+    await window.api.setPlaybackSpeed(parseSpeed(speed))
 
     const unsubscribe = window.api.onPlaybackProgress((p) => {
       setProgress((prev) => {
@@ -84,6 +92,12 @@ export default function Playback({ macroCase }: Props): React.JSX.Element {
     }
   }
 
+  // 再生中に変更した場合も、次のステップ間隔から即座に反映する
+  const handleSpeedChange = (value: string): void => {
+    setSpeed(value)
+    if (phase === 'running') void window.api.setPlaybackSpeed(parseSpeed(value))
+  }
+
   const { stopHotkey, capturing, previewLabel, startCapture, cancelCapture } = useStopHotkey(() => {
     if (phaseRef.current === 'running') void handleStop()
   })
@@ -103,6 +117,19 @@ export default function Playback({ macroCase }: Props): React.JSX.Element {
           >
             {phase === 'running' && !paused ? <PauseIcon /> : <PlayIcon />}
           </button>
+          <div className="playback-speed-field">
+            <input
+              type="number"
+              min="0.1"
+              max="10"
+              step="0.1"
+              value={speed}
+              onChange={(e) => handleSpeedChange(e.target.value)}
+              title="再生速度"
+              aria-label="再生速度"
+            />
+            <span className="playback-speed-unit">x</span>
+          </div>
           <div className="stop-hotkey-field">
             <input
               type="text"

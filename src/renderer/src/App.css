@@ -1568,6 +1568,26 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   cursor: default;
 }
 
+/* マクロ再生画面の再生速度入力欄。再生中に変更すると次のステップ間隔から即座に反映する */
+.playback-speed-field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.playback-speed-field input {
+  width: 48px;
+  height: 28px;
+  padding: 0 4px;
+  font-size: 12px;
+  text-align: center;
+}
+
+.playback-speed-unit {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 .debug-log-close-btn {
   flex-shrink: 0;
   width: 24px;

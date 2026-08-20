@@ -17,6 +17,7 @@ import * as textExpansion from './textExpansion'
 import { initCommandPalette, setHotkey as setCommandPaletteHotkey } from './commandPalette'
 import { TargetManager } from './targetManager'
 import * as remoteServer from './remoteServer'
+import { stopBlockingRealMouseInput } from './mouseBlock'
 import log from './logger'
 import { pruneOldLogs } from './debugLog'
 
@@ -253,4 +254,6 @@ app.on('before-quit', () => {
   recordingFrame.destroy()
   clickHighlight.stop()
   remoteServerHandle?.stop()
+  // 再生中のマウス入力遮断フックが万一残っていた場合の保険(通常はplaybackのfinallyで解除済み)
+  stopBlockingRealMouseInput()
 })

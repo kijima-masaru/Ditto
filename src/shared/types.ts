@@ -457,6 +457,7 @@ export const IPC = {
   playbackRun: 'playback:run',
   playbackAbort: 'playback:abort',
   playbackSetPaused: 'playback:setPaused',
+  playbackSetSpeed: 'playback:setSpeed',
   playbackProgress: 'playback:progress', // main -> renderer push
 
   // 記録・再生中に任意のキーを「停止キー」として設定できる。対象アプリにフォーカスが

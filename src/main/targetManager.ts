@@ -11,6 +11,7 @@ import { createBrowserAdapter } from './adapters/browserTargetAdapter'
 import { createDesktopAdapter } from './adapters/desktopTargetAdapter'
 import { sleep, stopGlobalHook } from './adapters/windowTargetBase'
 import { captureFailureEvidence } from './failureEvidence'
+import { startBlockingRealMouseInput, stopBlockingRealMouseInput } from './mouseBlock'
 
 /** abortされたら即座に抜けられるよう、短い間隔に分けて待機する */
 async function interruptibleSleep(ms: number, isAborted: () => boolean): Promise<void> {
@@ -56,6 +57,7 @@ export class TargetManager {
   private onStepPush: ((step: RecordedStep) => void) | null = null
   private aborted = false
   private status: TargetManagerStatus = 'idle'
+  private speed = 1
 
   getStatus(): TargetManagerStatus {
     return this.status
@@ -104,6 +106,11 @@ export class TargetManager {
     this.paused = paused
     // 再開時に不自然な長い待機時間が記録されないよう、直前時刻をリセットする
     if (!paused) this.lastStepTime = null
+  }
+
+  /** 再生速度の倍率(1=等速、2=2倍速、0.5=半分の速さ)。次のステップ間隔から即座に反映される */
+  setSpeed(speed: number): void {
+    this.speed = Math.min(10, Math.max(0.1, speed))
   }
 
   async setActiveTarget(targetId: string): Promise<void> {
@@ -176,48 +183,58 @@ export class TargetManager {
     }
 
     let success = true
-    for (let i = 0; i < macroCase.steps.length; i++) {
-      await waitWhilePaused(() => this.paused, () => this.aborted)
-      if (this.aborted) {
-        push({ stepIndex: i, status: 'skipped', message: '中断されました' })
-        success = false
-        break
-      }
+    // 再生中は実際のユーザーのマウス操作だけを遮断し、マクロ自身の操作はそのまま通す
+    // (手動でカーソルを動かして再生中のクリック位置とズレてしまうのを防ぐ)。
+    // どのように抜けても必ず解除されるようtry/finallyで囲む
+    startBlockingRealMouseInput()
+    try {
+      for (let i = 0; i < macroCase.steps.length; i++) {
+        await waitWhilePaused(() => this.paused, () => this.aborted)
+        if (this.aborted) {
+          push({ stepIndex: i, status: 'skipped', message: '中断されました' })
+          success = false
+          break
+        }
 
-      const step = macroCase.steps[i]
+        const step = macroCase.steps[i]
 
-      // 記録時に実際に空いていた時間だけ待ってから次の操作を行い、間隔を再現する
-      if (step.delayMs > 0) {
-        await interruptibleSleep(step.delayMs, () => this.aborted)
-      }
-      if (this.aborted) {
-        push({ stepIndex: i, status: 'skipped', message: '中断されました' })
-        success = false
-        break
-      }
+        // 記録時に実際に空いていた時間だけ待ってから次の操作を行い、間隔を再現する
+        // (再生速度が変更されていれば、その倍率で待機時間を短縮/延長する)
+        const adjustedDelay = step.delayMs / this.speed
+        if (adjustedDelay > 0) {
+          await interruptibleSleep(adjustedDelay, () => this.aborted)
+        }
+        if (this.aborted) {
+          push({ stepIndex: i, status: 'skipped', message: '中断されました' })
+          success = false
+          break
+        }
 
-      if (step.targetId !== this.activeTargetId) {
-        await this.setActiveTarget(step.targetId)
-      }
-      push({ stepIndex: i, status: 'running', targetId: step.targetId })
+        if (step.targetId !== this.activeTargetId) {
+          await this.setActiveTarget(step.targetId)
+        }
+        push({ stepIndex: i, status: 'running', targetId: step.targetId })
 
-      try {
-        const adapter = this.adapters.get(step.targetId)
-        if (!adapter) throw new Error('対象が見つかりません')
-        await adapter.execStep(step)
-        push({ stepIndex: i, status: 'ok', targetId: step.targetId })
-      } catch (err) {
-        success = false
-        const evidencePath = (await captureFailureEvidence(macroCase.name, i)) ?? undefined
-        push({
-          stepIndex: i,
-          status: 'fail',
-          message: err instanceof Error ? err.message : String(err),
-          targetId: step.targetId,
-          evidencePath
-        })
-        break
+        try {
+          const adapter = this.adapters.get(step.targetId)
+          if (!adapter) throw new Error('対象が見つかりません')
+          await adapter.execStep(step)
+          push({ stepIndex: i, status: 'ok', targetId: step.targetId })
+        } catch (err) {
+          success = false
+          const evidencePath = (await captureFailureEvidence(macroCase.name, i)) ?? undefined
+          push({
+            stepIndex: i,
+            status: 'fail',
+            message: err instanceof Error ? err.message : String(err),
+            targetId: step.targetId,
+            evidencePath
+          })
+          break
+        }
       }
+    } finally {
+      stopBlockingRealMouseInput()
     }
 
     await this.disposeAll()

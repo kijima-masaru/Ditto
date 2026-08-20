@@ -127,6 +127,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, manag
     manager.setPaused(paused)
   })
 
+  ipcMain.handle(IPC.playbackSetSpeed, async (_e, speed: number) => {
+    manager.setSpeed(speed)
+  })
+
   ipcMain.handle(IPC.setStopHotkey, async (_e, combo: HotkeyCombo) => {
     const w = getWindow()
     setStopHotkey(combo, () => {
