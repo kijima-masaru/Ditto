@@ -120,28 +120,29 @@ export default function Playback({ macroCase }: Props): React.JSX.Element {
           <div className="playback-speed-field">
             <input
               type="number"
-              min="0.1"
+              min="0.5"
               max="10"
-              step="0.1"
+              step="0.5"
               value={speed}
               onChange={(e) => handleSpeedChange(e.target.value)}
               title="再生速度"
               aria-label="再生速度"
             />
-            <span className="playback-speed-unit">x</span>
           </div>
-          <div className="stop-hotkey-field">
-            <input
-              type="text"
-              readOnly
-              value={capturing ? previewLabel : (stopHotkey?.label ?? '')}
-              placeholder="停止キー"
-              className={capturing ? 'capturing' : ''}
-              onClick={startCapture}
-              onBlur={cancelCapture}
-            />
+          <div className="stop-hotkey-group">
+            <div className="stop-hotkey-field">
+              <input
+                type="text"
+                readOnly
+                value={capturing ? previewLabel : (stopHotkey?.label ?? '')}
+                placeholder="停止キー"
+                className={capturing ? 'capturing' : ''}
+                onClick={startCapture}
+                onBlur={cancelCapture}
+              />
+            </div>
+            <HelpIcon text={PLAYBACK_HELP_TEXT} />
           </div>
-          <HelpIcon text={PLAYBACK_HELP_TEXT} />
           {phase === 'done' && !success && (
             <span className="status-line">{`失敗しました${error ? ` (${error})` : ''}`}</span>
           )}
