@@ -2015,7 +2015,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 .se-color-popover {
   position: absolute;
   top: calc(100% + 4px);
-  left: 0;
+  right: 0;
   z-index: 201;
   width: 232px;
   background: var(--panel-bg);
