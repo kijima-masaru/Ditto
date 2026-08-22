@@ -167,7 +167,7 @@ function MainApp(): React.JSX.Element {
           onClick={recorder.toggleFrame}
           title="録画枠を表示/非表示"
         >
-          ◎
+          <span className="record-icon-glyph">◎</span>
         </button>
         <button
           className={`settings-icon-btn${view.name === 'settings' ? ' active' : ''}`}
