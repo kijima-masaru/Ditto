@@ -177,6 +177,8 @@ const api = {
   setTheme: (theme: ThemeMode): Promise<AppSettings> => ipcRenderer.invoke(IPC.setTheme, theme),
   setWindowSizeLocked: (locked: boolean): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setWindowSizeLocked, locked),
+  setFixedWindowSize: (size: { width: number; height: number }): Promise<AppSettings> =>
+    ipcRenderer.invoke(IPC.setFixedWindowSize, size),
   setAlwaysOnTop: (alwaysOnTop: boolean): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setAlwaysOnTop, alwaysOnTop),
   setTextExpansionEnabled: (enabled: boolean): Promise<AppSettings> =>

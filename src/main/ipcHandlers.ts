@@ -407,10 +407,22 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, manag
   ipcMain.handle(IPC.setTheme, async (_e, theme: ThemeMode) => settingsStore.setTheme(theme))
 
   ipcMain.handle(IPC.setWindowSizeLocked, async (_e, locked: boolean) => {
-    const settings = await settingsStore.setWindowSizeLocked(locked)
     const w = getWindow()
+    // 固定に切り替えた時点のウィンドウサイズを、そのまま固定サイズとして自動反映する
+    if (locked && w) {
+      const [width, height] = w.getSize()
+      await settingsStore.setFixedWindowSize({ width, height })
+    }
+    const settings = await settingsStore.setWindowSizeLocked(locked)
     w?.setResizable(!locked)
     w?.setMaximizable(!locked)
+    return settings
+  })
+
+  ipcMain.handle(IPC.setFixedWindowSize, async (_e, size: { width: number; height: number }) => {
+    const settings = await settingsStore.setFixedWindowSize(size)
+    const w = getWindow()
+    if (w && settings.windowSizeLocked) w.setSize(size.width, size.height)
     return settings
   })
 

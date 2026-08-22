@@ -278,8 +278,11 @@ export interface AppSettings {
   /** 「ホットキー→遷移先画面」の組み合わせのリスト。mainプロセスがこの数だけグローバルホットキーを登録する */
   hotkeyBindings: HotkeyBinding[]
   theme: ThemeMode
-  /** trueならウィンドウのリサイズ・最大化を禁止し、現在の大きさに固定する */
+  /** trueならウィンドウのリサイズ・最大化を禁止し、fixedWindowSizeの大きさに固定する */
   windowSizeLocked: boolean
+  /** windowSizeLockedがtrueの間、ウィンドウをこの大きさに固定する。ウィンドウサイズを
+   *  固定に切り替えた時点のウィンドウサイズが自動的にここへ反映される(未設定ならnull) */
+  fixedWindowSize: { width: number; height: number } | null
   /** trueならDittoのウィンドウを常に他のアプリより前面に表示する */
   alwaysOnTop: boolean
   /** スクリーンショット・失敗時エビデンス画像に対する機密情報の自動黒塗り設定 */
@@ -526,6 +529,7 @@ export const IPC = {
   setHotkeyBindings: 'settings:set-hotkey-bindings',
   setTheme: 'settings:set-theme',
   setWindowSizeLocked: 'settings:set-window-size-locked',
+  setFixedWindowSize: 'settings:set-fixed-window-size',
   setAlwaysOnTop: 'settings:set-always-on-top',
   setTextExpansionEnabled: 'settings:set-text-expansion-enabled',
   setAutoMaskEnabled: 'settings:set-auto-mask-enabled',

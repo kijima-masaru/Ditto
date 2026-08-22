@@ -66,25 +66,6 @@ type AnnotationPatch = Partial<TextAnnotation> & Partial<ShapeAnnotation> & Part
 type CropRect = { x: number; y: number; w: number; h: number }
 
 const SIMPLE_COLORS = ['#000000', '#ffffff', '#f1f3f4', '#9aa0a6', '#5f6368', '#20344c', '#8b4a2b', '#e07b1a', '#1a9e8f', '#f4c20d']
-const PALETTE_HUES = [0, 20, 40, 60, 90, 150, 180, 205, 230, 260, 290, 320]
-const PALETTE_LIGHTNESS = [88, 76, 64, 52, 40, 28, 16]
-
-function hslToHex(h: number, s: number, l: number): string {
-  const a = (s * Math.min(l, 100 - l)) / 100
-  const f = (n: number): string => {
-    const k = (n + h / 30) % 12
-    const color = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))
-    return Math.round(255 * (color / 100))
-      .toString(16)
-      .padStart(2, '0')
-  }
-  return `#${f(0)}${f(8)}${f(4)}`
-}
-
-function buildPaletteGrid(): string[][] {
-  return PALETTE_LIGHTNESS.map((l) => PALETTE_HUES.map((h) => hslToHex(h, 65, l)))
-}
-const PALETTE_GRID = buildPaletteGrid()
 
 const DEFAULT_FONT_SIZE = 48
 const MIN_FONT_SIZE = 16
@@ -98,6 +79,9 @@ const DRAG_THRESHOLD = 3
 const LINE_HEIGHT_OPTIONS = [1, 1.15, 1.5, 2]
 const MIN_CROP_FRAC = 0.05
 const MAX_HISTORY = 50
+const MIN_ZOOM = 0.25
+const MAX_ZOOM = 4
+const ZOOM_STEP = 0.25
 
 function clamp01(v: number): number {
   return Math.min(1, Math.max(0, v))
@@ -260,6 +244,7 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
   const [currentImageUrl, setCurrentImageUrl] = useState(imageDataUrl)
   const [cropMode, setCropMode] = useState(false)
   const [cropRect, setCropRect] = useState<CropRect | null>(null)
+  const [zoom, setZoom] = useState(1)
 
   const imgRef = useRef<HTMLImageElement | null>(null)
   const wrapRef = useRef<HTMLDivElement | null>(null)
@@ -702,6 +687,20 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
     setCropRect(null)
   }
 
+  const zoomIn = (): void => setZoom((z) => Math.min(MAX_ZOOM, Math.round((z + ZOOM_STEP) * 100) / 100))
+  const zoomOut = (): void => setZoom((z) => Math.max(MIN_ZOOM, Math.round((z - ZOOM_STEP) * 100) / 100))
+  const resetZoom = (): void => setZoom(1)
+
+  // Ctrl+ホイールでの拡大縮小(トラックパッドのピンチ操作もブラウザ上ではCtrl+wheelとして届く)
+  const handleWheelZoom = (e: React.WheelEvent): void => {
+    if (!e.ctrlKey) return
+    e.preventDefault()
+    setZoom((z) => {
+      const next = e.deltaY < 0 ? z + ZOOM_STEP : z - ZOOM_STEP
+      return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(next * 100) / 100))
+    })
+  }
+
   const beginCropDrag = (e: React.PointerEvent, mode: 'move' | 'nw' | 'ne' | 'sw' | 'se'): void => {
     if (!cropRect) return
     e.stopPropagation()
@@ -1091,6 +1090,18 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
           </div>
         )}
 
+        <div className="se-icon-group se-zoom-group">
+          <button className="se-tool-btn" onClick={zoomOut} disabled={zoom <= MIN_ZOOM} title="縮小">
+            <ZoomOutIcon />
+          </button>
+          <button className="se-zoom-value" onClick={resetZoom} title="表示倍率をリセット">
+            {Math.round(zoom * 100)}%
+          </button>
+          <button className="se-tool-btn" onClick={zoomIn} disabled={zoom >= MAX_ZOOM} title="拡大">
+            <ZoomInIcon />
+          </button>
+        </div>
+
         {!cropMode && selected && selected.kind === 'text' && (
           <TextProperties
             annotation={selected}
@@ -1210,12 +1221,13 @@ export default function ScreenshotEditor({ imageDataUrl, onCancel, onSaved }: Pr
         )}
       </div>
 
-      <div className="screenshot-editor-canvas-area">
+      <div className="screenshot-editor-canvas-area" onWheel={handleWheelZoom}>
         <div
           className={`screenshot-editor-image-wrap${drawTool ? ' drawing' : ''}`}
           ref={wrapRef}
           onClick={handleBackgroundClick}
           onPointerDown={handleWrapPointerDown}
+          style={{ transform: `scale(${zoom})` }}
         >
           <img
             ref={imgRef}
@@ -1837,15 +1849,6 @@ function ColorPicker({
                 }}
               />
             </div>
-            <div className="se-color-grid">
-              {PALETTE_GRID.map((row, i) => (
-                <div className="se-color-row" key={i}>
-                  {row.map((c) => (
-                    <button key={c} className="se-color-swatch" style={{ background: c }} onClick={() => { onChange(c); setOpen(false) }} />
-                  ))}
-                </div>
-              ))}
-            </div>
             {allowNone && (
               <button
                 className="se-color-none-btn"
@@ -1894,6 +1897,25 @@ function RedoIcon(): React.JSX.Element {
     <>
       <path d="M21 10H11a5 5 0 0 0 0 10h2" />
       <polyline points="17 5 21 10 17 15" />
+    </>
+  )
+}
+function ZoomInIcon(): React.JSX.Element {
+  return iconSvg(
+    <>
+      <circle cx="10" cy="10" r="7" />
+      <line x1="21" y1="21" x2="15.5" y2="15.5" />
+      <line x1="7" y1="10" x2="13" y2="10" />
+      <line x1="10" y1="7" x2="10" y2="13" />
+    </>
+  )
+}
+function ZoomOutIcon(): React.JSX.Element {
+  return iconSvg(
+    <>
+      <circle cx="10" cy="10" r="7" />
+      <line x1="21" y1="21" x2="15.5" y2="15.5" />
+      <line x1="7" y1="10" x2="13" y2="10" />
     </>
   )
 }

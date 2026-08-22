@@ -128,9 +128,11 @@ async function openMacroForPlayback(macroId: string): Promise<void> {
 
 async function createWindow(): Promise<void> {
   const settings = await settingsStore.getSettings()
+  // ウィンドウサイズが固定されていれば、その大きさで起動する(既定は360x640)
+  const useFixedSize = settings.windowSizeLocked && settings.fixedWindowSize
   mainWindow = new BrowserWindow({
-    width: 360,
-    height: 640,
+    width: useFixedSize ? settings.fixedWindowSize!.width : 360,
+    height: useFixedSize ? settings.fixedWindowSize!.height : 640,
     minWidth: 300,
     minHeight: 420,
     resizable: !settings.windowSizeLocked,

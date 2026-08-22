@@ -47,6 +47,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   ],
   theme: 'light',
   windowSizeLocked: false,
+  fixedWindowSize: null,
   alwaysOnTop: false,
   autoMaskSensitiveInfo: DEFAULT_SCREENSHOT_MASK_SETTINGS,
   clipboardPiiProtection: DEFAULT_CLIPBOARD_PII_PROTECTION,
@@ -162,6 +163,15 @@ function normalizeWindowPosition(value: unknown): { x: number; y: number } | nul
   return { x: v.x, y: v.y }
 }
 
+function normalizeFixedWindowSize(value: unknown): { width: number; height: number } | null {
+  if (!value || typeof value !== 'object') return null
+  const v = value as Partial<{ width: number; height: number }>
+  if (typeof v.width !== 'number' || typeof v.height !== 'number' || !Number.isFinite(v.width) || !Number.isFinite(v.height)) {
+    return null
+  }
+  return { width: v.width, height: v.height }
+}
+
 function settingsFilePath(): string {
   return path.join(app.getPath('userData'), 'settings.json')
 }
@@ -177,6 +187,7 @@ export async function getSettings(): Promise<AppSettings> {
       hotkeyBindings: Array.isArray(parsed.hotkeyBindings) ? parsed.hotkeyBindings : DEFAULT_SETTINGS.hotkeyBindings,
       theme: parsed.theme ?? DEFAULT_SETTINGS.theme,
       windowSizeLocked: parsed.windowSizeLocked ?? DEFAULT_SETTINGS.windowSizeLocked,
+      fixedWindowSize: normalizeFixedWindowSize(parsed.fixedWindowSize),
       alwaysOnTop: parsed.alwaysOnTop ?? DEFAULT_SETTINGS.alwaysOnTop,
       autoMaskSensitiveInfo: normalizeScreenshotMaskSettings(parsed.autoMaskSensitiveInfo),
       clipboardPiiProtection: normalizeClipboardPiiProtection(parsed.clipboardPiiProtection),
@@ -219,6 +230,13 @@ export async function setTheme(theme: ThemeMode): Promise<AppSettings> {
 export async function setWindowSizeLocked(locked: boolean): Promise<AppSettings> {
   const settings = await getSettings()
   settings.windowSizeLocked = locked
+  await writeSettings(settings)
+  return settings
+}
+
+export async function setFixedWindowSize(size: { width: number; height: number } | null): Promise<AppSettings> {
+  const settings = await getSettings()
+  settings.fixedWindowSize = size
   await writeSettings(settings)
   return settings
 }

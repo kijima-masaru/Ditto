@@ -113,6 +113,8 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const [clipboardFolders, setClipboardFolders] = useState<ClipboardTemplateFolder[]>([])
   const [macroFolders, setMacroFolders] = useState<MacroFolder[]>([])
   const [windowSizeLocked, setWindowSizeLocked] = useState(false)
+  const [fixedWidth, setFixedWidth] = useState('360')
+  const [fixedHeight, setFixedHeight] = useState('640')
   const [alwaysOnTop, setAlwaysOnTop] = useState(false)
   const [textExpansionEnabled, setTextExpansionEnabled] = useState(false)
   const [commandPaletteHotkey, setCommandPaletteHotkey] = useState<HotkeyCombo | null>(null)
@@ -159,6 +161,10 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
     window.api.getSettings().then((s) => {
       setHotkeyBindings(s.hotkeyBindings)
       setWindowSizeLocked(s.windowSizeLocked)
+      if (s.fixedWindowSize) {
+        setFixedWidth(String(s.fixedWindowSize.width))
+        setFixedHeight(String(s.fixedWindowSize.height))
+      }
       setAlwaysOnTop(s.alwaysOnTop)
       setTextExpansionEnabled(s.textExpansionEnabled)
       setCommandPaletteHotkey(s.commandPaletteHotkey)
@@ -288,7 +294,21 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
 
   const handleWindowSizeLockedChange = async (locked: boolean): Promise<void> => {
     setWindowSizeLocked(locked)
-    await window.api.setWindowSizeLocked(locked)
+    const settings = await window.api.setWindowSizeLocked(locked)
+    // 固定に切り替えた際、その時点のウィンドウサイズがmain側で自動反映されるため、
+    // 入力欄の表示もそれに合わせて更新する
+    if (settings.fixedWindowSize) {
+      setFixedWidth(String(settings.fixedWindowSize.width))
+      setFixedHeight(String(settings.fixedWindowSize.height))
+    }
+  }
+
+  const commitFixedWindowSize = async (width: string, height: string): Promise<void> => {
+    const w = Math.max(300, Math.round(Number(width)) || 300)
+    const h = Math.max(420, Math.round(Number(height)) || 420)
+    setFixedWidth(String(w))
+    setFixedHeight(String(h))
+    await window.api.setFixedWindowSize({ width: w, height: h })
   }
 
   const handleAlwaysOnTopChange = async (value: boolean): Promise<void> => {
@@ -600,6 +620,38 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
                 />
                 <span className="theme-toggle-slider" />
               </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="settings-item">
+          <div className="settings-item-row">
+            <span className="settings-item-label">
+              固定サイズ
+              <HelpIcon text={'「ウィンドウサイズ」が固定の場合のみ、ここで指定した幅・高さでDittoのウィンドウが固定されます。'} />
+            </span>
+            <div className="settings-item-control fixed-window-size-control">
+              <input
+                type="number"
+                min={300}
+                value={fixedWidth}
+                disabled={!windowSizeLocked}
+                onChange={(e) => setFixedWidth(e.target.value)}
+                onBlur={() => commitFixedWindowSize(fixedWidth, fixedHeight)}
+                aria-label="固定する幅"
+                title="幅"
+              />
+              <span className="fixed-window-size-sep">×</span>
+              <input
+                type="number"
+                min={420}
+                value={fixedHeight}
+                disabled={!windowSizeLocked}
+                onChange={(e) => setFixedHeight(e.target.value)}
+                onBlur={() => commitFixedWindowSize(fixedWidth, fixedHeight)}
+                aria-label="固定する高さ"
+                title="高さ"
+              />
             </div>
           </div>
         </div>

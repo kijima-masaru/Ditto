@@ -1271,6 +1271,27 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   font-size: 13px;
 }
 
+.fixed-window-size-control input {
+  width: 56px;
+  text-align: left;
+  padding: 5px 4px 5px 10px;
+  font-size: 13px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--btn-bg);
+  color: var(--text);
+  border-radius: 8px;
+}
+
+.fixed-window-size-control input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fixed-window-size-sep {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 /* ホットキー変更・アップデート確認・ログ表示ボタン。全項目でサイズを統一する。
    display:inline-flex + align-items:centerを明示し、フォーム要素のデフォルトの
    ベースライン基準の縦位置合わせに頼らず、確実にテキストを垂直中央に揃える */
@@ -1818,6 +1839,28 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   pointer-events: none;
 }
 
+/* 表示倍率の拡大・縮小。常に表示し、ツールバーの右端に固定する */
+.se-zoom-group {
+  margin-left: auto;
+}
+
+.se-zoom-value {
+  flex-shrink: 0;
+  min-width: 48px;
+  height: 40px;
+  padding: 0 6px;
+  border: 1.5px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.se-zoom-value:hover {
+  background: var(--hover-bg);
+}
+
 /* ツールバー最上段の主要ツール選択ボタン(アイコンの下に短い日本語ラベルを
    縦積みで表示する)専用のクラス。プロパティパネル内の細かいアイコンボタン
    (.se-icon-btn、色ピッカーや矢印の向きなど)は見た目を変えたくないため、
@@ -1996,16 +2039,6 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   gap: 6px;
 }
 
-.se-color-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.se-color-grid .se-color-row {
-  gap: 3px;
-}
-
 .se-color-swatch {
   width: 18px;
   height: 18px;
@@ -2066,6 +2099,8 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   position: relative;
   display: inline-block;
   line-height: 0;
+  transform-origin: center center;
+  transition: transform 0.1s ease-out;
   -webkit-user-drag: none;
   user-select: none;
 }
