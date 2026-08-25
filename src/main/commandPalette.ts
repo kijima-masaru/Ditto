@@ -338,4 +338,10 @@ export function initCommandPalette(openMacroForPlayback: (macroId: string) => vo
     setHotkey(combo)
     return settings
   })
+
+  // Ditto起動の時点でパレットウィンドウを非表示のまま生成しておき、rendererの読み込みと
+  // 検索対象データ(履歴・定型文・マクロ・設定)の初回取得をここで済ませておく。
+  // これをしないと、起動後に初めてホットキーを押した時にウィンドウ生成とrendererの
+  // 読み込みが走り、パレットが表示されるまで待たされる(中身が空のまま一瞬表示される)
+  ensureWindow()
 }

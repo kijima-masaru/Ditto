@@ -110,10 +110,12 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, manag
 
   ipcMain.handle(IPC.recordingStop, async () => manager.stopRecording())
 
-  ipcMain.handle(IPC.playbackRun, async (_e, macroCase: MacroCase) => {
-    const w = getWindow()
+  // 進捗はメインウィンドウ固定ではなく、再生を開始した当のウィンドウへ返す
+  // (コマンドパレット経由の再生専用ウィンドウからも実行されるため。macroPlaybackWindow.ts参照)
+  ipcMain.handle(IPC.playbackRun, async (e, macroCase: MacroCase) => {
+    const sender = e.sender
     const result = await manager.runPlayback(macroCase, (progress) => {
-      w?.webContents.send(IPC.playbackProgress, progress)
+      if (!sender.isDestroyed()) sender.send(IPC.playbackProgress, progress)
     })
     await store.recordRun(macroCase.id, result.finishedAt)
     return result
@@ -135,10 +137,12 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, manag
     await store.setPlaybackSpeed(id, speed)
   })
 
-  ipcMain.handle(IPC.setStopHotkey, async (_e, combo: HotkeyCombo) => {
-    const w = getWindow()
+  // 停止キーの通知も、停止キーを登録した当のウィンドウ(再生・記録画面を表示している
+  // ウィンドウ)へ返す
+  ipcMain.handle(IPC.setStopHotkey, async (e, combo: HotkeyCombo) => {
+    const sender = e.sender
     setStopHotkey(combo, () => {
-      w?.webContents.send(IPC.stopHotkeyTriggered)
+      if (!sender.isDestroyed()) sender.send(IPC.stopHotkeyTriggered)
     })
   })
 
@@ -485,11 +489,17 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, manag
 
   ipcMain.handle(IPC.checkForUpdates, async () => checkForUpdates())
 
-  ipcMain.handle(IPC.startHotkeyCapture, async () => {
-    const w = getWindow()
+  // キャプチャ結果も、キャプチャを開始した当のウィンドウへ返す(停止キーの入力欄は
+  // メインウィンドウだけでなく再生専用ウィンドウにも表示されるため)
+  ipcMain.handle(IPC.startHotkeyCapture, async (e) => {
+    const sender = e.sender
     startHotkeyCapture(
-      (label) => w?.webContents.send(IPC.hotkeyCapturePreview, label),
-      (combo) => w?.webContents.send(IPC.hotkeyCaptureResult, combo)
+      (label) => {
+        if (!sender.isDestroyed()) sender.send(IPC.hotkeyCapturePreview, label)
+      },
+      (combo) => {
+        if (!sender.isDestroyed()) sender.send(IPC.hotkeyCaptureResult, combo)
+      }
     )
   })
 

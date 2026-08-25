@@ -9,6 +9,8 @@ import SettingsPanel from './components/SettingsPanel'
 import PreviewWindowRoot from './components/PreviewWindowRoot'
 import ScreenshotEditorWindowRoot from './components/ScreenshotEditorWindowRoot'
 import CommandPaletteRoot from './components/CommandPaletteRoot'
+import MacroPlaybackWindowRoot from './components/MacroPlaybackWindowRoot'
+import { GearIcon } from './components/icons'
 import { useScreenRecording } from './hooks/useScreenRecording'
 import { useScreenshot } from './hooks/useScreenshot'
 
@@ -20,6 +22,9 @@ const isPreviewWindow = new URLSearchParams(window.location.search).get('preview
 const isScreenshotEditorWindow = new URLSearchParams(window.location.search).get('screenshotEditor') === '1'
 // コマンドパレット用の別ウィンドウも同様に?commandPalette=1で判別する(commandPalette.ts参照)
 const isCommandPaletteWindow = new URLSearchParams(window.location.search).get('commandPalette') === '1'
+// コマンドパレットで選んだマクロの再生専用の別ウィンドウも同様に?macroPlayback=1で判別する
+// (macroPlaybackWindow.ts参照)
+const isMacroPlaybackWindow = new URLSearchParams(window.location.search).get('macroPlayback') === '1'
 
 type View = { name: 'macro-list' } | { name: 'clipboard' } | { name: 'settings' }
 
@@ -45,6 +50,7 @@ export default function App(): React.JSX.Element {
   if (isPreviewWindow) return <PreviewWindowRoot />
   if (isScreenshotEditorWindow) return <ScreenshotEditorWindowRoot />
   if (isCommandPaletteWindow) return <CommandPaletteRoot />
+  if (isMacroPlaybackWindow) return <MacroPlaybackWindowRoot />
   return <MainApp />
 }
 
@@ -79,21 +85,6 @@ function MainApp(): React.JSX.Element {
       else setView({ name: 'macro-list' })
     })
   }, [recorder.showFrame])
-
-  // コマンドパレットでマクロを選択した際、その再生画面(idle状態、実行はユーザーが
-  // ボタンを押すまで開始しない)を開く。パレット側からはmacroIdのみ渡ってくるため
-  // ここで最新の一覧から該当のマクロを取得する
-  useEffect(() => {
-    return window.api.onOpenMacroForPlayback((macroId) => {
-      window.api.listMacros().then((list) => {
-        const macroCase = list.find((m) => m.id === macroId)
-        if (macroCase) {
-          setView({ name: 'macro-list' })
-          setMacroModal({ kind: 'playback', macroCase })
-        }
-      })
-    })
-  }, [])
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -174,7 +165,7 @@ function MainApp(): React.JSX.Element {
           onClick={() => setView({ name: 'settings' })}
           title="設定"
         >
-          <span className="settings-icon-glyph">⚙</span>
+          <GearIcon />
         </button>
       </header>
 
