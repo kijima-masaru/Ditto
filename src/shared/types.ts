@@ -588,8 +588,8 @@ export const IPC = {
   hideCommandPalette: 'command-palette:hide', // パレットウィンドウ -> main
   commandPaletteInsertText: 'command-palette:insert-text', // パレットウィンドウ -> main(選択項目を元のウィンドウへ入力する。履歴用、生テキストをそのまま渡す)
   commandPaletteInsertTemplate: 'command-palette:insert-template', // パレットウィンドウ -> main(定型文用。動的変数をmain側で解決してから入力する)
-  commandPaletteOpenMacro: 'command-palette:open-macro', // パレットウィンドウ -> main(選択したマクロの再生画面をメインウィンドウで開く)
-  openMacroForPlayback: 'window:open-macro-for-playback', // main -> メインウィンドウ push
+  commandPaletteOpenMacro: 'command-palette:open-macro', // パレットウィンドウ -> main(選択したマクロの再生画面を専用の別ウィンドウで開く)
+  openMacroForPlayback: 'window:open-macro-for-playback', // main -> マクロ再生専用ウィンドウ push(対象のマクロID)
 
   // コマンドパレットの初期表示(未入力時)に出す定型文・マクロの固定指定
   setClipboardTemplatePinned: 'clipboard:set-template-pinned',

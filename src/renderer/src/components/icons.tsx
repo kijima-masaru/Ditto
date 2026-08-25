@@ -34,3 +34,29 @@ export function PauseIcon(): React.JSX.Element {
 export function StopIcon(): React.JSX.Element {
   return <span style={{ display: 'inline-block', width: 11, height: 11, background: 'currentColor', flexShrink: 0 }} />
 }
+
+// 歯車(設定)アイコンの歯の配置角度。45度ずつ8方向に配置する
+const GEAR_TOOTH_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315]
+
+/**
+ * ヘッダーの設定ボタンで使う歯車アイコン。
+ *
+ * 以前は⚙(U+2699)の文字をそのまま表示していたが、字形がフォントの行送り内で
+ * 上寄りに描画されるためボタンの中で上下にずれてしまい、その分を打ち消すための
+ * オフセット量もフォント依存で安定しなかった。歯もリングも .gear-icon の中心を
+ * 基準に配置することで、フォントに依存せず上下左右とも正確に中央へ描画される。
+ */
+export function GearIcon(): React.JSX.Element {
+  return (
+    <span className="gear-icon">
+      {GEAR_TOOTH_ANGLES.map((deg) => (
+        <span
+          key={deg}
+          className="gear-icon-tooth"
+          style={{ transform: `translate(-50%, -50%) rotate(${deg}deg) translateY(-6.5px)` }}
+        />
+      ))}
+      <span className="gear-icon-ring" />
+    </span>
+  )
+}

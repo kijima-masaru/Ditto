@@ -13,6 +13,7 @@ import { startClipboardWatcher } from './clipboardWatcher'
 import * as settingsStore from './settingsStore'
 import { initPreviewWindows } from './previewWindow'
 import { initScreenshotEditorWindow } from './screenshotEditorWindow'
+import * as macroPlaybackWindow from './macroPlaybackWindow'
 import * as textExpansion from './textExpansion'
 import { initCommandPalette, setHotkey as setCommandPaletteHotkey } from './commandPalette'
 import { TargetManager } from './targetManager'
@@ -105,20 +106,6 @@ async function showMainWindowAndNavigate(target: NavigationTarget | null): Promi
 
   if (!target) return
   const send = (): void => win.webContents.send(IPC.navigateToHotkeyTarget, target)
-  if (win.webContents.isLoading()) {
-    win.webContents.once('did-finish-load', send)
-  } else {
-    send()
-  }
-}
-
-// コマンドパレットでマクロを選択した際、メインウィンドウを表示してその再生画面(idle状態、
-// 実行はユーザーがボタンを押すまで開始しない)を開く
-async function openMacroForPlayback(macroId: string): Promise<void> {
-  const win = await showMainWindow()
-  if (!win) return
-  await forceToFront(win)
-  const send = (): void => win.webContents.send(IPC.openMacroForPlayback, macroId)
   if (win.webContents.isLoading()) {
     win.webContents.once('did-finish-load', send)
   } else {
@@ -230,7 +217,9 @@ app.whenReady().then(async () => {
   })
   textExpansion.initTextExpansion()
   textExpansion.setEnabled(settings.textExpansionEnabled)
-  initCommandPalette((macroId) => void openMacroForPlayback(macroId))
+  // パレットでマクロを選んだ時は、Ditto本体をカーソル位置へ移動させるのではなく、
+  // 再生画面だけを独立した別ウィンドウで開く(macroPlaybackWindow.ts参照)
+  initCommandPalette((macroId) => macroPlaybackWindow.open(macroId))
   setCommandPaletteHotkey(settings.commandPaletteHotkey)
   if (DITTO_REMOTE_ENABLED) {
     remoteServerHandle = remoteServer.initRemoteServer(() => mainWindow, targetManager)

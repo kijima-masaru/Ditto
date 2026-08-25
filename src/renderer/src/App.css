@@ -168,9 +168,40 @@ body {
   line-height: 1;
 }
 
-/* 歯車マークは記号自体の見た目が小さいため、他のヘッダーアイコンより一回り大きくする */
-.settings-icon-btn {
-  font-size: 20px;
+/* 歯車(設定)アイコン(icons.tsxのGearIcon)。⚙の文字だとフォント依存で上下位置が
+   ずれるため、素のCSSボックスで描画する(塗りつぶしSVGを使わない理由はicons.tsx冒頭の
+   コメント参照)。歯もリングも .gear-icon の中心を基準に配置しているため、
+   flexで中央寄せしたボタンの中で上下左右とも正確に中央になる */
+.gear-icon {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+
+/* 歯。中心に重ねてから角度ぶん回転させ、外側へ押し出す(transformはGearIcon側で指定) */
+.gear-icon-tooth {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3px;
+  height: 5px;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+/* 中央のリング(歯車の穴を作る) */
+.gear-icon-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  box-sizing: border-box;
+  width: 13px;
+  height: 13px;
+  transform: translate(-50%, -50%);
+  border: 3px solid currentColor;
+  border-radius: 50%;
 }
 
 /* 録画マークは常に赤色(録画UIの共通色)にし、テーマやhover/active状態で色が変わらないようにする */
@@ -183,13 +214,6 @@ body {
 .record-icon-glyph {
   position: relative;
   top: 1.5px;
-}
-
-/* ⚙の字形自体がフォントの行送り内で上寄りに描画されるため、
-   ボタン自体はflexで正しく中央配置しつつ、文字だけ少し下にずらして見た目を合わせる */
-.settings-icon-glyph {
-  position: relative;
-  top: 2px;
 }
 
 .record-icon-btn.active,
@@ -398,7 +422,7 @@ button.danger:hover {
   background: var(--danger-hover-bg);
 }
 
-button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button) {
+button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):not(.macro-playback-window-close) {
   background: var(--btn-bg);
   color: var(--text-secondary);
   border: 1.5px solid var(--border-strong);
@@ -407,12 +431,12 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   cursor: pointer;
 }
 
-button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):hover {
+button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):not(.macro-playback-window-close):hover {
   background: var(--btn-bg-hover);
   border-color: var(--border-strong);
 }
 
-button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):disabled {
+button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):not(.macro-playback-window-close):disabled {
   background: var(--bg);
   color: var(--text-muted);
   border-color: var(--border);
@@ -2382,4 +2406,76 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* コマンドパレットで選んだマクロの再生専用ウィンドウ(枠なし)。
+   マクロ一覧上に重ねるmacro-modalと同じ見た目のパネルを、ウィンドウいっぱいに広げる */
+.macro-playback-window {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 8px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-strong);
+  overflow: hidden;
+}
+
+/* 枠なしウィンドウのためタイトルバーがない。このヘッダー自体をドラッグ領域にして
+   ウィンドウを移動できるようにし、閉じるボタンだけはドラッグ対象から除外する */
+.macro-playback-window-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  -webkit-app-region: drag;
+}
+
+.macro-playback-window-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.macro-playback-window-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.macro-playback-window-close:hover {
+  color: var(--text);
+  background: var(--btn-bg);
+}
+
+.macro-playback-window-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Playback(.workspace)がヘッダーの残り高さいっぱいに広がるようにする */
+.macro-playback-window .workspace {
+  flex: 1;
+  min-height: 0;
 }
