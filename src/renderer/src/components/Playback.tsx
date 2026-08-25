@@ -28,7 +28,7 @@ export default function Playback({ macroCase }: Props): React.JSX.Element {
   const [activeTargetId, setActiveTargetId] = useState<string>(macroCase.targets[0]?.id ?? '')
   const [success, setSuccess] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [speed, setSpeed] = useState('1')
+  const [speed, setSpeed] = useState(() => (macroCase.playbackSpeed ? String(macroCase.playbackSpeed) : '1'))
   const phaseRef = useRef(phase)
 
   useEffect(() => {
@@ -45,12 +45,23 @@ export default function Playback({ macroCase }: Props): React.JSX.Element {
     }
   }, [])
 
+  // 選択した再生速度を、次回このマクロを開いた時にも復元できるよう保存する。
+  // macroCaseはマクロ一覧の配列要素と同一の参照のため、ここで直接更新しておくことで
+  // 一覧を再取得しなくても同一セッション内の再実行に反映される
+  const persistSpeed = (parsed: number): void => {
+    if (macroCase.playbackSpeed === parsed) return
+    macroCase.playbackSpeed = parsed
+    void window.api.setMacroPlaybackSpeed(macroCase.id, parsed)
+  }
+
   const handleStart = async (): Promise<void> => {
     setPhase('running')
     setPaused(false)
     setProgress([])
     setError(null)
-    await window.api.setPlaybackSpeed(parseSpeed(speed))
+    const parsedSpeed = parseSpeed(speed)
+    persistSpeed(parsedSpeed)
+    await window.api.setPlaybackSpeed(parsedSpeed)
 
     const unsubscribe = window.api.onPlaybackProgress((p) => {
       setProgress((prev) => {
@@ -128,6 +139,7 @@ export default function Playback({ macroCase }: Props): React.JSX.Element {
               step="0.5"
               value={speed}
               onChange={(e) => handleSpeedChange(e.target.value)}
+              onBlur={() => persistSpeed(parseSpeed(speed))}
               title="再生速度"
               aria-label="再生速度"
             />

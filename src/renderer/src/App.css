@@ -185,6 +185,13 @@ body {
   top: 1.5px;
 }
 
+/* ⚙の字形自体がフォントの行送り内で上寄りに描画されるため、
+   ボタン自体はflexで正しく中央配置しつつ、文字だけ少し下にずらして見た目を合わせる */
+.settings-icon-glyph {
+  position: relative;
+  top: 2px;
+}
+
 .record-icon-btn.active,
 .record-icon-btn:hover {
   background: rgba(255, 77, 79, 0.16);

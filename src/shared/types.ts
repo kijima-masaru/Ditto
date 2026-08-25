@@ -80,6 +80,8 @@ export interface MacroCase {
   updatedAt: string
   /** 最後に実行(再生)した日時。一度も実行していなければ未設定 */
   lastRunAt?: string
+  /** 再生画面で最後に選択した再生速度。未設定なら1倍速 */
+  playbackSpeed?: number
   /** 所属フォルダ(MacroFolder.id)。未設定/nullはルート直下 */
   folderId?: string | null
   /** 同じフォルダ内での並び順(昇順)。ドラッグ&ドロップで並び替えた結果を保持する */
@@ -462,6 +464,7 @@ export const IPC = {
   playbackSetPaused: 'playback:setPaused',
   playbackSetSpeed: 'playback:setSpeed',
   playbackProgress: 'playback:progress', // main -> renderer push
+  macroSetPlaybackSpeed: 'macro:set-playback-speed',
 
   // 記録・再生中に任意のキーを「停止キー」として設定できる。対象アプリにフォーカスが
   // ある状態でも、Dittoへ切り替えずそのキー1つで停止できる(グローバルホットキー)

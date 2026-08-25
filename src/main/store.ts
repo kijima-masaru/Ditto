@@ -148,6 +148,18 @@ export async function recordRun(id: string, runAt: string): Promise<void> {
   }
 }
 
+/** 再生画面で選択した再生速度を、次回このマクロを開いた時にも復元できるよう保存する */
+export async function setPlaybackSpeed(id: string, speed: number): Promise<void> {
+  try {
+    const raw = await fs.readFile(filePathFor(id), 'utf-8')
+    const macroCase = JSON.parse(raw) as MacroCase
+    macroCase.playbackSpeed = speed
+    await fs.writeFile(filePathFor(id), JSON.stringify(macroCase, null, 2), 'utf-8')
+  } catch {
+    // マクロが既に削除されている場合などは無視する
+  }
+}
+
 /** マクロの所属フォルダを変更する(nullでルート直下に戻す) */
 export async function moveMacro(id: string, folderId: string | null): Promise<MacroCase> {
   const raw = await fs.readFile(filePathFor(id), 'utf-8')

@@ -75,6 +75,8 @@ const api = {
   abortPlayback: (): Promise<void> => ipcRenderer.invoke(IPC.playbackAbort),
   setPlaybackPaused: (paused: boolean): Promise<void> => ipcRenderer.invoke(IPC.playbackSetPaused, paused),
   setPlaybackSpeed: (speed: number): Promise<void> => ipcRenderer.invoke(IPC.playbackSetSpeed, speed),
+  setMacroPlaybackSpeed: (id: string, speed: number): Promise<void> =>
+    ipcRenderer.invoke(IPC.macroSetPlaybackSpeed, id, speed),
   setStopHotkey: (combo: HotkeyCombo): Promise<void> => ipcRenderer.invoke(IPC.setStopHotkey, combo),
   clearStopHotkey: (): Promise<void> => ipcRenderer.invoke(IPC.clearStopHotkey),
   onStopHotkeyTriggered: (cb: () => void): (() => void) => {

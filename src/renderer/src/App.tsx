@@ -174,7 +174,7 @@ function MainApp(): React.JSX.Element {
           onClick={() => setView({ name: 'settings' })}
           title="設定"
         >
-          ⚙
+          <span className="settings-icon-glyph">⚙</span>
         </button>
       </header>
 
