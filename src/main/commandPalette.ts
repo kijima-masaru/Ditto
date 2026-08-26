@@ -7,6 +7,7 @@ import { ensureGlobalHookStarted, keepGlobalHookAlive } from './adapters/windowT
 import * as win32 from './win32'
 import * as settingsStore from './settingsStore'
 import { resolveTemplateText } from './templateVariables'
+import { widthMatchingMainWindow } from './subWindowLayout'
 import { injectText } from './textInjector'
 import { IPC, type HotkeyCombo } from '../shared/types'
 
@@ -75,15 +76,9 @@ function ensureWindow(): BrowserWindow {
   return win
 }
 
-/** パレットの幅。Ditto本体と同じ幅にする(本体はユーザーがリサイズしたり、設定で
- *  サイズを固定したりできるため、表示のたびにその時点の幅を取得する)。
- *  枠なしのパレットと枠ありの本体で見た目の幅を揃えるため、どちらも外枠基準(getSize)で合わせる */
+/** パレットの幅。Ditto本体と同じ幅にする(詳細はwidthMatchingMainWindowのコメント参照) */
 function paletteWidth(): number {
-  const main = getMainWindow?.()
-  const width = !main || main.isDestroyed() ? FALLBACK_WIDTH : main.getSize()[0]
-  // 本体を最大化している場合など、画面からはみ出す幅にならないよう作業領域に収める
-  const { workArea } = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
-  return Math.min(width, workArea.width)
+  return widthMatchingMainWindow(getMainWindow?.() ?? null, FALLBACK_WIDTH)
 }
 
 // パレット表示のたびに、前回開いた時に自動調整された高さが残らないよう基準サイズへ戻す。

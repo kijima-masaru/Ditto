@@ -194,6 +194,7 @@ app.whenReady().then(async () => {
   const targetManager = new TargetManager()
   registerIpcHandlers(() => mainWindow, targetManager)
   initPreviewWindows(() => mainWindow)
+  macroPlaybackWindow.initMacroPlaybackWindow(() => mainWindow)
   initScreenshotEditorWindow(() => mainWindow)
 
   setupAutoUpdater(() => mainWindow)
