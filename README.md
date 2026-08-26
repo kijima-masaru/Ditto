@@ -28,6 +28,12 @@ WEB対象はこのアプリの中に埋め込んで表示するのではなく�
 
 ## リリース手順
 
+通常は GitHub Actions の Release ワークフロー（`.github/workflows/release.yml`）を
+手動実行する。Windowsランナー上でビルドし、GitHub Releaseの作成とアップロードまで自動で行う
+（`release_type` に `draft` を選ぶと下書きとして作成する）。
+
+手元のWindowsから直接出す場合は以下。
+
 ```bash
 npm version patch|minor|major   # package.jsonのバージョンを更新
 GH_TOKEN=<repo権限のあるトークン> npm run build:win -- --publish always
