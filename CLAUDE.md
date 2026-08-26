@@ -42,10 +42,19 @@ this session type.`)ため、**自分でリリースを作ろうとせず、必�
 - **`-c.publish.xxx=` 形式のCLI上書きを Windows ランナーで使わない**。`-c` と
   `.publish.xxx=...` に分割され、後者が設定ファイルのパスとして解釈されて即失敗する
   (`ENOENT: .publish.releaseType=release`)。設定は `electron-builder.yml` 側に書く
-- **公開リリースを作る前にタグが必要**。electron-builder はリリース作成時に
-  `target_commitish` を送らないため、タグが無い状態で `draft: false` のリリースを
-  作ろうとすると GitHub が 422 (`Published releases must have a valid tag`) を返す。
-  ワークフローはビルド前にタグを作成している
+- **ワークフローでは electron-builder に公開させない**(`--publish never` でビルドし、
+  `gh release create` / `gh release upload --clobber` でアップロードする)。
+  electron-builder のGitHubパブリッシャーは、リリースが未作成の状態で複数のアップロードが
+  並行すると、それぞれが「リリースが存在しない」と判断して同時にリリースを作成しにいく。
+  競合に負けた側のアップロードは失われ、しかもジョブは成功扱いになる
+  (v1.27.40で `.blockmap` が欠けたまま公開された)。
+  なお electron-builder に公開させる場合(ローカルからの `--publish always`)は、
+  リリース作成時に `target_commitish` を送らないため、タグが無い状態で `draft: false` の
+  リリースを作ろうとすると GitHub が 422 (`Published releases must have a valid tag`) を返す
+- **アセットが揃ったことを必ず検証する**。ワークフローはアップロード後に
+  `.exe` / `.blockmap` / `latest.yml` の3点が公開されているか確認し、欠けていれば失敗させる。
+  `.blockmap` が無くても自動アップデート自体は動く(差分ダウンロードができず全体を
+  ダウンロードする)ため、検証しないと欠落に気づけない
 - **`EP_DRAFT` に空文字を渡さない**。electron-builder の `isEnvTrue` は `"true"` / `"1"` に
   加えて**空文字も true** として扱うため、意図せずドラフトになる。必ず true/false が
   入る式で渡す

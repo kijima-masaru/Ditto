@@ -26,30 +26,60 @@ jobs:
         with:
           node-version: 22
       - run: npm install
-      # electron-builderはリリース作成時にtarget_commitishを送らないため、タグが存在しない状態で
-      # 公開リリースを作ろうとするとGitHubに422("Published releases must have a valid tag")で
-      # 拒否される。そのため、ビルド前にこのコミットに対してタグを作っておく
-      # (再実行時に既にタグがある場合はスキップする)
-      - name: Create tag for this version
-        run: |
-          $version = (Get-Content -Raw package.json | ConvertFrom-Json).version
-          $tag = "v$version"
-          if (git ls-remote --tags origin "refs/tags/$tag") {
-            Write-Host "$tag already exists. skip"
-          } else {
-            git tag $tag
-            git push origin $tag
-            Write-Host "created $tag"
-          }
-      # リリース種別はelectron-builder.ymlのpublish.releaseType(=release)を既定とし、
-      # 下書きを選んだ時だけEP_DRAFTで上書きする。
-      # -c.publish.xxx 形式のCLI上書きはWindows上で引数が分割され、-cの値(設定ファイルのパス)
-      # として解釈されてしまうため使わない。
-      # EP_DRAFTは空文字も"true"扱いされるため、必ずtrue/falseが入る式で渡すこと
-      - run: npm run build:win -- --publish always
+      # ビルドのみ行い、公開はelectron-builderに任せない。
+      # electron-builderのGitHubパブリッシャーは、リリースが未作成の状態で複数の
+      # アップロードが並行すると、それぞれが「リリースが存在しない」と判断して同時に
+      # リリースを作成しにいく。競合に負けた側のアップロードは失われ、しかもジョブは
+      # 成功扱いになるため、v1.27.40では.blockmapが欠けたまま公開されてしまった
+      - run: npm run build:win -- --publish never
+
+      # ビルド済みの成果物をghでまとめてアップロードする。リリース作成もタグ作成も
+      # ここで行うため競合が起きない。アップロード後に3点が揃っているか検証し、
+      # 欠けていればジョブを失敗させる(欠落を成功扱いで見逃さないため)
+      - name: Publish release
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          EP_DRAFT: ${{ inputs.release_type == 'draft' }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          tag="v$version"
+          files=(
+            "dist/Ditto-$version-setup.exe"
+            "dist/Ditto-$version-setup.exe.blockmap"
+            "dist/latest.yml"
+          )
+          for f in "${files[@]}"; do
+            if [ ! -f "$f" ]; then
+              echo "配布物が見つかりません: $f" >&2
+              exit 1
+            fi
+          done
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "リリース $tag は既に存在するため、アセットを上書きアップロードします"
+            gh release upload "$tag" "${files[@]}" --clobber
+          else
+            echo "リリース $tag を作成します"
+            args=(--title "$version" --notes "自動リリース (commit: $GITHUB_SHA)" --target "$GITHUB_SHA")
+            if [ "${RELEASE_TYPE:-release}" = "draft" ]; then
+              args+=(--draft)
+            fi
+            gh release create "$tag" "${files[@]}" "${args[@]}"
+          fi
+
+          names=$(gh release view "$tag" --json assets --jq '.assets[].name')
+          echo "公開アセット:"
+          echo "$names"
+          for f in "${files[@]}"; do
+            base=$(basename "$f")
+            if ! echo "$names" | grep -qx "$base"; then
+              echo "アセットが公開されていません: $base" >&2
+              exit 1
+            fi
+          done
+
       - uses: actions/upload-artifact@v4   # 公開に失敗してもインストーラを回収できるように
         if: always()
         with:
