@@ -26,6 +26,21 @@ jobs:
         with:
           node-version: 22
       - run: npm install
+      # electron-builderはリリース作成時にtarget_commitishを送らないため、タグが存在しない状態で
+      # 公開リリースを作ろうとするとGitHubに422("Published releases must have a valid tag")で
+      # 拒否される。そのため、ビルド前にこのコミットに対してタグを作っておく
+      # (再実行時に既にタグがある場合はスキップする)
+      - name: Create tag for this version
+        run: |
+          $version = (Get-Content -Raw package.json | ConvertFrom-Json).version
+          $tag = "v$version"
+          if (git ls-remote --tags origin "refs/tags/$tag") {
+            Write-Host "$tag already exists. skip"
+          } else {
+            git tag $tag
+            git push origin $tag
+            Write-Host "created $tag"
+          }
       # リリース種別はelectron-builder.ymlのpublish.releaseType(=release)を既定とし、
       # 下書きを選んだ時だけEP_DRAFTで上書きする。
       # -c.publish.xxx 形式のCLI上書きはWindows上で引数が分割され、-cの値(設定ファイルのパス)
