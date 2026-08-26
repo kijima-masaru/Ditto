@@ -2,6 +2,7 @@ import { BrowserWindow, screen } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { IPC } from '../shared/types'
+import { widthMatchingMainWindow } from './subWindowLayout'
 
 /**
  * コマンドパレットで選んだマクロの再生画面だけを表示する専用の別ウィンドウ。
@@ -17,10 +18,23 @@ import { IPC } from '../shared/types'
  * 場合も同じIPCで対象を差し替える)。
  */
 
-const WIDTH = 480
+// メインウィンドウが取得できない場合に使う幅。通常はDitto本体と同じ幅にする(playbackWidth参照)
+const FALLBACK_WIDTH = 480
 const HEIGHT = 560
 
 let win: BrowserWindow | null = null
+// Ditto本体(メインウィンドウ)。再生ウィンドウの幅を本体に合わせるために参照する
+let getMainWindow: (() => BrowserWindow | null) | null = null
+
+/** Ditto本体の参照を渡す(index.tsから起動時に一度だけ呼ぶ) */
+export function initMacroPlaybackWindow(getMainWindowFn: () => BrowserWindow | null): void {
+  getMainWindow = getMainWindowFn
+}
+
+/** 再生ウィンドウの幅。Ditto本体と同じ幅にする(詳細はwidthMatchingMainWindowのコメント参照) */
+function playbackWidth(): number {
+  return widthMatchingMainWindow(getMainWindow?.() ?? null, FALLBACK_WIDTH)
+}
 
 // ウィンドウをマウスカーソル位置(中心が合うよう)に移動する。カーソルがいる
 // ディスプレイの作業領域からはみ出さないようクランプする
@@ -42,6 +56,7 @@ function sendMacroId(w: BrowserWindow, macroId: string): void {
 /** 指定したマクロの再生画面(idle状態。実行はユーザーがボタンを押すまで開始しない)を開く */
 export function open(macroId: string): void {
   if (win && !win.isDestroyed()) {
+    win.setSize(playbackWidth(), win.getSize()[1])
     positionAtCursor(win)
     sendMacroId(win, macroId)
     win.show()
@@ -51,9 +66,11 @@ export function open(macroId: string): void {
   }
 
   win = new BrowserWindow({
-    width: WIDTH,
+    width: playbackWidth(),
     height: HEIGHT,
-    minWidth: 360,
+    // Ditto本体の最小幅(300)と揃える。ここが本体より大きいと、本体を細くした際に
+    // 幅を合わせられなくなる
+    minWidth: 300,
     minHeight: 320,
     // タイトルバーの分だけ縦に伸びるのを避けるため枠なしにし、閉じる・移動は
     // renderer側のヘッダー(MacroPlaybackWindowRoot)で行う
