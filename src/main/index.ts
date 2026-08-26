@@ -219,7 +219,10 @@ app.whenReady().then(async () => {
   textExpansion.setEnabled(settings.textExpansionEnabled)
   // パレットでマクロを選んだ時は、Ditto本体をカーソル位置へ移動させるのではなく、
   // 再生画面だけを独立した別ウィンドウで開く(macroPlaybackWindow.ts参照)
-  initCommandPalette((macroId) => macroPlaybackWindow.open(macroId))
+  initCommandPalette(
+    () => mainWindow,
+    (macroId) => macroPlaybackWindow.open(macroId)
+  )
   setCommandPaletteHotkey(settings.commandPaletteHotkey)
   if (DITTO_REMOTE_ENABLED) {
     remoteServerHandle = remoteServer.initRemoteServer(() => mainWindow, targetManager)
