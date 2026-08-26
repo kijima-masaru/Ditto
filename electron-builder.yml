@@ -10,6 +10,9 @@ publish:
   provider: github
   owner: kijima-masaru
   repo: Ditto
+  # 既定で公開リリースとして作成する(未指定だとdraftになり、公開に手作業が必要になる)。
+  # 下書きにしたい場合はビルド時に環境変数 EP_DRAFT=true を指定する
+  releaseType: release
 files:
   - out/**/*
   - '!**/.vscode/*'
