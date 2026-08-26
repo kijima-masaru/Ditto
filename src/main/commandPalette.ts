@@ -19,10 +19,13 @@ import { IPC, type HotkeyCombo } from '../shared/types'
  * 選択項目の実行(元のウィンドウへの入力・マクロ再生画面を開く)のみを担当する)。
  */
 
-const WIDTH = 480
+// メインウィンドウが取得できない場合に使う幅。通常はDitto本体と同じ幅にする(paletteWidth参照)
+const FALLBACK_WIDTH = 480
 const HEIGHT = 420
 
 let win: BrowserWindow | null = null
+// Ditto本体(メインウィンドウ)。パレットの幅を本体に合わせるために参照する
+let getMainWindow: (() => BrowserWindow | null) | null = null
 // パレットを開く直前にフォーカスされていたウィンドウ。定型文/履歴のテキストを
 // 入力する際、パレット自身ではなくこの元のウィンドウへ戻してから入力する
 let lastFocusedWindowId: number | null = null
@@ -44,7 +47,7 @@ function ensureWindow(): BrowserWindow {
   if (win && !win.isDestroyed()) return win
 
   win = new BrowserWindow({
-    width: WIDTH,
+    width: paletteWidth(),
     height: HEIGHT,
     frame: false,
     resizable: false,
@@ -72,10 +75,21 @@ function ensureWindow(): BrowserWindow {
   return win
 }
 
-// パレット表示のたびに、前回開いた時に自動調整された高さが残らないよう基準サイズへ戻す
+/** パレットの幅。Ditto本体と同じ幅にする(本体はユーザーがリサイズしたり、設定で
+ *  サイズを固定したりできるため、表示のたびにその時点の幅を取得する)。
+ *  枠なしのパレットと枠ありの本体で見た目の幅を揃えるため、どちらも外枠基準(getSize)で合わせる */
+function paletteWidth(): number {
+  const main = getMainWindow?.()
+  const width = !main || main.isDestroyed() ? FALLBACK_WIDTH : main.getSize()[0]
+  // 本体を最大化している場合など、画面からはみ出す幅にならないよう作業領域に収める
+  const { workArea } = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
+  return Math.min(width, workArea.width)
+}
+
+// パレット表示のたびに、前回開いた時に自動調整された高さが残らないよう基準サイズへ戻す。
+// 幅もこのタイミングでDitto本体の現在の幅に合わせ直す
 function resetSize(w: BrowserWindow): void {
-  const [width] = w.getSize()
-  w.setSize(width, HEIGHT)
+  w.setSize(paletteWidth(), HEIGHT)
 }
 
 // 表示件数に応じてrenderer側から要求された高さへウィンドウを調整する。位置(x, y)の
@@ -307,7 +321,11 @@ export function setHotkey(combo: HotkeyCombo): void {
   if (!combo.ctrl && !combo.shift && !combo.alt && !combo.meta && combo.keycode === null) hide()
 }
 
-export function initCommandPalette(openMacroForPlayback: (macroId: string) => void): void {
+export function initCommandPalette(
+  getMainWindowFn: () => BrowserWindow | null,
+  openMacroForPlayback: (macroId: string) => void
+): void {
+  getMainWindow = getMainWindowFn
   ensureGlobalHookStarted()
   keepGlobalHookAlive()
   uIOhook.on('keydown', handleKeydown)
