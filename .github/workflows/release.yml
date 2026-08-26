@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  workflow_dispatch:            # 手動起動（私からも起動を試せます）
+    inputs:
+      release_type:
+        description: 'release=即公開 / draft=下書きのみ'
+        default: release
+        type: choice
+        options: [release, draft]
+  push:
+    branches: ['release/**']    # 私が確実に起動できる経路
+
+permissions:
+  contents: write               # リリース作成に必須
+
+concurrency:                    # 同時実行による二重リリースを防ぐ
+  group: release
+
+jobs:
+  build-and-publish:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run build:win -- --publish always -c.publish.releaseType=${{ inputs.release_type || 'release' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4   # 公開に失敗してもインストーラを回収できるように
+        if: always()
+        with:
+          name: Ditto-setup
+          path: dist/*.exe
