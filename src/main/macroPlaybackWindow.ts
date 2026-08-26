@@ -33,15 +33,10 @@ function positionAtCursor(w: BrowserWindow): void {
   w.setPosition(x, y)
 }
 
+/** 既に開いているウィンドウの表示対象を差し替える。読み込み済みのウィンドウにしか
+ *  使わない(新規作成時はクエリ文字列でマクロIDを渡す。理由はopen()のコメント参照) */
 function sendMacroId(w: BrowserWindow, macroId: string): void {
-  const send = (): void => {
-    if (!w.isDestroyed()) w.webContents.send(IPC.openMacroForPlayback, macroId)
-  }
-  if (w.webContents.isLoading()) {
-    w.webContents.once('did-finish-load', send)
-  } else {
-    send()
-  }
+  if (!w.isDestroyed()) w.webContents.send(IPC.openMacroForPlayback, macroId)
 }
 
 /** 指定したマクロの再生画面(idle状態。実行はユーザーがボタンを押すまで開始しない)を開く */
@@ -81,9 +76,12 @@ export function open(macroId: string): void {
     win = null
   })
 
-  sendMacroId(win, macroId)
-
-  const search = '?macroPlayback=1'
+  // 新規作成時のマクロIDはIPCではなくクエリ文字列で渡す。
+  // IPCで渡そうとすると、送信側(main)と受信側(rendererのReactがマウントしてlistenerを
+  // 登録するまで)のタイミング勝負になり、送信が早すぎるとメッセージが捨てられて
+  // 画面が「読み込み中」のまま止まる。クエリ文字列ならrenderer側が起動時に自分で読めるため、
+  // タイミングに依存しない
+  const search = `?macroPlayback=1&macroId=${encodeURIComponent(macroId)}`
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     win.loadURL(process.env['ELECTRON_RENDERER_URL'] + '/' + search)
   } else {
