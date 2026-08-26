@@ -9,7 +9,7 @@ npmRebuild: false
 publish:
   provider: github
   owner: kijima-masaru
-  repo: auto-test-tool
+  repo: Ditto
 files:
   - out/**/*
   - '!**/.vscode/*'
