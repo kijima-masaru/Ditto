@@ -199,6 +199,41 @@ export interface ClipboardTemplateFolder {
 }
 
 /**
+ * メモ。クリップボード履歴(勝手に貯まる)・定型文(繰り返し入力する)とは別に、
+ * 「自分で書いて育てるテキスト」を置く場所。
+ *
+ * 本文は notes/<id>.txt に1件ずつ別ファイルとして保存し、この型は一覧表示用の
+ * メタ情報だけを持つ(一覧を開くたびに全本文を読まずに済むようにするため)。
+ * 本文をプレーンテキストのまま置くのは、万一Dittoが壊れてもエクスプローラから
+ * 開いて救出できるようにするため。
+ */
+export interface Note {
+  id: string
+  /** 一覧に表示する名前。titleManualがtrueでなければ本文の1行目から自動生成する */
+  title: string
+  /** 利用者が明示的に名前を付けた場合はtrue。以降は本文を編集しても名前を自動更新しない */
+  titleManual?: boolean
+  /** 一覧に表示する本文の先頭抜粋 */
+  preview: string
+  /** 所属フォルダ(NoteFolder.id)。未設定/nullはルート直下 */
+  folderId?: string | null
+  /** 同じフォルダ内での並び順(昇順)。ドラッグ&ドロップで並び替えた結果を保持する */
+  order: number
+  createdAt: string
+  /** 本文または名前を最後に更新した日時 */
+  updatedAt: string
+}
+
+export interface NoteFolder {
+  id: string
+  name: string
+  /** 親フォルダのid。nullはルート直下 */
+  parentId: string | null
+  /** 同じ階層内での並び順(昇順)。ドラッグ&ドロップで並び替えた結果を保持する */
+  order: number
+}
+
+/**
  * 汎用のネイティブ右クリックメニュー記述。rendererが内容を組み立て、mainがElectronの
  * Menu.popup()で表示する。選択された項目のidを返し、何も選ばれなければnullを返す。
  */
@@ -577,6 +612,25 @@ export const IPC = {
   screenshotEditorImage: 'screenshot-editor:image', // main -> 編集ウィンドウ push
   notifyScreenshotSaved: 'screenshot-editor:notify-saved', // 編集ウィンドウ -> main
   screenshotEditorSaved: 'screenshot-editor:saved-push', // main -> メインウィンドウ push
+
+  // メモ(自分で書いて育てるテキスト)。本文の読み書きは一覧とは別のチャンネルに分ける
+  listNotes: 'notes:list',
+  searchNotes: 'notes:search', // 本文まで含めた全文検索。一致したメモのidを返す
+  getNoteBody: 'notes:get-body',
+  createNote: 'notes:create',
+  updateNoteBody: 'notes:update-body',
+  renameNote: 'notes:rename',
+  deleteNote: 'notes:delete',
+  moveNote: 'notes:move',
+  reorderNotes: 'notes:reorder',
+  listNoteFolders: 'notes:list-folders',
+  createNoteFolder: 'notes:create-folder',
+  renameNoteFolder: 'notes:rename-folder',
+  reorderNoteFolders: 'notes:reorder-folders',
+  deleteNoteFolder: 'notes:delete-folder',
+  openNoteEditor: 'notes:open-editor', // メインウィンドウ -> main(編集用の別ウィンドウを開く)
+  openNoteInEditor: 'notes:open-in-editor', // main -> 編集ウィンドウ push(既に開いている場合の対象差し替え)
+  notesChanged: 'notes:changed', // main -> メインウィンドウ push(編集ウィンドウでの保存を一覧へ反映する)
 
   // コマンドパレット(ホットキーで呼び出す、クリップボード履歴・定型文・マクロを
   // 横断検索できる別ウィンドウ)。検索対象データ自体は既存のlistClipboardHistory等を

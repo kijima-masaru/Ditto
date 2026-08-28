@@ -130,6 +130,11 @@ body {
 
 .app-header nav button {
   flex: 1;
+  /* タブが3つ(クリップボード/マクロ/メモ)あり幅が狭いため、折り返さず省略表示する */
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2478,4 +2483,142 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 .macro-playback-window .workspace {
   flex: 1;
   min-height: 0;
+}
+
+/* --- メモ一覧(メインウィンドウ) --- */
+
+.notes-toolbar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.notes-search {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  font-size: 12px;
+}
+
+.notes-new-btn {
+  flex-shrink: 0;
+  height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.note-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.note-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.note-item:hover {
+  border-color: var(--border-strong);
+}
+
+.note-item-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-item-preview {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-item-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* --- メモの編集ウィンドウ(別ウィンドウ) --- */
+
+.note-editor-window {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg);
+}
+
+.note-editor-header {
+  flex-shrink: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.note-editor-title {
+  width: 100%;
+  height: 32px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* 本文の入力欄。エディタとして使うため等幅フォントにし、
+   ウィンドウの残り全体をここが占める */
+.note-editor-body {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  border: none;
+  border-radius: 0;
+  padding: 12px 14px;
+  background: var(--panel-bg);
+  color: var(--text);
+  font-family: Consolas, 'Courier New', 'MS Gothic', monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  tab-size: 4;
+}
+
+.note-editor-body:focus {
+  outline: none;
+}
+
+.note-editor-footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.note-editor-status--dirty {
+  color: var(--accent);
+}
+
+.note-editor-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  font-size: 13px;
+  color: var(--text-muted);
 }
