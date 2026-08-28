@@ -390,7 +390,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
       >
         <option value={NAVIGATION_TARGET_NONE}>未設定(表示のみ)</option>
         <option value={RECORDING_FRAME_VALUE}>録画枠を表示</option>
-        <optgroup label="クリップボード">
+        <optgroup label="クリップ">
           <option value={encodeNavigationTarget({ kind: 'clipboard', folderId: null })}>home</option>
           {flatClipboardFolders.map(({ folder, depth }) => (
             <option key={folder.id} value={encodeNavigationTarget({ kind: 'clipboard', folderId: folder.id })}>

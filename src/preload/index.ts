@@ -15,6 +15,7 @@ import {
   type HotkeyCombo,
   type NavigationTarget,
   type Note,
+  type NoteEditorAppearance,
   type NoteFolder,
   type PairedDevice,
   type RecordedStep,
@@ -138,6 +139,16 @@ const api = {
   setNotePinned: (id: string, pinned: boolean): Promise<void> => ipcRenderer.invoke(IPC.setNotePinned, id, pinned),
   reorderPinnedNotes: (orderedIds: string[]): Promise<void> => ipcRenderer.invoke(IPC.reorderPinnedNotes, orderedIds),
   openNoteEditor: (id: string): Promise<void> => ipcRenderer.invoke(IPC.openNoteEditor, id),
+  /** 編集ウィンドウ側で使う: 今どのメモを表示しているかをmainへ伝える */
+  notifyNoteEditorShowing: (id: string): Promise<void> => ipcRenderer.invoke(IPC.noteEditorShowing, id),
+  /** 編集ウィンドウ側で使う: 開いているメモへの追記が届いた(本文はこのウィンドウが持っている) */
+  onAppendToOpenNote: (cb: (text: string) => void): (() => void) => {
+    const listener = (_e: unknown, text: string): void => cb(text)
+    ipcRenderer.on(IPC.appendToOpenNote, listener)
+    return () => ipcRenderer.removeListener(IPC.appendToOpenNote, listener)
+  },
+  setNoteEditorAppearance: (appearance: NoteEditorAppearance): Promise<AppSettings> =>
+    ipcRenderer.invoke(IPC.setNoteEditorAppearance, appearance),
   openNoteViaCommandPalette: (noteId: string): Promise<void> =>
     ipcRenderer.invoke(IPC.commandPaletteOpenNote, noteId),
   /** 編集ウィンドウ側で使う: main -> このウィンドウへ、表示対象のメモIDが差し替えられた */

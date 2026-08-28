@@ -19,6 +19,29 @@ const WIDTH = 900
 const HEIGHT = 680
 
 let win: BrowserWindow | null = null
+// 編集ウィンドウが今どのメモを表示しているか。rendererから通知を受けて保持する。
+// 「クリップボード履歴からメモへ追記」した時に、そのメモを開いているウィンドウがあれば
+// ファイルを直接書き換えずウィンドウ側に追記させるために使う(下記appendIfOpen参照)
+let showingNoteId: string | null = null
+
+/** 編集ウィンドウから「今このメモを表示している」と通知を受ける */
+export function setShowingNote(noteId: string): void {
+  showingNoteId = noteId
+}
+
+/**
+ * 指定のメモを編集ウィンドウが開いていれば、そのウィンドウに追記させてtrueを返す。
+ *
+ * 開いているメモの本文はウィンドウ側が持っており、ファイルだけを書き換えても画面に
+ * 反映されない。さらに、その後ウィンドウが自動保存すると画面上の(追記前の)内容で
+ * 上書きされ、追記が失われてしまう。そのため「開いている間はウィンドウが持ち主」と
+ * 決め、追記もウィンドウ自身に行わせる
+ */
+export function appendIfOpen(noteId: string, text: string): boolean {
+  if (!win || win.isDestroyed() || showingNoteId !== noteId) return false
+  win.webContents.send(IPC.appendToOpenNote, text)
+  return true
+}
 
 /** 指定したメモの編集画面を開く(既に開いていれば対象を差し替えて前面に出す) */
 export function open(noteId: string): void {
@@ -51,6 +74,7 @@ export function open(noteId: string): void {
   })
   win.on('closed', () => {
     win = null
+    showingNoteId = null
   })
 
   // 新規作成時の対象メモIDはIPCではなくクエリ文字列で渡す。

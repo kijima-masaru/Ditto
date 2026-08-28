@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { Note } from '../../../shared/types'
+import type { Note, NoteEditorAppearance } from '../../../shared/types'
 
 /**
  * メモの編集専用の別ウィンドウのルート。
@@ -13,6 +13,11 @@ import type { Note } from '../../../shared/types'
  * 本文を右クリックすると、選択範囲を定型文として登録できる(メモ=書いて育てる /
  * 定型文=繰り返し入力する、という役割の違いを行き来できるようにするため)。
  *
+ * クリップボード履歴から「メモに追記」された場合、対象がこのウィンドウで開いているメモなら
+ * main側はファイルを書き換えず、このウィンドウへ追記を依頼してくる。開いている本文は
+ * このウィンドウが持っており、ファイルだけ書き換えても画面に反映されない上、その後の
+ * 自動保存で追記が消えてしまうため(noteEditorWindow.appendIfOpen参照)。
+ *
  * 保存は自動で行う(入力が止まってから少し待って保存、ウィンドウを離れた時も保存)。
  * メモは保存操作を意識させた時点で使われなくなるため、Ctrl+Sは「今すぐ保存」の
  * 補助として用意するだけにしている。
@@ -22,6 +27,8 @@ import type { Note } from '../../../shared/types'
 const AUTOSAVE_DELAY_MS = 800
 /** 名前の変更を保存するまでの待ち時間 */
 const RENAME_DELAY_MS = 600
+/** 表示設定の変更を保存するまでの待ち時間 */
+const APPEARANCE_SAVE_DELAY_MS = 300
 
 // 表示対象のメモIDはウィンドウ生成時にクエリ文字列で渡される
 // (IPCで受け取ると、mainからの送信がマウントより早い場合に取りこぼすため)
@@ -33,6 +40,8 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
   const [body, setBody] = useState('')
   const [title, setTitle] = useState('')
   const [status, setStatus] = useState<'loading' | 'saved' | 'editing' | 'saving' | 'notfound'>('loading')
+  const [appearance, setAppearance] = useState<NoteEditorAppearance | null>(null)
+  const [appearanceOpen, setAppearanceOpen] = useState(false)
 
   // 保存処理は入力のたびに作り直さないよう、最新値をrefで持つ
   const noteIdRef = useRef<string | null>(null)
@@ -43,9 +52,30 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    // メインウィンドウとは別のBrowserWindowなのでdata-theme属性を独自に引き継ぐ必要がある
-    window.api.getSettings().then((s) => document.documentElement.setAttribute('data-theme', s.theme))
+    window.api.getSettings().then((s) => {
+      // メインウィンドウとは別のBrowserWindowなのでdata-theme属性を独自に引き継ぐ必要がある
+      document.documentElement.setAttribute('data-theme', s.theme)
+      setAppearance(s.noteEditorAppearance)
+    })
   }, [])
+
+  /**
+   * 表示設定を変更する(次に開いた時・他のメモでも同じ見た目になる)。
+   * 見た目は即座に変え、保存は少し待ってから行う。色の選択中は値が連続して
+   * 変わるため、そのたびに設定ファイルへ書き込まないようにする
+   */
+  const appearanceSaveTimerRef = useRef<number | null>(null)
+  const updateAppearance = (patch: Partial<NoteEditorAppearance>): void => {
+    setAppearance((prev) => {
+      if (!prev) return prev
+      const next = { ...prev, ...patch }
+      if (appearanceSaveTimerRef.current !== null) window.clearTimeout(appearanceSaveTimerRef.current)
+      appearanceSaveTimerRef.current = window.setTimeout(() => {
+        void window.api.setNoteEditorAppearance(next)
+      }, APPEARANCE_SAVE_DELAY_MS)
+      return next
+    })
+  }
 
   /** 未保存の内容があれば今すぐ保存する */
   const flush = useCallback(async (): Promise<void> => {
@@ -93,6 +123,8 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
       setTitle(found.title)
       setStatus('saved')
       document.title = `${found.title} - メモ`
+      // どのメモを開いているかをmainへ伝える(履歴からの追記をこのウィンドウで受けるため)
+      void window.api.notifyNoteEditorShowing(noteId)
     }
     void load()
     return () => {
@@ -116,14 +148,27 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
     }
   }, [flush])
 
-  const handleBodyChange = (value: string): void => {
-    setBody(value)
-    bodyRef.current = value
-    dirtyRef.current = true
-    setStatus('editing')
-    if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current)
-    saveTimerRef.current = window.setTimeout(() => void flush(), AUTOSAVE_DELAY_MS)
-  }
+  const handleBodyChange = useCallback(
+    (value: string): void => {
+      setBody(value)
+      bodyRef.current = value
+      dirtyRef.current = true
+      setStatus('editing')
+      if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = window.setTimeout(() => void flush(), AUTOSAVE_DELAY_MS)
+    },
+    [flush]
+  )
+
+  // クリップボード履歴から、今開いているメモへの追記が届いた場合。
+  // 画面が持っている本文の末尾へ足し、そのまま自動保存の流れに乗せる
+  useEffect(() => {
+    return window.api.onAppendToOpenNote((text) => {
+      const current = bodyRef.current
+      const separator = current.length === 0 || current.endsWith('\n') ? '' : '\n'
+      handleBodyChange(`${current}${separator}${text}`)
+    })
+  }, [handleBodyChange])
 
   const renameTimerRef = useRef<number | null>(null)
   const handleTitleChange = (value: string): void => {
@@ -197,6 +242,15 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
   }
 
   const lineCount = body === '' ? 0 : body.split(/\r\n|\r|\n/).length
+  // 色が未設定(null)の項目はテーマ既定のままにしたいので、指定がある時だけ上書きする
+  const bodyStyle: React.CSSProperties = appearance
+    ? {
+        fontSize: `${appearance.fontSize}px`,
+        fontWeight: appearance.bold ? 700 : 400,
+        ...(appearance.color ? { color: appearance.color } : {}),
+        ...(appearance.background ? { background: appearance.background } : {})
+      }
+    : {}
   const statusLabel = status === 'saving' ? '保存中...' : status === 'editing' ? '未保存' : '保存済み'
 
   return (
@@ -215,11 +269,67 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
           placeholder="メモの名前(空にすると本文の1行目を使います)"
           aria-label="メモの名前"
         />
+        <button
+          type="button"
+          className={`note-editor-appearance-btn${appearanceOpen ? ' active' : ''}`}
+          onClick={() => setAppearanceOpen((v) => !v)}
+          title="文字の大きさ・色・背景色を変える"
+        >
+          表示
+        </button>
       </div>
+
+      {appearanceOpen && appearance && (
+        <div className="note-editor-appearance">
+          <label className="note-editor-appearance-item">
+            文字サイズ
+            <input
+              type="number"
+              min={10}
+              max={32}
+              value={appearance.fontSize}
+              onChange={(e) => updateAppearance({ fontSize: Number(e.target.value) })}
+            />
+          </label>
+          <label className="note-editor-appearance-item">
+            <input
+              type="checkbox"
+              checked={appearance.bold}
+              onChange={(e) => updateAppearance({ bold: e.target.checked })}
+            />
+            太字
+          </label>
+          <label className="note-editor-appearance-item">
+            文字色
+            <input
+              type="color"
+              value={appearance.color ?? '#000000'}
+              onChange={(e) => updateAppearance({ color: e.target.value })}
+            />
+          </label>
+          <label className="note-editor-appearance-item">
+            背景色
+            <input
+              type="color"
+              value={appearance.background ?? '#ffffff'}
+              onChange={(e) => updateAppearance({ background: e.target.value })}
+            />
+          </label>
+          <button
+            type="button"
+            className="note-editor-appearance-reset"
+            onClick={() => updateAppearance({ color: null, background: null })}
+            title="文字色と背景色をテーマ(ライト/ダーク)に合わせた既定に戻す"
+          >
+            色を既定に戻す
+          </button>
+        </div>
+      )}
 
       <textarea
         ref={textareaRef}
         className="note-editor-body"
+        style={bodyStyle}
         onContextMenu={handleBodyContextMenu}
         value={body}
         onChange={(e) => handleBodyChange(e.target.value)}
