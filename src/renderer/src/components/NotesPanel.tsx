@@ -228,6 +228,7 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
     const result = await window.api.showContextMenu([
       { id: 'open', label: '開く' },
       { id: 'rename', label: '名前変更' },
+      { id: 'pin', label: n.pinned ? 'コマンドパレットの固定を解除' : 'コマンドパレットに固定' },
       { id: 'move', label: '移動', submenu: buildMoveSubmenu(flatFolders) },
       { id: 'move-up', label: '上に移動', enabled: !searching && index > 0 },
       { id: 'move-down', label: '下に移動', enabled: !searching && index < ids.length - 1 },
@@ -236,6 +237,7 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
     ])
     if (result === 'open') openNote(n.id)
     else if (result === 'rename') startRenameNote(n)
+    else if (result === 'pin') void window.api.setNotePinned(n.id, !n.pinned).then(reload)
     else if (result === 'delete') setDeletingNoteId(n.id)
     else if (result?.startsWith('move:')) {
       const dest = result.slice('move:'.length)
@@ -400,7 +402,14 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
                         onClick={() => openNote(n.id)}
                         onContextMenu={(e) => handleNoteContextMenu(e, n)}
                       >
-                        <div className="note-item-title">{n.title}</div>
+                        <div className="note-item-title">
+                          {n.title}
+                          {n.pinned && (
+                            <span className="clip-item-pin" title="コマンドパレットに固定">
+                              📌
+                            </span>
+                          )}
+                        </div>
                         {n.preview && <div className="note-item-preview">{n.preview}</div>}
                         <div className="note-item-meta">{formatUpdatedAt(n.updatedAt)}</div>
                       </div>

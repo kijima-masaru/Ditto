@@ -133,7 +133,13 @@ const api = {
   renameNoteFolder: (id: string, name: string): Promise<void> => ipcRenderer.invoke(IPC.renameNoteFolder, id, name),
   reorderNoteFolders: (orderedIds: string[]): Promise<void> => ipcRenderer.invoke(IPC.reorderNoteFolders, orderedIds),
   deleteNoteFolder: (id: string): Promise<void> => ipcRenderer.invoke(IPC.deleteNoteFolder, id),
+  appendToNote: (id: string, text: string): Promise<Note | undefined> =>
+    ipcRenderer.invoke(IPC.appendToNote, id, text),
+  setNotePinned: (id: string, pinned: boolean): Promise<void> => ipcRenderer.invoke(IPC.setNotePinned, id, pinned),
+  reorderPinnedNotes: (orderedIds: string[]): Promise<void> => ipcRenderer.invoke(IPC.reorderPinnedNotes, orderedIds),
   openNoteEditor: (id: string): Promise<void> => ipcRenderer.invoke(IPC.openNoteEditor, id),
+  openNoteViaCommandPalette: (noteId: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.commandPaletteOpenNote, noteId),
   /** 編集ウィンドウ側で使う: main -> このウィンドウへ、表示対象のメモIDが差し替えられた */
   onOpenNoteInEditor: (cb: (noteId: string) => void): (() => void) => {
     const listener = (_e: unknown, noteId: string): void => cb(noteId)

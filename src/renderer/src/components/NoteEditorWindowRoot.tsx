@@ -10,6 +10,9 @@ import type { Note } from '../../../shared/types'
  * OS任せにできるため、日本語入力が最も確実に動く。エディタ部品(行番号・検索置換・
  * 矩形選択など)の導入は、実機のWindowsでIMEの挙動を検証してから行う。
  *
+ * 本文を右クリックすると、選択範囲を定型文として登録できる(メモ=書いて育てる /
+ * 定型文=繰り返し入力する、という役割の違いを行き来できるようにするため)。
+ *
  * 保存は自動で行う(入力が止まってから少し待って保存、ウィンドウを離れた時も保存)。
  * メモは保存操作を意識させた時点で使われなくなるため、Ctrl+Sは「今すぐ保存」の
  * 補助として用意するだけにしている。
@@ -37,6 +40,7 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
   const dirtyRef = useRef(false)
   const saveTimerRef = useRef<number | null>(null)
   const titleFocusedRef = useRef(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     // メインウィンドウとは別のBrowserWindowなのでdata-theme属性を独自に引き継ぐ必要がある
@@ -134,6 +138,41 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
     }, RENAME_DELAY_MS)
   }
 
+  const [toast, setToast] = useState<string | null>(null)
+
+  const showToast = (message: string): void => {
+    setToast(message)
+    window.setTimeout(() => setToast(null), 2000)
+  }
+
+  /**
+   * 本文の右クリックメニュー。書いたメモの一部を、繰り返し使う定型文へ
+   * 「昇格」させられるようにしている(メモ=書いて育てる / 定型文=繰り返し入力する)
+   */
+  const handleBodyContextMenu = async (e: React.MouseEvent): Promise<void> => {
+    e.preventDefault()
+    const el = textareaRef.current
+    if (!el) return
+    const selected = el.value.slice(el.selectionStart, el.selectionEnd)
+    const hasSelection = selected.length > 0
+    const result = await window.api.showContextMenu([
+      { id: 'to-template', label: '選択範囲を定型文として登録', enabled: hasSelection },
+      { id: 'copy', label: '選択範囲をコピー', enabled: hasSelection }
+    ])
+    if (!hasSelection) return
+    if (result === 'to-template') {
+      try {
+        await window.api.createClipboardTemplate(selected)
+        showToast('定型文として登録しました')
+      } catch (err) {
+        showToast(`登録できませんでした: ${(err as Error).message}`)
+      }
+    } else if (result === 'copy') {
+      await window.api.copyToClipboard(selected)
+      showToast('コピーしました')
+    }
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent): void => {
     if (e.ctrlKey && (e.key === 's' || e.key === 'S')) {
       e.preventDefault()
@@ -179,7 +218,9 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
       </div>
 
       <textarea
+        ref={textareaRef}
         className="note-editor-body"
+        onContextMenu={handleBodyContextMenu}
         value={body}
         onChange={(e) => handleBodyChange(e.target.value)}
         placeholder="ここに書きます。入力が止まると自動で保存されます。"
@@ -192,6 +233,7 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
         <span className={`note-editor-status${status === 'editing' ? ' note-editor-status--dirty' : ''}`}>
           {statusLabel}
         </span>
+        {toast && <span className="note-editor-toast">{toast}</span>}
         <span className="note-editor-count">
           {lineCount}行 / {body.length}文字
         </span>

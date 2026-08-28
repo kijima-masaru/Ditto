@@ -2614,6 +2614,13 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   color: var(--accent);
 }
 
+/* 定型文への登録・コピーの結果を数秒だけ知らせる */
+.note-editor-toast {
+  margin-left: auto;
+  margin-right: 12px;
+  color: var(--accent);
+}
+
 .note-editor-empty {
   display: flex;
   align-items: center;

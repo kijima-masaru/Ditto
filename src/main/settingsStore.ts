@@ -55,7 +55,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   // keycode 57はuiohook-napiのUiohookKey.Space。commandPalette.tsに依存を追加しないよう
   // ここでは数値をそのまま持つ(hotkey.tsのformatComboLabelでも'Space'として表示される)
   commandPaletteHotkey: { ctrl: true, shift: true, alt: false, meta: false, keycode: 57, label: 'Ctrl+Shift+Space' },
-  commandPaletteMaxPerSection: { history: 6, templates: 6, macros: 6 },
+  commandPaletteMaxPerSection: { history: 6, templates: 6, macros: 6, notes: 6 },
   pairedDevices: [],
   windowPosition: null
 }
@@ -75,7 +75,7 @@ function clampCommandPaletteMaxPerSection(value: number): number {
 function normalizeCommandPaletteMaxPerSection(value: unknown): CommandPaletteMaxPerSection {
   if (typeof value === 'number' && Number.isFinite(value)) {
     const clamped = clampCommandPaletteMaxPerSection(value)
-    return { history: clamped, templates: clamped, macros: clamped }
+    return { history: clamped, templates: clamped, macros: clamped, notes: clamped }
   }
   if (value && typeof value === 'object') {
     const v = value as Partial<CommandPaletteMaxPerSection>
@@ -91,7 +91,12 @@ function normalizeCommandPaletteMaxPerSection(value: unknown): CommandPaletteMax
       macros:
         typeof v.macros === 'number' && Number.isFinite(v.macros)
           ? clampCommandPaletteMaxPerSection(v.macros)
-          : DEFAULT_SETTINGS.commandPaletteMaxPerSection.macros
+          : DEFAULT_SETTINGS.commandPaletteMaxPerSection.macros,
+      // メモはv1.28.1で追加した項目のため、旧設定ファイルには入っていない
+      notes:
+        typeof v.notes === 'number' && Number.isFinite(v.notes)
+          ? clampCommandPaletteMaxPerSection(v.notes)
+          : DEFAULT_SETTINGS.commandPaletteMaxPerSection.notes
     }
   }
   return { ...DEFAULT_SETTINGS.commandPaletteMaxPerSection }

@@ -121,7 +121,8 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const [commandPaletteMaxPerSection, setCommandPaletteMaxPerSection] = useState<CommandPaletteMaxPerSection>({
     history: 6,
     templates: 6,
-    macros: 6
+    macros: 6,
+    notes: 6
   })
   const [autoMaskSensitiveInfo, setAutoMaskSensitiveInfo] = useState<ScreenshotMaskSettings>({
     enabled: false,
@@ -523,7 +524,8 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
               [
                 { key: 'history', label: '履歴' },
                 { key: 'templates', label: '定型文' },
-                { key: 'macros', label: 'マクロ' }
+                { key: 'macros', label: 'マクロ' },
+                { key: 'notes', label: 'メモ' }
               ] as { key: CommandPalettePerSectionCategory; label: string }[]
             ).map(({ key, label }) => (
               <div className="settings-subitem-row" key={key}>

@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { ClipboardHistoryEntry, ClipboardTemplate, CommandPaletteMaxPerSection, MacroCase } from '../../../shared/types'
+import type {
+  ClipboardHistoryEntry,
+  ClipboardTemplate,
+  CommandPaletteMaxPerSection,
+  MacroCase,
+  Note
+} from '../../../shared/types'
 import { useDragReorder, type DragReorderHandlers } from '../hooks/useDragReorder'
 
 /**
@@ -17,6 +23,7 @@ type PaletteResult =
   | { kind: 'history'; id: string; primary: string; secondary?: undefined; insertText: string; dragHandlers?: undefined }
   | { kind: 'template'; id: string; primary: string; secondary?: string; insertText: string; dragHandlers?: DragReorderHandlers }
   | { kind: 'macro'; id: string; primary: string; secondary?: undefined; insertText?: undefined; dragHandlers?: DragReorderHandlers }
+  | { kind: 'note'; id: string; primary: string; secondary?: string; insertText?: undefined; dragHandlers?: DragReorderHandlers }
 
 /** pinnedOrder昇順(未設定は末尾)にソートする。未検索時にコマンドパレットへ
  *  固定表示する定型文・マクロは、フォルダをまたいでドラッグ&ドロップで並び替えられる */
@@ -24,7 +31,7 @@ function sortByPinnedOrder<T extends { pinnedOrder?: number }>(items: T[]): T[] 
   return [...items].sort((a, b) => (a.pinnedOrder ?? Infinity) - (b.pinnedOrder ?? Infinity))
 }
 
-const DEFAULT_MAX_PER_SECTION: CommandPaletteMaxPerSection = { history: 6, templates: 6, macros: 6 }
+const DEFAULT_MAX_PER_SECTION: CommandPaletteMaxPerSection = { history: 6, templates: 6, macros: 6, notes: 6 }
 
 function truncate(text: string, max = 60): string {
   const oneLine = text.replace(/\s+/g, ' ').trim()
@@ -40,7 +47,8 @@ function matches(query: string, ...fields: (string | undefined)[]): boolean {
 const KIND_LABEL: Record<PaletteResult['kind'], string> = {
   history: '履歴',
   template: '定型文',
-  macro: 'マクロ'
+  macro: 'マクロ',
+  note: 'メモ'
 }
 
 export default function CommandPaletteRoot(): React.JSX.Element {
@@ -49,6 +57,7 @@ export default function CommandPaletteRoot(): React.JSX.Element {
   const [history, setHistory] = useState<ClipboardHistoryEntry[]>([])
   const [templates, setTemplates] = useState<ClipboardTemplate[]>([])
   const [macros, setMacros] = useState<MacroCase[]>([])
+  const [notes, setNotes] = useState<Note[]>([])
   const [maxPerSection, setMaxPerSection] = useState<CommandPaletteMaxPerSection>(DEFAULT_MAX_PER_SECTION)
   const inputRef = useRef<HTMLInputElement>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
@@ -58,11 +67,13 @@ export default function CommandPaletteRoot(): React.JSX.Element {
       window.api.listClipboardHistory(),
       window.api.listClipboardTemplates(),
       window.api.listMacros(),
+      window.api.listNotes(),
       window.api.getSettings()
-    ]).then(([h, t, m, s]) => {
+    ]).then(([h, t, m, n, s]) => {
       setHistory(h)
       setTemplates(t)
       setMacros(m)
+      setNotes(n)
       setMaxPerSection(s.commandPaletteMaxPerSection)
       // メインウィンドウとは別のBrowserWindowなのでdata-theme属性を独自に引き継ぐ必要がある
       document.documentElement.setAttribute('data-theme', s.theme)
@@ -95,6 +106,7 @@ export default function CommandPaletteRoot(): React.JSX.Element {
   // 並び替えられる(pinnedOrderで管理。フォルダ内並び順のorderとは別)
   const pinnedTemplates = useMemo(() => sortByPinnedOrder(templates.filter((t) => t.pinned)), [templates])
   const pinnedMacros = useMemo(() => sortByPinnedOrder(macros.filter((m) => m.pinned)), [macros])
+  const pinnedNotes = useMemo(() => sortByPinnedOrder(notes.filter((n) => n.pinned)), [notes])
 
   const handleReorderPinnedTemplates = useCallback((orderedIds: string[]): void => {
     void window.api.reorderPinnedClipboardTemplates(orderedIds).then(reload)
@@ -102,9 +114,13 @@ export default function CommandPaletteRoot(): React.JSX.Element {
   const handleReorderPinnedMacros = useCallback((orderedIds: string[]): void => {
     void window.api.reorderPinnedMacros(orderedIds).then(reload)
   }, [reload])
+  const handleReorderPinnedNotes = useCallback((orderedIds: string[]): void => {
+    void window.api.reorderPinnedNotes(orderedIds).then(reload)
+  }, [reload])
 
   const templateDrag = useDragReorder(pinnedTemplates, (t) => t.id, handleReorderPinnedTemplates)
   const macroDrag = useDragReorder(pinnedMacros, (m) => m.id, handleReorderPinnedMacros)
+  const noteDrag = useDragReorder(pinnedNotes, (n) => n.id, handleReorderPinnedNotes)
 
   const results = useMemo<PaletteResult[]>(() => {
     const historyResults: PaletteResult[] = isSearching
@@ -146,9 +162,36 @@ export default function CommandPaletteRoot(): React.JSX.Element {
           dragHandlers: macroDrag.getHandlers(m)
         }))
 
-    return [...historyResults, ...templateResults, ...macroResults]
+    // メモは一覧用のメタ情報(名前・抜粋)を対象に絞り込む。本文全体の検索は
+    // 入力のたびに全メモのファイルを読むことになるため、ここでは行わない
+    // (本文まで含めた検索はメモタブの検索欄で行える)
+    const noteResults: PaletteResult[] = isSearching
+      ? notes
+          .filter((n) => matches(query, n.title, n.preview))
+          .slice(0, maxPerSection.notes)
+          .map((n) => ({ kind: 'note', id: n.id, primary: n.title, secondary: truncate(n.preview) }))
+      : noteDrag.orderedItems.slice(0, maxPerSection.notes).map((n) => ({
+          kind: 'note',
+          id: n.id,
+          primary: n.title,
+          secondary: truncate(n.preview),
+          dragHandlers: noteDrag.getHandlers(n)
+        }))
+
+    return [...historyResults, ...templateResults, ...macroResults, ...noteResults]
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSearching, query, history, templates, macros, templateDrag.orderedItems, macroDrag.orderedItems, maxPerSection])
+  }, [
+    isSearching,
+    query,
+    history,
+    templates,
+    macros,
+    notes,
+    templateDrag.orderedItems,
+    macroDrag.orderedItems,
+    noteDrag.orderedItems,
+    maxPerSection
+  ])
 
   useEffect(() => {
     setSelectedIndex((i) => Math.min(i, Math.max(results.length - 1, 0)))
@@ -171,6 +214,8 @@ export default function CommandPaletteRoot(): React.JSX.Element {
   const activate = useCallback((result: PaletteResult): void => {
     if (result.kind === 'macro') {
       void window.api.openMacroViaCommandPalette(result.id)
+    } else if (result.kind === 'note') {
+      void window.api.openNoteViaCommandPalette(result.id)
     } else if (result.kind === 'template') {
       // 定型文は{{date}}/{{seq}}/{{clipboard}}等の動的変数をmain側でその場で
       // 解決してから入力する必要があるため、生テキストではなくidを渡す
@@ -262,6 +307,7 @@ export default function CommandPaletteRoot(): React.JSX.Element {
               {renderSection('history')}
               {renderSection('template')}
               {renderSection('macro')}
+              {renderSection('note')}
             </>
           )}
         </div>
