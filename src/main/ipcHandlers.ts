@@ -307,6 +307,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, manag
   ipcMain.handle(IPC.showClipboardHistoryMenu, async (_e, entryId: string, text: string) => {
     const w = getWindow()
     const setClipboard = (transform: (t: string) => string): void => clipboard.writeText(transform(text))
+    // 「メモに追記」の候補。最近更新したものから10件までに絞る
+    const recentNotes = (await notesStore.listNotes())
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .slice(0, 10)
     const menu = Menu.buildFromTemplate([
       {
         label: '定型文に登録',
@@ -314,6 +318,29 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, manag
           await clipboardStore.createTemplate(text)
           w?.webContents.send(IPC.clipboardDataChanged)
         }
+      },
+      {
+        label: 'メモに追記',
+        // 調査中にコピーした内容をそのままメモへ貯めていけるようにする。
+        // メモが多い場合に選びにくくならないよう、最近更新した順に絞って出す
+        submenu: [
+          {
+            label: '新しいメモを作成',
+            click: async () => {
+              const note = await notesStore.createNote(null, text)
+              w?.webContents.send(IPC.notesChanged)
+              noteEditorWindow.open(note.id)
+            }
+          },
+          ...(recentNotes.length > 0 ? [{ type: 'separator' as const }] : []),
+          ...recentNotes.map((note) => ({
+            label: note.title,
+            click: async () => {
+              await notesStore.appendToNote(note.id, text)
+              w?.webContents.send(IPC.notesChanged)
+            }
+          }))
+        ]
       },
       {
         label: 'コピー',
@@ -537,6 +564,16 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, manag
   )
 
   ipcMain.handle(IPC.deleteNoteFolder, async (_e, id: string) => notesStore.deleteNoteFolder(id))
+
+  ipcMain.handle(IPC.appendToNote, async (_e, id: string, text: string) => {
+    const note = await notesStore.appendToNote(id, text)
+    notifyNotesChanged()
+    return note
+  })
+
+  ipcMain.handle(IPC.setNotePinned, async (_e, id: string, pinned: boolean) => notesStore.setNotePinned(id, pinned))
+
+  ipcMain.handle(IPC.reorderPinnedNotes, async (_e, orderedIds: string[]) => notesStore.reorderPinnedNotes(orderedIds))
 
   ipcMain.handle(IPC.openNoteEditor, async (_e, id: string) => noteEditorWindow.open(id))
 

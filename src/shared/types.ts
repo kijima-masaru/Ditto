@@ -219,6 +219,11 @@ export interface Note {
   folderId?: string | null
   /** 同じフォルダ内での並び順(昇順)。ドラッグ&ドロップで並び替えた結果を保持する */
   order: number
+  /** trueなら、コマンドパレットの初期表示(未入力時)にこのメモを表示する */
+  pinned?: boolean
+  /** コマンドパレット内でのピン留め項目同士の並び順(昇順)。フォルダをまたいで
+   *  ピン留めできるため、フォルダ内並び順のorderとは別に持つ。未設定の項目は末尾に表示する */
+  pinnedOrder?: number
   createdAt: string
   /** 本文または名前を最後に更新した日時 */
   updatedAt: string
@@ -422,6 +427,7 @@ export interface CommandPaletteMaxPerSection {
   history: number
   templates: number
   macros: number
+  notes: number
 }
 
 export type CommandPalettePerSectionCategory = keyof CommandPaletteMaxPerSection
@@ -628,6 +634,9 @@ export const IPC = {
   renameNoteFolder: 'notes:rename-folder',
   reorderNoteFolders: 'notes:reorder-folders',
   deleteNoteFolder: 'notes:delete-folder',
+  appendToNote: 'notes:append', // クリップボード履歴のメニューから、メモの末尾へ追記する
+  setNotePinned: 'notes:set-pinned',
+  reorderPinnedNotes: 'notes:reorder-pinned',
   openNoteEditor: 'notes:open-editor', // メインウィンドウ -> main(編集用の別ウィンドウを開く)
   openNoteInEditor: 'notes:open-in-editor', // main -> 編集ウィンドウ push(既に開いている場合の対象差し替え)
   notesChanged: 'notes:changed', // main -> メインウィンドウ push(編集ウィンドウでの保存を一覧へ反映する)
@@ -643,6 +652,7 @@ export const IPC = {
   commandPaletteInsertText: 'command-palette:insert-text', // パレットウィンドウ -> main(選択項目を元のウィンドウへ入力する。履歴用、生テキストをそのまま渡す)
   commandPaletteInsertTemplate: 'command-palette:insert-template', // パレットウィンドウ -> main(定型文用。動的変数をmain側で解決してから入力する)
   commandPaletteOpenMacro: 'command-palette:open-macro', // パレットウィンドウ -> main(選択したマクロの再生画面を専用の別ウィンドウで開く)
+  commandPaletteOpenNote: 'command-palette:open-note', // パレットウィンドウ -> main(選択したメモを編集ウィンドウで開く)
   openMacroForPlayback: 'window:open-macro-for-playback', // main -> マクロ再生専用ウィンドウ push(対象のマクロID)
 
   // コマンドパレットの初期表示(未入力時)に出す定型文・マクロの固定指定

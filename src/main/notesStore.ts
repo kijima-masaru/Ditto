@@ -154,6 +154,34 @@ export async function renameNote(id: string, title: string): Promise<Note | unde
   return note
 }
 
+/**
+ * メモの末尾へ追記する。クリップボード履歴から「メモに追記」した場合に使う。
+ * 既存の本文が空でなければ改行で区切ってから追記する
+ */
+export async function appendToNote(id: string, text: string): Promise<Note | undefined> {
+  const current = await getNoteBody(id)
+  const separator = current.length === 0 || current.endsWith('\n') ? '' : '\n'
+  return updateNoteBody(id, `${current}${separator}${text}`)
+}
+
+/** コマンドパレットの初期表示(未入力時)にこのメモを出すかどうかを切り替える */
+export async function setNotePinned(id: string, pinned: boolean): Promise<void> {
+  const notes = await listNotes()
+  const note = notes.find((n) => n.id === id)
+  if (note) note.pinned = pinned
+  await writeNotes(notes)
+}
+
+/** コマンドパレット内でのピン留め項目同士の並び替え(フォルダ内並び順とは別管理) */
+export async function reorderPinnedNotes(orderedIds: string[]): Promise<void> {
+  const notes = await listNotes()
+  orderedIds.forEach((id, index) => {
+    const note = notes.find((n) => n.id === id)
+    if (note) note.pinnedOrder = index
+  })
+  await writeNotes(notes)
+}
+
 export async function deleteNote(id: string): Promise<void> {
   const notes = await listNotes()
   await writeNotes(notes.filter((n) => n.id !== id))

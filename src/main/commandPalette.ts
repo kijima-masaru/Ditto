@@ -8,6 +8,7 @@ import * as win32 from './win32'
 import * as settingsStore from './settingsStore'
 import { resolveTemplateText } from './templateVariables'
 import { widthMatchingMainWindow } from './subWindowLayout'
+import * as noteEditorWindow from './noteEditorWindow'
 import { injectText } from './textInjector'
 import { IPC, type HotkeyCombo } from '../shared/types'
 
@@ -344,6 +345,11 @@ export function initCommandPalette(
   ipcMain.handle(IPC.commandPaletteOpenMacro, (_e, macroId: string) => {
     hide()
     openMacroForPlayback(macroId)
+  })
+
+  ipcMain.handle(IPC.commandPaletteOpenNote, (_e, noteId: string) => {
+    hide()
+    noteEditorWindow.open(noteId)
   })
 
   ipcMain.handle(IPC.setCommandPaletteHotkey, async (_e, combo: HotkeyCombo) => {
