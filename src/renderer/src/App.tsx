@@ -10,6 +10,8 @@ import PreviewWindowRoot from './components/PreviewWindowRoot'
 import ScreenshotEditorWindowRoot from './components/ScreenshotEditorWindowRoot'
 import CommandPaletteRoot from './components/CommandPaletteRoot'
 import MacroPlaybackWindowRoot from './components/MacroPlaybackWindowRoot'
+import NotesPanel from './components/NotesPanel'
+import NoteEditorWindowRoot from './components/NoteEditorWindowRoot'
 import { GearIcon } from './components/icons'
 import { useScreenRecording } from './hooks/useScreenRecording'
 import { useScreenshot } from './hooks/useScreenshot'
@@ -25,8 +27,10 @@ const isCommandPaletteWindow = new URLSearchParams(window.location.search).get('
 // コマンドパレットで選んだマクロの再生専用の別ウィンドウも同様に?macroPlayback=1で判別する
 // (macroPlaybackWindow.ts参照)
 const isMacroPlaybackWindow = new URLSearchParams(window.location.search).get('macroPlayback') === '1'
+// メモの編集専用の別ウィンドウも同様に?noteEditor=1で判別する(noteEditorWindow.ts参照)
+const isNoteEditorWindow = new URLSearchParams(window.location.search).get('noteEditor') === '1'
 
-type View = { name: 'macro-list' } | { name: 'clipboard' } | { name: 'settings' }
+type View = { name: 'macro-list' } | { name: 'clipboard' } | { name: 'notes' } | { name: 'settings' }
 
 // マクロ作成(対象選択→記録)・再生は、それぞれ独立した画面ではなくマクロ一覧の上に
 // 重ねるモーダルとして表示する(一覧を表示し続けたまま行える)。作成の2ステップは
@@ -51,6 +55,7 @@ export default function App(): React.JSX.Element {
   if (isScreenshotEditorWindow) return <ScreenshotEditorWindowRoot />
   if (isCommandPaletteWindow) return <CommandPaletteRoot />
   if (isMacroPlaybackWindow) return <MacroPlaybackWindowRoot />
+  if (isNoteEditorWindow) return <NoteEditorWindowRoot />
   return <MainApp />
 }
 
@@ -152,6 +157,9 @@ function MainApp(): React.JSX.Element {
           <button className={view.name === 'macro-list' ? 'active' : ''} onClick={() => setView({ name: 'macro-list' })}>
             マクロ
           </button>
+          <button className={view.name === 'notes' ? 'active' : ''} onClick={() => setView({ name: 'notes' })}>
+            メモ
+          </button>
         </nav>
         <button
           className={`record-icon-btn${recorder.frameVisible ? ' active' : ''}`}
@@ -233,6 +241,8 @@ function MainApp(): React.JSX.Element {
             initialSubTab={topPageNonce > 0 ? 'templates' : undefined}
           />
         )}
+
+        {view.name === 'notes' && <NotesPanel key={topPageNonce} />}
 
         {view.name === 'settings' && <SettingsPanel theme={theme} onThemeChange={setTheme} />}
       </main>

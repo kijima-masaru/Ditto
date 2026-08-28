@@ -14,6 +14,8 @@ import {
   type HotkeyBinding,
   type HotkeyCombo,
   type NavigationTarget,
+  type Note,
+  type NoteFolder,
   type PairedDevice,
   type RecordedStep,
   type RecordingFrameBounds,
@@ -113,6 +115,38 @@ const api = {
   deleteClipboardHistoryEntry: (id: string): Promise<void> =>
     ipcRenderer.invoke(IPC.deleteClipboardHistoryEntry, id),
   clearClipboardHistory: (): Promise<void> => ipcRenderer.invoke(IPC.clearClipboardHistory),
+  // --- メモ ---
+  listNotes: (): Promise<Note[]> => ipcRenderer.invoke(IPC.listNotes),
+  searchNotes: (query: string): Promise<string[]> => ipcRenderer.invoke(IPC.searchNotes, query),
+  getNoteBody: (id: string): Promise<string> => ipcRenderer.invoke(IPC.getNoteBody, id),
+  createNote: (folderId: string | null, body?: string): Promise<Note> =>
+    ipcRenderer.invoke(IPC.createNote, folderId, body),
+  updateNoteBody: (id: string, body: string): Promise<Note | undefined> =>
+    ipcRenderer.invoke(IPC.updateNoteBody, id, body),
+  renameNote: (id: string, title: string): Promise<Note | undefined> => ipcRenderer.invoke(IPC.renameNote, id, title),
+  deleteNote: (id: string): Promise<void> => ipcRenderer.invoke(IPC.deleteNote, id),
+  moveNote: (id: string, folderId: string | null): Promise<void> => ipcRenderer.invoke(IPC.moveNote, id, folderId),
+  reorderNotes: (orderedIds: string[]): Promise<void> => ipcRenderer.invoke(IPC.reorderNotes, orderedIds),
+  listNoteFolders: (): Promise<NoteFolder[]> => ipcRenderer.invoke(IPC.listNoteFolders),
+  createNoteFolder: (name: string, parentId: string | null): Promise<NoteFolder> =>
+    ipcRenderer.invoke(IPC.createNoteFolder, name, parentId),
+  renameNoteFolder: (id: string, name: string): Promise<void> => ipcRenderer.invoke(IPC.renameNoteFolder, id, name),
+  reorderNoteFolders: (orderedIds: string[]): Promise<void> => ipcRenderer.invoke(IPC.reorderNoteFolders, orderedIds),
+  deleteNoteFolder: (id: string): Promise<void> => ipcRenderer.invoke(IPC.deleteNoteFolder, id),
+  openNoteEditor: (id: string): Promise<void> => ipcRenderer.invoke(IPC.openNoteEditor, id),
+  /** 編集ウィンドウ側で使う: main -> このウィンドウへ、表示対象のメモIDが差し替えられた */
+  onOpenNoteInEditor: (cb: (noteId: string) => void): (() => void) => {
+    const listener = (_e: unknown, noteId: string): void => cb(noteId)
+    ipcRenderer.on(IPC.openNoteInEditor, listener)
+    return () => ipcRenderer.removeListener(IPC.openNoteInEditor, listener)
+  },
+  /** メインウィンドウ側で使う: 編集ウィンドウでメモが保存されたので一覧を読み直す */
+  onNotesChanged: (cb: () => void): (() => void) => {
+    const listener = (): void => cb()
+    ipcRenderer.on(IPC.notesChanged, listener)
+    return () => ipcRenderer.removeListener(IPC.notesChanged, listener)
+  },
+
   listClipboardTemplates: (): Promise<ClipboardTemplate[]> => ipcRenderer.invoke(IPC.listClipboardTemplates),
   createClipboardTemplate: (
     text: string,

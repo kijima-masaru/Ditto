@@ -28,6 +28,8 @@ import * as recordingFrame from './recordingFrame'
 import * as clickHighlight from './clickHighlight'
 import * as screenCapture from './screenCapture'
 import * as clipboardStore from './clipboardStore'
+import * as notesStore from './notesStore'
+import * as noteEditorWindow from './noteEditorWindow'
 import * as clipboardTransforms from './clipboardTransforms'
 import { resolveTemplateText } from './templateVariables'
 import * as settingsStore from './settingsStore'
@@ -45,6 +47,12 @@ import { checkForUpdates } from './autoUpdater'
 import * as remoteServer from './remoteServer'
 
 export function registerIpcHandlers(getWindow: () => BrowserWindow | null, manager: TargetManager): void {
+  /** 編集ウィンドウでの保存をメインウィンドウのメモ一覧へ反映させる */
+  const notifyNotesChanged = (): void => {
+    const w = getWindow()
+    if (w && !w.isDestroyed()) w.webContents.send(IPC.notesChanged)
+  }
+
   ipcMain.handle(IPC.listMacros, async () => store.listMacros())
 
   ipcMain.handle(IPC.saveMacro, async (_e, macroCase: Parameters<typeof store.saveMacro>[0]) =>
@@ -484,6 +492,53 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, manag
   ipcMain.handle(IPC.readDebugLog, async () => debugLog.readLog())
 
   ipcMain.handle(IPC.openDebugLogFolder, async () => debugLog.openLogFolder())
+
+  // --- メモ(自分で書いて育てるテキスト) ---
+
+  ipcMain.handle(IPC.listNotes, async () => notesStore.listNotes())
+
+  ipcMain.handle(IPC.searchNotes, async (_e, query: string) => notesStore.searchNotes(query))
+
+  ipcMain.handle(IPC.getNoteBody, async (_e, id: string) => notesStore.getNoteBody(id))
+
+  ipcMain.handle(IPC.createNote, async (_e, folderId: string | null, body?: string) =>
+    notesStore.createNote(folderId, body ?? '')
+  )
+
+  // 編集ウィンドウからの自動保存。保存のたびにメインウィンドウの一覧へ反映させる
+  ipcMain.handle(IPC.updateNoteBody, async (_e, id: string, body: string) => {
+    const note = await notesStore.updateNoteBody(id, body)
+    notifyNotesChanged()
+    return note
+  })
+
+  ipcMain.handle(IPC.renameNote, async (_e, id: string, title: string) => {
+    const note = await notesStore.renameNote(id, title)
+    notifyNotesChanged()
+    return note
+  })
+
+  ipcMain.handle(IPC.deleteNote, async (_e, id: string) => notesStore.deleteNote(id))
+
+  ipcMain.handle(IPC.moveNote, async (_e, id: string, folderId: string | null) => notesStore.moveNote(id, folderId))
+
+  ipcMain.handle(IPC.reorderNotes, async (_e, orderedIds: string[]) => notesStore.reorderNotes(orderedIds))
+
+  ipcMain.handle(IPC.listNoteFolders, async () => notesStore.listNoteFolders())
+
+  ipcMain.handle(IPC.createNoteFolder, async (_e, name: string, parentId: string | null) =>
+    notesStore.createNoteFolder(name, parentId)
+  )
+
+  ipcMain.handle(IPC.renameNoteFolder, async (_e, id: string, name: string) => notesStore.renameNoteFolder(id, name))
+
+  ipcMain.handle(IPC.reorderNoteFolders, async (_e, orderedIds: string[]) =>
+    notesStore.reorderNoteFolders(orderedIds)
+  )
+
+  ipcMain.handle(IPC.deleteNoteFolder, async (_e, id: string) => notesStore.deleteNoteFolder(id))
+
+  ipcMain.handle(IPC.openNoteEditor, async (_e, id: string) => noteEditorWindow.open(id))
 
   ipcMain.handle(IPC.getAppVersion, async () => app.getVersion())
 
