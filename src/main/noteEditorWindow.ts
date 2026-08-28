@@ -24,6 +24,11 @@ let win: BrowserWindow | null = null
 // ファイルを直接書き換えずウィンドウ側に追記させるために使う(下記appendIfOpen参照)
 let showingNoteId: string | null = null
 
+/** ダイアログの親にするために、開いていれば編集ウィンドウを返す */
+export function getWindow(): BrowserWindow | null {
+  return win && !win.isDestroyed() ? win : null
+}
+
 /** 編集ウィンドウから「今このメモを表示している」と通知を受ける */
 export function setShowingNote(noteId: string): void {
   showingNoteId = noteId

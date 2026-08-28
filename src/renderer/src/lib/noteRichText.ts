@@ -39,10 +39,27 @@ export function clampFontSize(size: number): number {
   return Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, Math.round(size)))
 }
 
-/** 同じ装飾が続く文字のかたまり */
+/**
+ * 同じ装飾が続く文字のかたまり。
+ * imageを持つ場合は貼り付けた画像そのもので、textは空になる。
+ * 画像は必ずその行だけで1行を占め、文字としては数えない
+ * (文字位置の数え方を変えずに画像を混ぜられるようにするため)
+ */
 export interface Run {
   text: string
   style: NoteCharStyle
+  /** 貼り付けた画像のファイル名(notes/<noteId>.files/ の中) */
+  image?: string
+}
+
+/**
+ * 画像を表示するためのURLを組み立てる関数。file URLの土台はmain側しか知らないため、
+ * 画面の初期化時にこのモジュールへ渡してもらう
+ */
+let imageUrlResolver: ((image: string) => string) | null = null
+
+export function setImageUrlResolver(resolver: (image: string) => string): void {
+  imageUrlResolver = resolver
 }
 
 /** 装飾の変更指示。値を渡さなければ据え置き、null(太字はfalse)なら解除 */
@@ -169,6 +186,10 @@ function isBlock(node: Node): boolean {
 function mergeAdjacent(runs: Run[]): Run[] {
   const merged: Run[] = []
   for (const run of runs) {
+    if (run.image) {
+      merged.push(run)
+      continue
+    }
     if (run.text === '') continue
     const last = merged[merged.length - 1]
     if (last && styleKey(last.style) === styleKey(run.style)) last.text += run.text
@@ -197,6 +218,19 @@ function linesFromInline(nodes: Node[], baseStyle: NoteCharStyle): Run[][] {
     if (el.tagName === 'BR') {
       lines.push([])
       lastWasBr = true
+      return
+    }
+    if (el.tagName === 'IMG') {
+      const image = el.getAttribute('data-image-id')
+      // Dittoが貼り付けた画像だけを引き継ぐ(外部から紛れ込んだimgは捨てる)
+      if (image) {
+        if (lines[lines.length - 1].length > 0) lines.push([])
+        lines[lines.length - 1].push({ text: '', style: {}, image })
+        // 画像は必ず1行を占めるので、次の内容は新しい行から始める。
+        // 画像で終わっている場合にこの空行を残さないよう、brと同じ扱いにする
+        lines.push([])
+        lastWasBr = true
+      }
       return
     }
     const next = inherit(style, readStyle(el))
@@ -245,6 +279,11 @@ export const MARK_CLASS = 'note-mark'
 export function renderLine(runs: Run[]): string {
   const merged = mergeAdjacent(runs)
   if (merged.length === 0) return '<br>'
+  const image = merged.find((run) => run.image)
+  if (image?.image) {
+    const src = imageUrlResolver ? imageUrlResolver(image.image) : ''
+    return `<img class="note-image" data-image-id="${escapeHtml(image.image)}" src="${escapeHtml(src)}" alt="貼り付けた画像">`
+  }
   return merged
     .map((run) => {
       const css = styleToCss(run.style)
@@ -266,7 +305,9 @@ export function plainTextOf(lines: Run[][]): string {
 }
 
 export function hasAnyStyle(lines: Run[][]): boolean {
-  return lines.some((runs) => runs.some((run) => stripZwsp(run.text) !== '' && !isPlainStyle(run.style)))
+  return lines.some((runs) =>
+    runs.some((run) => run.image !== undefined || (stripZwsp(run.text) !== '' && !isPlainStyle(run.style)))
+  )
 }
 
 /** プレーンテキストを、装飾なしの正しい形のHTMLへ変換する */
@@ -500,6 +541,16 @@ export function insertStyleMarker(lines: Run[][], offset: number, style: NoteCha
   const next = [...lines]
   next[line] = [...head, { text: ZWSP, style }, ...tail]
   return next
+}
+
+/**
+ * 指定位置に画像の行を差し込む。画像は文字としては数えないため、
+ * 差し込んだ後のカーソルは画像の次の行の先頭(offset + 1)に置く
+ */
+export function insertImageLine(lines: Run[][], offset: number, image: string): Run[][] {
+  const { line, column } = locate(lines, offset)
+  const [head, tail] = splitLine(lines[line] ?? [], column)
+  return [...lines.slice(0, line), head, [{ text: '', style: {}, image }], tail, ...lines.slice(line + 1)]
 }
 
 /** 差し込んだ置き場(幅ゼロの文字だけのspan)を探す */

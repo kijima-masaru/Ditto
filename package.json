@@ -1,6 +1,6 @@
 {
   "name": "auto-test-tool",
-  "version": "1.30.0",
+  "version": "1.31.0",
   "description": "PC画面上のWEB/デスクトップアプリ操作を記録し自動再生するテスト自動化ツール",
   "main": "./out/main/index.js",
   "author": "kijima-masaru",
@@ -18,6 +18,7 @@
     "active-win": "^8.2.1",
     "electron-log": "^5.4.4",
     "electron-updater": "^6.8.9",
+    "iconv-lite": "^0.7.3",
     "koffi": "^3.1.4",
     "qrcode": "^1.5.4",
     "react": "19.2.8",

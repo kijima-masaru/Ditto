@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { Note, NoteCharStyle, NoteEditorAppearance, NoteVersion } from '../../../shared/types'
+import type {
+  ClipboardFormatRule,
+  Note,
+  NoteCharStyle,
+  NoteEditorAppearance,
+  NoteFileEncoding,
+  NoteNewline,
+  NoteVersion
+} from '../../../shared/types'
 import {
   CLEAR_STYLE,
   LINE_CLASS,
@@ -10,12 +18,14 @@ import {
   hasAnyStyle,
   htmlFromPlainText,
   htmlToCanonical,
+  insertImageLine,
   insertStyleMarker,
   lineElements,
   locate,
   plainTextOf,
   renderDocument,
   replaceRange,
+  setImageUrlResolver,
   setSelectionOffsets,
   styleAt,
   styleOfRange,
@@ -25,6 +35,7 @@ import {
 } from '../lib/noteRichText'
 import { NOTE_TEXT_TRANSFORMS } from '../lib/noteTextTransforms'
 import { expandReplacement, findMatches, pickMatch, type NoteSearchOptions } from '../lib/noteSearch'
+import { markdownToHtml } from '../lib/noteMarkdown'
 import NoteEditorFindBar from './NoteEditorFindBar'
 import NoteEditorVersions from './NoteEditorVersions'
 import ConfirmDialog from './ConfirmDialog'
@@ -67,6 +78,20 @@ const UNDO_LIMIT = 200
 /** 文字サイズとして選べる値 */
 const FONT_SIZE_CHOICES = [10, 11, 12, 13, 14, 16, 18, 20, 24, 28, 32, 40, 48]
 
+/** 外部ファイルの文字コードの表示名。読み込み時に判別した値をそのまま保存にも使う */
+const ENCODING_LABELS: Record<NoteFileEncoding, string> = {
+  utf8: 'UTF-8',
+  utf8bom: 'UTF-8 (BOM付き)',
+  shift_jis: 'Shift_JIS',
+  utf16le: 'UTF-16 LE'
+}
+
+const NEWLINE_LABELS: Record<NoteNewline, string> = {
+  crlf: 'CRLF (Windows)',
+  lf: 'LF (Unix)',
+  cr: 'CR'
+}
+
 const DEFAULT_APPEARANCE: NoteEditorAppearance = {
   fontSize: 14,
   lineNumbers: true,
@@ -77,6 +102,24 @@ const DEFAULT_APPEARANCE: NoteEditorAppearance = {
 // 表示対象のメモIDはウィンドウ生成時にクエリ文字列で渡される
 // (IPCで受け取ると、mainからの送信がマウントより早い場合に取りこぼすため)
 const initialNoteId = new URLSearchParams(window.location.search).get('noteId')
+
+/**
+ * 貼り付けた画像を表示するためのfile URLの土台。置き場所(userData配下)はmainしか
+ * 知らないため起動時に一度だけ問い合わせ、本文を組み立てる関数へ渡しておく。
+ * 本文を描く前に必要なので、読み込み処理はこのPromiseを待ってから描く
+ */
+let imageBaseUrl = ''
+let imageNoteId = ''
+const isNoteEditorWindow = new URLSearchParams(window.location.search).get('noteEditor') === '1'
+const imageBaseReady: Promise<void> = isNoteEditorWindow
+  ? window.api
+      .notesDirUrl()
+      .then((base) => {
+        imageBaseUrl = base
+      })
+      .catch(() => {})
+  : Promise.resolve()
+setImageUrlResolver((image) => (imageBaseUrl ? `${imageBaseUrl}${imageNoteId}.files/${image}` : ''))
 
 interface Snapshot {
   html: string
@@ -351,6 +394,9 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
         return
       }
       noteIdRef.current = noteId
+      imageNoteId = noteId
+      await imageBaseReady
+      if (cancelled) return
       dirtyRef.current = false
       undoRef.current = []
       redoRef.current = []
@@ -599,11 +645,14 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
 
   /* --- 整形・変換 --- */
 
-  const runTransform = useCallback(
-    (transformId: string): void => {
-      const transform = NOTE_TEXT_TRANSFORMS.find((t) => t.id === transformId)
+  /**
+   * 対象の範囲(選択があればそこ、無ければメモ全体)を、渡した関数で作った文字列へ置き換える。
+   * 組み込みの変換も、登録済みの整形ルールの適用も、この形に揃えている
+   */
+  const replaceScope = useCallback(
+    async (convert: (text: string) => string | Promise<string>, doneLabel: string): Promise<void> => {
       const editor = editorRef.current
-      if (!transform || !editor) return
+      if (!editor) return
       const lines = extractLines(editor)
       const plain = plainTextOf(lines)
       const selection = selectionRef.current
@@ -611,29 +660,189 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
       const start = hasSelection ? selection.start : 0
       const end = hasSelection ? selection.end : plain.length
       const source = plain.slice(start, end)
-      const result = transform.apply(source)
+      const result = await convert(source)
       if (result === source) {
         showToast('変換するところはありませんでした')
         return
       }
       pushSnapshot(true)
       writeDoc(replaceRange(lines, start, end, result, styleAt(lines, start)), start, start + result.length)
-      showToast(`${transform.label}を適用しました`)
+      showToast(doneLabel)
     },
     [pushSnapshot, showToast, writeDoc]
+  )
+
+  const runTransform = useCallback(
+    (transformId: string): void => {
+      const transform = NOTE_TEXT_TRANSFORMS.find((t) => t.id === transformId)
+      if (!transform) return
+      void replaceScope(transform.apply, `${transform.label}を適用しました`)
+    },
+    [replaceScope]
+  )
+
+  // クリップボードのコピー時に自動適用される整形ルール。メモの選択範囲へも当てられるようにする
+  const [formatRules, setFormatRules] = useState<ClipboardFormatRule[]>([])
+  useEffect(() => {
+    void window.api.listClipboardFormatRules().then(setFormatRules)
+  }, [])
+
+  const runFormatRules = useCallback(
+    (ruleIds: string[], label: string): void => {
+      void replaceScope((text) => window.api.applyFormatRulesToText(text, ruleIds), label)
+    },
+    [replaceScope]
   )
 
   const openTransformMenu = useCallback(async (): Promise<void> => {
     const selection = selectionRef.current
     const scope = selection.end > selection.start ? '選択範囲に適用' : 'メモ全体に適用'
+    const enabledRules = formatRules.filter((rule) => rule.enabled)
+    const ruleLabel = (rule: ClipboardFormatRule): string =>
+      rule.label || `${rule.find} → ${rule.replace}`.slice(0, 40)
     const chosen = await window.api.showContextMenu([
       // 何に対して掛かるのかをメニューの先頭に出す(選択が無い時はメモ全体が対象になるため)
       { id: 'scope', label: scope, enabled: false },
       { id: 'scope-sep', type: 'separator' },
-      ...NOTE_TEXT_TRANSFORMS.map((transform) => ({ id: transform.id, label: transform.label }))
+      ...NOTE_TEXT_TRANSFORMS.map((transform) => ({ id: transform.id, label: transform.label })),
+      { id: 'rules-sep', type: 'separator' },
+      {
+        id: 'rules',
+        label: '登録済みの整形ルール',
+        enabled: formatRules.length > 0,
+        submenu: [
+          { id: 'rule-all', label: `有効なルールをまとめて適用 (${enabledRules.length}件)`, enabled: enabledRules.length > 0 },
+          { id: 'rule-sep', type: 'separator' },
+          ...formatRules.map((rule) => ({
+            id: `rule:${rule.id}`,
+            label: rule.enabled ? ruleLabel(rule) : `${ruleLabel(rule)} (無効)`
+          }))
+        ]
+      }
     ])
-    if (chosen) runTransform(chosen)
-  }, [runTransform])
+    if (!chosen) return
+    if (chosen === 'rule-all') {
+      runFormatRules(
+        enabledRules.map((rule) => rule.id),
+        `整形ルール${enabledRules.length}件を適用しました`
+      )
+      return
+    }
+    if (chosen.startsWith('rule:')) {
+      const rule = formatRules.find((r) => r.id === chosen.slice('rule:'.length))
+      if (rule) runFormatRules([rule.id], `整形ルール「${ruleLabel(rule)}」を適用しました`)
+      return
+    }
+    runTransform(chosen)
+  }, [formatRules, runFormatRules, runTransform])
+
+  /** 選択範囲(無ければメモ全体)を、直前に使っていたアプリへそのまま入力する */
+  const insertToLastApp = useCallback(async (): Promise<void> => {
+    const editor = editorRef.current
+    if (!editor) return
+    const plain = plainTextOf(extractLines(editor))
+    const selection = selectionRef.current
+    const text = selection.end > selection.start ? plain.slice(selection.start, selection.end) : plain
+    if (!text) {
+      showToast('入力する内容がありません')
+      return
+    }
+    const done = await window.api.insertTextToLastApp(text)
+    showToast(done ? '直前のアプリへ入力しました' : '直前のアプリが分かりませんでした(コピーはしました)')
+  }, [showToast])
+
+  /* --- 外部ファイルとの往復 --- */
+
+  /**
+   * ファイル操作のメニュー。読み込み・保存に加えて、文字コードと改行コードもここで変える。
+   * 取り込んだ時の形をメモが覚えているので、保存し直しても元のファイルの形が保たれる
+   */
+  const openFileMenu = useCallback(async (): Promise<void> => {
+    const linked = note?.file
+    const chosen = await window.api.showContextMenu([
+      { id: 'open', label: 'ファイルから読み込む...' },
+      { id: 'sep0', type: 'separator' },
+      { id: 'save', label: linked ? `上書き保存 (${linked.path})` : '上書き保存', enabled: Boolean(linked) },
+      { id: 'save-as', label: '名前を付けて保存...' },
+      { id: 'sep1', type: 'separator' },
+      {
+        id: 'encoding',
+        label: '文字コード',
+        enabled: Boolean(linked),
+        submenu: (Object.keys(ENCODING_LABELS) as NoteFileEncoding[]).map((key) => ({
+          id: `enc:${key}`,
+          label: `${linked?.encoding === key ? '● ' : '　'}${ENCODING_LABELS[key]}`
+        }))
+      },
+      {
+        id: 'newline',
+        label: '改行コード',
+        enabled: Boolean(linked),
+        submenu: (Object.keys(NEWLINE_LABELS) as NoteNewline[]).map((key) => ({
+          id: `nl:${key}`,
+          label: `${linked?.newline === key ? '● ' : '　'}${NEWLINE_LABELS[key]}`
+        }))
+      },
+      { id: 'sep2', type: 'separator' },
+      { id: 'unlink', label: 'ファイルとの結び付きを解除', enabled: Boolean(linked) }
+    ])
+    if (!chosen) return
+    const id = noteIdRef.current
+    if (chosen === 'open') {
+      const imported = await window.api.importNoteFromFile(null)
+      if (imported) setNoteId(imported.id)
+      return
+    }
+    if (!id) return
+    if (chosen === 'save') {
+      await flushRef.current()
+      const saved = await window.api.saveNoteToFile(id)
+      showToast(saved ? `保存しました: ${saved}` : '保存先のファイルがありません')
+      return
+    }
+    if (chosen === 'save-as') {
+      await flushRef.current()
+      const updated = await window.api.exportNoteToFile(id)
+      if (updated) {
+        setNote(updated)
+        showToast(`保存しました: ${updated.file?.path ?? ''}`)
+      }
+      return
+    }
+    if (chosen === 'unlink') {
+      const updated = await window.api.setNoteFileInfo(id, null)
+      if (updated) setNote(updated)
+      showToast('ファイルとの結び付きを解除しました')
+      return
+    }
+    if (!linked) return
+    if (chosen.startsWith('enc:')) {
+      const encoding = chosen.slice('enc:'.length) as NoteFileEncoding
+      const updated = await window.api.setNoteFileInfo(id, { ...linked, encoding })
+      if (updated) setNote(updated)
+      showToast(`次の保存から ${ENCODING_LABELS[encoding]} で書き出します`)
+      return
+    }
+    if (chosen.startsWith('nl:')) {
+      const newline = chosen.slice('nl:'.length) as NoteNewline
+      const updated = await window.api.setNoteFileInfo(id, { ...linked, newline })
+      if (updated) setNote(updated)
+      showToast(`次の保存から ${NEWLINE_LABELS[newline]} で書き出します`)
+    }
+  }, [note, showToast])
+
+  /* --- Markdownプレビュー --- */
+
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewHtml, setPreviewHtml] = useState('')
+
+  // 開いている間だけ、本文が変わるたびに組み直す(閉じている間は何もしない)
+  useEffect(() => {
+    if (!previewOpen) return
+    const editor = editorRef.current
+    if (!editor) return
+    setPreviewHtml(markdownToHtml(plainTextOf(extractLines(editor))))
+  }, [previewOpen, counts])
 
   /* --- 編集履歴(版) --- */
 
@@ -702,7 +911,7 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
     const canonical =
       children.length > 0 &&
       children.every((child) => child.nodeType === Node.ELEMENT_NODE && (child as HTMLElement).tagName === 'DIV') &&
-      editor.querySelector('div div,p,ul,ol,li,h1,h2,h3,h4,h5,h6,blockquote,pre,table,img') === null
+      editor.querySelector('div div,p,ul,ol,li,h1,h2,h3,h4,h5,h6,blockquote,pre,table') === null
     if (canonical) {
       for (const child of Array.from(editor.children)) child.classList.add(LINE_CLASS)
       return
@@ -718,14 +927,65 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
     markChanged()
   }
 
+  /**
+   * 貼り付けた画像をメモに添える。画像はメモ本文(テキスト)には入れず別ファイルにし、
+   * 装飾付き本文の側から参照する。画像は必ず1行を占め、文字としては数えない
+   */
+  const insertImage = useCallback(
+    async (file: File): Promise<void> => {
+      const id = noteIdRef.current
+      const editor = editorRef.current
+      if (!id || !editor) return
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result))
+        reader.onerror = () => reject(reader.error ?? new Error('読み込みに失敗しました'))
+        reader.readAsDataURL(file)
+      })
+      const image = await window.api.saveNoteImage(id, dataUrl)
+      if (!image) {
+        showToast('この形式の画像は貼り付けられません')
+        return
+      }
+      const selection = getSelectionOffsets(editor) ?? selectionRef.current
+      pushSnapshot(true)
+      const lines = extractLines(editor)
+      // 画像の行を挟むと改行が2つ増えるので、カーソルは画像の次の行の先頭へ置く
+      writeDoc(insertImageLine(lines, selection.start, image), selection.start + 2)
+    },
+    [pushSnapshot, showToast, writeDoc]
+  )
+
+  /** 貼り付け・ドロップされたものから画像ファイルを取り出す(無ければnull) */
+  const imageFileOf = (list: DataTransfer | null): File | null => {
+    if (!list) return null
+    for (const item of Array.from(list.items ?? [])) {
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        const file = item.getAsFile()
+        if (file) return file
+      }
+    }
+    return null
+  }
+
   const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>): void => {
     e.preventDefault()
+    const image = imageFileOf(e.clipboardData)
+    if (image) {
+      void insertImage(image)
+      return
+    }
     const text = e.clipboardData.getData('text/plain')
     if (text) insertText(text)
   }
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>): void => {
     e.preventDefault()
+    const image = imageFileOf(e.dataTransfer)
+    if (image) {
+      void insertImage(image)
+      return
+    }
     const text = e.dataTransfer.getData('text/plain')
     if (text) insertText(text)
   }
@@ -745,6 +1005,10 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
     const result = await window.api.showContextMenu([
       { id: 'to-template', label: '選択範囲を定型文として登録', enabled: hasSelection },
       { id: 'copy', label: '選択範囲をコピー', enabled: hasSelection },
+      {
+        id: 'to-app',
+        label: hasSelection ? '選択範囲を直前のアプリへ入力' : 'メモ全体を直前のアプリへ入力'
+      },
       { type: 'separator', id: 'sep' },
       {
         id: 'transform',
@@ -767,6 +1031,10 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
       if (!hasSelection) return
       await window.api.copyToClipboard(selected)
       showToast('コピーしました')
+      return
+    }
+    if (result === 'to-app') {
+      await insertToLastApp()
       return
     }
     runTransform(result)
@@ -920,8 +1188,32 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
         >
           検索
         </button>
-        <button type="button" className="note-tool" onClick={() => void openTransformMenu()} title="整形・変換">
+        <button
+          type="button"
+          className="note-tool"
+          onClick={() => void openTransformMenu()}
+          title="組み込みの変換と、登録済みの整形ルールを選択範囲へ適用する"
+        >
           変換
+        </button>
+        <button
+          type="button"
+          className="note-tool"
+          onClick={() => void insertToLastApp()}
+          title="選択範囲(未選択ならメモ全体)を、直前に使っていたアプリへ入力する"
+        >
+          入力
+        </button>
+        <button type="button" className="note-tool" onClick={() => void openFileMenu()} title="ファイルの読み込み・保存・文字コード">
+          ファイル
+        </button>
+        <button
+          type="button"
+          className={`note-tool${previewOpen ? ' active' : ''}`}
+          onClick={() => setPreviewOpen((v) => !v)}
+          title="本文をMarkdownとして表示する"
+        >
+          Md
         </button>
         <button
           type="button"
@@ -1053,6 +1345,12 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
           </div>
         )}
 
+        {previewOpen && (
+          <div className="note-preview" aria-label="Markdownプレビュー">
+            <div className="note-preview-body" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+          </div>
+        )}
+
         {versionsOpen && (
           <NoteEditorVersions
             versions={versions}
@@ -1067,6 +1365,12 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
           {statusLabel}
         </span>
         {toast && <span className="note-editor-toast">{toast}</span>}
+        {note?.file && (
+          <span className="note-editor-file" title={note.file.path}>
+            {note.file.path.split(/[\\/]/).pop()} ({ENCODING_LABELS[note.file.encoding]} /{' '}
+            {note.file.newline.toUpperCase()})
+          </span>
+        )}
         {note && <span className="note-editor-updated">最終更新 {formatUpdatedAt(note.updatedAt)}</span>}
         <span className="note-editor-count">
           {counts.lines}行 / {counts.chars}文字

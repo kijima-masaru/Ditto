@@ -16,6 +16,7 @@ import { initScreenshotEditorWindow } from './screenshotEditorWindow'
 import * as macroPlaybackWindow from './macroPlaybackWindow'
 import * as textExpansion from './textExpansion'
 import { initCommandPalette, setHotkey as setCommandPaletteHotkey } from './commandPalette'
+import { initLastForegroundApp } from './lastForegroundApp'
 import { TargetManager } from './targetManager'
 import * as remoteServer from './remoteServer'
 import { stopBlockingRealMouseInput } from './mouseBlock'
@@ -217,6 +218,8 @@ app.whenReady().then(async () => {
     void showMainWindowAndNavigate(target)
   })
   textExpansion.initTextExpansion()
+  // メモの選択範囲を「直前に使っていたアプリ」へ入力するための前面ウィンドウ監視
+  initLastForegroundApp()
   textExpansion.setEnabled(settings.textExpansionEnabled)
   // パレットでマクロを選んだ時は、Ditto本体をカーソル位置へ移動させるのではなく、
   // 再生画面だけを独立した別ウィンドウで開く(macroPlaybackWindow.ts参照)

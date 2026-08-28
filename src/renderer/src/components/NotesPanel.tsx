@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { ContextMenuItem, Note, NoteFolder } from '../../../shared/types'
+import type { ContextMenuItem, MacroCase, Note, NoteFolder } from '../../../shared/types'
 import { flattenFolders, folderBreadcrumb } from '../folderTree'
 import { useDragReorder } from '../hooks/useDragReorder'
 import ConfirmDialog from './ConfirmDialog'
@@ -102,6 +102,33 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
     openNote(note.id)
   }
 
+  /** テキストファイルを選び、新しいメモとして取り込む(文字コードはmain側で判別する) */
+  const handleImportFile = async (folderId: string | null): Promise<void> => {
+    const note = await window.api.importNoteFromFile(folderId)
+    if (!note) return
+    await reload()
+    openNote(note.id)
+  }
+
+  /**
+   * メモを「マクロの入力ステップ」としてマクロへ足す。どのマクロのどの対象に足すかは
+   * 入れ子のメニューで選ばせる(手順書をメモに置いたまま、対象アプリへ流し込めるようにするため)
+   */
+  const buildMacroSubmenu = (macros: MacroCase[]): ContextMenuItem[] => {
+    if (macros.length === 0) return [{ id: 'no-macro', label: 'マクロがありません', enabled: false }]
+    return macros.map((macroCase) => ({
+      id: `macro:${macroCase.id}`,
+      label: macroCase.name,
+      submenu:
+        macroCase.targets.length === 0
+          ? [{ id: 'no-target', label: '対象がありません', enabled: false }]
+          : macroCase.targets.map((target) => ({
+              id: `macro-step:${macroCase.id}:${target.id}`,
+              label: target.label || target.url || target.exePath || target.id
+            }))
+    }))
+  }
+
   const startRenameNote = (n: Note): void => {
     setRenamingNoteId(n.id)
     setRenameNoteInput(n.title)
@@ -181,6 +208,7 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
     e.preventDefault()
     const items: ContextMenuItem[] = [
       { id: 'create-note', label: '新規メモを作成' },
+      { id: 'import-file', label: 'ファイルから読み込む...' },
       { id: 'create-folder', label: '新規フォルダを作成' }
     ]
     if (currentFolderId !== null) {
@@ -189,6 +217,7 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
     }
     const result = await window.api.showContextMenu(items)
     if (result === 'create-note') void handleCreateNote(currentFolderId)
+    else if (result === 'import-file') void handleImportFile(currentFolderId)
     else if (result === 'create-folder') {
       setCreatingFolder(true)
       setNewFolderName('')
@@ -204,6 +233,7 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
     const index = ids.indexOf(f.id)
     const result = await window.api.showContextMenu([
       { id: 'create-note', label: '新規メモを作成' },
+      { id: 'import-file', label: 'ファイルから読み込む...' },
       { id: 'sep0', type: 'separator' },
       { id: 'rename', label: '名前変更' },
       { id: 'move-up', label: '上に移動', enabled: index > 0 },
@@ -212,6 +242,7 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
       { id: 'delete', label: '削除' }
     ])
     if (result === 'create-note') void handleCreateNote(f.id)
+    else if (result === 'import-file') void handleImportFile(f.id)
     else if (result === 'rename') startRenameFolder(f)
     else if (result === 'delete') setDeletingFolderId(f.id)
     else if (result === 'move-up' || result === 'move-down') {
@@ -225,10 +256,12 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
     e.stopPropagation()
     const ids = visibleNotes.map((vn) => vn.id)
     const index = ids.indexOf(n.id)
+    const macros = await window.api.listMacros()
     const result = await window.api.showContextMenu([
       { id: 'open', label: '開く' },
       { id: 'rename', label: '名前変更' },
       { id: 'pin', label: n.pinned ? 'コマンドパレットの固定を解除' : 'コマンドパレットに固定' },
+      { id: 'to-macro', label: 'マクロに入力ステップとして追加', submenu: buildMacroSubmenu(macros) },
       { id: 'move', label: '移動', submenu: buildMoveSubmenu(flatFolders) },
       { id: 'move-up', label: '上に移動', enabled: !searching && index > 0 },
       { id: 'move-down', label: '下に移動', enabled: !searching && index < ids.length - 1 },
@@ -236,7 +269,10 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
       { id: 'delete', label: '削除' }
     ])
     if (result === 'open') openNote(n.id)
-    else if (result === 'rename') startRenameNote(n)
+    else if (result?.startsWith('macro-step:')) {
+      const [, macroId, targetId] = result.split(':')
+      void window.api.addNoteStepToMacro(macroId, targetId, n.id, n.title)
+    } else if (result === 'rename') startRenameNote(n)
     else if (result === 'pin') void window.api.setNotePinned(n.id, !n.pinned).then(reload)
     else if (result === 'delete') setDeletingNoteId(n.id)
     else if (result?.startsWith('move:')) {

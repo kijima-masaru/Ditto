@@ -5,6 +5,7 @@ import * as win32 from '../win32'
 import type { RecordedStep, TargetAdapter } from '../../shared/types'
 import { captureTemplateAt, findTemplateMatch } from '../imageMatch'
 import { resolveTemplateText } from '../templateVariables'
+import * as notesStore from '../notesStore'
 import { matchesStopHotkey } from '../hotkey'
 import log from '../logger'
 
@@ -222,8 +223,11 @@ export abstract class WindowTargetAdapterBase implements TargetAdapter {
         return
       }
       case 'type': {
-        if (!step.templateId) throw new Error('定型文が指定されていません')
-        const text = await resolveTemplateText(step.templateId)
+        // 定型文とメモのどちらを入力するステップかは、持っているidで分かれる
+        if (!step.templateId && !step.noteId) throw new Error('定型文またはメモが指定されていません')
+        const text = step.templateId
+          ? await resolveTemplateText(step.templateId)
+          : await notesStore.getNoteBody(step.noteId as string)
         // nut-jsのkeyboard.type()はキーボードレイアウトの仮想キー変換に依存し、
         // レイアウト上にない文字(日本語等)は文字化けするため、SendInput+
         // KEYEVENTF_UNICODEで直接注入するwin32.typeUnicodeTextを使う
