@@ -2,7 +2,8 @@ import { app } from 'electron'
 import { randomUUID } from 'crypto'
 import fs from 'fs/promises'
 import path from 'path'
-import type { Note, NoteFolder, NoteVersion, NoteVersionContent } from '../shared/types'
+import { pathToFileURL } from 'url'
+import type { Note, NoteFileInfo, NoteFolder, NoteVersion, NoteVersionContent } from '../shared/types'
 
 /**
  * メモの保存を担当する。
@@ -50,6 +51,32 @@ function noteHtmlPath(id: string): string {
 
 function noteHistoryPath(id: string): string {
   return path.join(notesDir(), `${id}.history.json`)
+}
+
+/** メモに貼り付けた画像の置き場。メモ1件につき1つのフォルダにまとめる */
+function noteImagesDir(id: string): string {
+  return path.join(notesDir(), `${id}.files`)
+}
+
+/** rendererが画像を表示するためのfile URLの土台 */
+export function notesDirUrl(): string {
+  return `${pathToFileURL(notesDir()).href}/`
+}
+
+/**
+ * 貼り付けられた画像(PNGのdata URL)をメモに添えて、その画像のidを返す。
+ * 本文(.txt)には入れず別ファイルにするのは、本文をテキストのまま保つため。
+ * 装飾付き本文(.html)側が<img>としてこのidを参照する
+ */
+export async function saveNoteImage(noteId: string, dataUrl: string): Promise<string | null> {
+  const match = /^data:image\/(png|jpeg|gif|webp);base64,(.+)$/.exec(dataUrl)
+  if (!match) return null
+  const extension = match[1] === 'jpeg' ? 'jpg' : match[1]
+  const id = `${randomUUID()}.${extension}`
+  const dir = noteImagesDir(noteId)
+  await fs.mkdir(dir, { recursive: true })
+  await fs.writeFile(path.join(dir, id), Buffer.from(match[2], 'base64'))
+  return id
 }
 
 /** 直前の本文を1世代だけ残すバックアップ。自動保存で内容を失った時の救済用 */
@@ -313,6 +340,20 @@ function htmlLinesFromPlainText(text: string): string {
     .join('')
 }
 
+/**
+ * 外部ファイルとの結び付き(パス・文字コード・改行コード)を記録する。
+ * 以後の「上書き保存」はここに記録した内容で行う
+ */
+export async function setNoteFile(id: string, file: NoteFileInfo | undefined): Promise<Note | undefined> {
+  const notes = await listNotes()
+  const note = notes.find((n) => n.id === id)
+  if (!note) return undefined
+  if (file) note.file = file
+  else delete note.file
+  await writeNotes(notes)
+  return note
+}
+
 /** コマンドパレットの初期表示(未入力時)にこのメモを出すかどうかを切り替える */
 export async function setNotePinned(id: string, pinned: boolean): Promise<void> {
   const notes = await listNotes()
@@ -340,6 +381,11 @@ export async function deleteNote(id: string): Promise<void> {
     } catch {
       // 元から無い場合は無視する
     }
+  }
+  try {
+    await fs.rm(noteImagesDir(id), { recursive: true, force: true })
+  } catch {
+    // 画像を貼っていないメモではフォルダ自体が無い
   }
 }
 

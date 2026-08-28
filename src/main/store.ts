@@ -193,6 +193,32 @@ export async function addTemplateStep(
   return macroCase
 }
 
+/**
+ * マクロの末尾へ「メモを入力する」ステップを追加する。本文はここでは読まず、
+ * 再生の都度execStep側で読む(手順書をメモとして直しながら回せるようにするため)
+ */
+export async function addNoteStep(
+  macroId: string,
+  targetId: string,
+  noteId: string,
+  noteLabel: string
+): Promise<MacroCase> {
+  const raw = await fs.readFile(filePathFor(macroId), 'utf-8')
+  const macroCase = JSON.parse(raw) as MacroCase
+  macroCase.steps.push({
+    id: randomUUID(),
+    targetId,
+    type: 'type',
+    timestamp: Date.now(),
+    delayMs: 0,
+    noteId,
+    label: noteLabel ? `メモ: ${noteLabel}` : 'メモ入力'
+  })
+  macroCase.updatedAt = new Date().toISOString()
+  await fs.writeFile(filePathFor(macroId), JSON.stringify(macroCase, null, 2), 'utf-8')
+  return macroCase
+}
+
 /** コマンドパレットの初期表示(未入力時)にこのマクロを出すかどうかを切り替える */
 export async function setPinned(id: string, pinned: boolean): Promise<MacroCase> {
   const raw = await fs.readFile(filePathFor(id), 'utf-8')

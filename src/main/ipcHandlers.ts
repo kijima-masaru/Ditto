@@ -21,8 +21,10 @@ import {
   type ThemeMode,
   type MacroCase,
   type MacroTarget,
-  type NoteEditorAppearance
+  type NoteEditorAppearance,
+  type NoteFileInfo
 } from '../shared/types'
+import path from 'path'
 import * as store from './store'
 import type { TargetManager } from './targetManager'
 import * as recordingFrame from './recordingFrame'
@@ -30,6 +32,9 @@ import * as clickHighlight from './clickHighlight'
 import * as screenCapture from './screenCapture'
 import * as clipboardStore from './clipboardStore'
 import * as notesStore from './notesStore'
+import { NOTE_FILE_FILTERS, readTextFile, writeTextFile } from './noteFile'
+import { insertToLastApp } from './lastForegroundApp'
+import { applyFormatRules } from './clipboardFormat'
 import * as noteEditorWindow from './noteEditorWindow'
 import * as clipboardTransforms from './clipboardTransforms'
 import { resolveTemplateText } from './templateVariables'
@@ -537,6 +542,93 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, manag
   ipcMain.handle(IPC.getNoteBody, async (_e, id: string) => notesStore.getNoteBody(id))
 
   ipcMain.handle(IPC.getNoteHtml, async (_e, id: string) => notesStore.getNoteHtml(id))
+
+  ipcMain.handle(IPC.notesDirUrl, async () => notesStore.notesDirUrl())
+
+  ipcMain.handle(IPC.saveNoteImage, async (_e, noteId: string, dataUrl: string) =>
+    notesStore.saveNoteImage(noteId, dataUrl)
+  )
+
+  /**
+   * テキストファイルを選んで新しいメモとして取り込む。文字コードと改行コードは
+   * 判別した結果をメモに覚えさせ、上書き保存の時に同じ形へ戻せるようにする
+   */
+  ipcMain.handle(IPC.importNoteFromFile, async (_e, folderId: string | null) => {
+    const parent = noteEditorWindow.getWindow() ?? getWindow()
+    const result = parent
+      ? await dialog.showOpenDialog(parent, {
+          title: 'メモとして読み込むファイルを選択',
+          properties: ['openFile'],
+          filters: NOTE_FILE_FILTERS
+        })
+      : await dialog.showOpenDialog({ properties: ['openFile'], filters: NOTE_FILE_FILTERS })
+    if (result.canceled || result.filePaths.length === 0) return null
+    const filePath = result.filePaths[0]
+    const file = await readTextFile(filePath)
+    const note = await notesStore.createNote(folderId ?? null, file.text)
+    // ファイル名をそのままメモの名前にする(本文1行目からの自動生成より分かりやすいため)
+    await notesStore.renameNote(note.id, path.basename(filePath))
+    const updated = await notesStore.setNoteFile(note.id, {
+      path: filePath,
+      encoding: file.encoding,
+      newline: file.newline
+    })
+    notifyNotesChanged()
+    return updated ?? note
+  })
+
+  /** 取り込み元のファイルへ上書き保存する。結び付いていなければnullを返す */
+  ipcMain.handle(IPC.saveNoteToFile, async (_e, id: string) => {
+    const note = (await notesStore.listNotes()).find((n) => n.id === id)
+    if (!note?.file) return null
+    const body = await notesStore.getNoteBody(id)
+    await writeTextFile(note.file.path, body, note.file.encoding, note.file.newline)
+    return note.file.path
+  })
+
+  /** 名前を付けてファイルへ保存し、以後の上書き保存先としても覚える */
+  ipcMain.handle(IPC.exportNoteToFile, async (_e, id: string) => {
+    const note = (await notesStore.listNotes()).find((n) => n.id === id)
+    if (!note) return null
+    const parent = noteEditorWindow.getWindow() ?? getWindow()
+    const options = {
+      title: 'メモをファイルとして保存',
+      defaultPath: note.file?.path ?? `${note.title.replace(/[\\/:*?"<>|]/g, '_')}.txt`,
+      filters: NOTE_FILE_FILTERS
+    }
+    const result = parent ? await dialog.showSaveDialog(parent, options) : await dialog.showSaveDialog(options)
+    if (result.canceled || !result.filePath) return null
+    const body = await notesStore.getNoteBody(id)
+    const encoding = note.file?.encoding ?? 'utf8'
+    const newline = note.file?.newline ?? 'crlf'
+    await writeTextFile(result.filePath, body, encoding, newline)
+    const updated = await notesStore.setNoteFile(id, { path: result.filePath, encoding, newline })
+    notifyNotesChanged()
+    return updated
+  })
+
+  /** 文字コード・改行コードだけを変更する(次の保存から反映される) */
+  ipcMain.handle(IPC.setNoteFileInfo, async (_e, id: string, file: NoteFileInfo | null) => {
+    const updated = await notesStore.setNoteFile(id, file ?? undefined)
+    notifyNotesChanged()
+    return updated
+  })
+
+  /** メモの選択範囲を、直前に使っていたアプリへそのまま入力する */
+  ipcMain.handle(IPC.insertTextToLastApp, async (_e, text: string) => insertToLastApp(text))
+
+  /** 登録済みの整形ルールを任意のテキストへ適用する(メモの選択範囲へ当てるために使う) */
+  ipcMain.handle(IPC.applyFormatRulesToText, async (_e, text: string, ruleIds?: string[]) => {
+    const rules = await clipboardStore.listFormatRules()
+    const target = ruleIds && ruleIds.length > 0 ? rules.filter((r) => ruleIds.includes(r.id)) : rules.filter((r) => r.enabled)
+    return applyFormatRules(text, target)
+  })
+
+  ipcMain.handle(
+    IPC.addNoteStepToMacro,
+    async (_e, macroId: string, targetId: string, noteId: string, noteLabel: string) =>
+      store.addNoteStep(macroId, targetId, noteId, noteLabel)
+  )
 
   ipcMain.handle(IPC.listNoteVersions, async (_e, id: string) => notesStore.listNoteVersions(id))
 

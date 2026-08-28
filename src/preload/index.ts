@@ -17,6 +17,7 @@ import {
   type Note,
   type NoteEditorAppearance,
   type NoteFolder,
+  type NoteFileInfo,
   type NoteVersion,
   type NoteVersionContent,
   type PairedDevice,
@@ -123,6 +124,20 @@ const api = {
   searchNotes: (query: string): Promise<string[]> => ipcRenderer.invoke(IPC.searchNotes, query),
   getNoteBody: (id: string): Promise<string> => ipcRenderer.invoke(IPC.getNoteBody, id),
   getNoteHtml: (id: string): Promise<string | null> => ipcRenderer.invoke(IPC.getNoteHtml, id),
+  notesDirUrl: (): Promise<string> => ipcRenderer.invoke(IPC.notesDirUrl),
+  saveNoteImage: (noteId: string, dataUrl: string): Promise<string | null> =>
+    ipcRenderer.invoke(IPC.saveNoteImage, noteId, dataUrl),
+  importNoteFromFile: (folderId: string | null): Promise<Note | null> =>
+    ipcRenderer.invoke(IPC.importNoteFromFile, folderId),
+  saveNoteToFile: (id: string): Promise<string | null> => ipcRenderer.invoke(IPC.saveNoteToFile, id),
+  exportNoteToFile: (id: string): Promise<Note | null> => ipcRenderer.invoke(IPC.exportNoteToFile, id),
+  setNoteFileInfo: (id: string, file: NoteFileInfo | null): Promise<Note | undefined> =>
+    ipcRenderer.invoke(IPC.setNoteFileInfo, id, file),
+  insertTextToLastApp: (text: string): Promise<boolean> => ipcRenderer.invoke(IPC.insertTextToLastApp, text),
+  applyFormatRulesToText: (text: string, ruleIds?: string[]): Promise<string> =>
+    ipcRenderer.invoke(IPC.applyFormatRulesToText, text, ruleIds),
+  addNoteStepToMacro: (macroId: string, targetId: string, noteId: string, noteLabel: string): Promise<MacroCase> =>
+    ipcRenderer.invoke(IPC.addNoteStepToMacro, macroId, targetId, noteId, noteLabel),
   listNoteVersions: (id: string): Promise<NoteVersion[]> => ipcRenderer.invoke(IPC.listNoteVersions, id),
   getNoteVersion: (id: string, versionId: string): Promise<NoteVersionContent | null> =>
     ipcRenderer.invoke(IPC.getNoteVersion, id, versionId),

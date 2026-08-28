@@ -3018,3 +3018,148 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 .note-editor-body .note-mark {
   color: #1a1a1a;
 }
+
+/* --- Markdownプレビュー --- */
+
+.note-preview {
+  flex-shrink: 0;
+  width: 42%;
+  min-width: 220px;
+  overflow: auto;
+  border-left: 1px solid var(--border);
+  background: var(--panel-bg-alt);
+}
+
+.note-preview-body {
+  padding: 16px 18px;
+  font-size: 13px;
+  line-height: 1.9;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.note-preview-body h1,
+.note-preview-body h2,
+.note-preview-body h3,
+.note-preview-body h4,
+.note-preview-body h5,
+.note-preview-body h6 {
+  margin: 18px 0 8px;
+  line-height: 1.5;
+}
+
+.note-preview-body h1 {
+  font-size: 20px;
+  border-bottom: 1px solid var(--border-strong);
+  padding-bottom: 4px;
+}
+
+.note-preview-body h2 {
+  font-size: 17px;
+}
+
+.note-preview-body h3 {
+  font-size: 15px;
+}
+
+.note-preview-body h4,
+.note-preview-body h5,
+.note-preview-body h6 {
+  font-size: 13px;
+}
+
+.note-preview-body p {
+  margin: 0 0 8px;
+}
+
+.note-preview-body ul,
+.note-preview-body ol {
+  margin: 0 0 8px;
+  padding-left: 22px;
+}
+
+.note-preview-body blockquote {
+  margin: 0 0 8px;
+  padding: 2px 12px;
+  border-left: 3px solid var(--border-strong);
+  color: var(--text-secondary);
+}
+
+.note-preview-body pre {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.note-preview-body pre code,
+.note-preview-body code {
+  font-family: Consolas, 'BIZ UDGothic', Meiryo, monospace;
+  font-size: 12px;
+}
+
+.note-preview-body code {
+  padding: 1px 4px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.note-preview-body pre code {
+  padding: 0;
+  background: none;
+  border: none;
+}
+
+.note-preview-body table {
+  margin: 0 0 10px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.note-preview-body th,
+.note-preview-body td {
+  padding: 4px 8px;
+  border: 1px solid var(--border-strong);
+  text-align: left;
+}
+
+.note-preview-body th {
+  background: var(--panel-bg);
+}
+
+.note-preview-body hr {
+  margin: 14px 0;
+  border: none;
+  border-top: 1px solid var(--border-strong);
+}
+
+.note-preview-body a {
+  color: var(--accent);
+}
+
+/* --- フッターの、結び付いた外部ファイルの表示 --- */
+
+.note-editor-file {
+  margin-left: auto;
+  max-width: 42%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-editor-file + .note-editor-updated {
+  margin-left: 0;
+}
+
+/* 貼り付けた画像。必ず1行を占める(文字と混ざらない)ため、行の中で単独で描かれる */
+.note-editor-body .note-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 4px 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}

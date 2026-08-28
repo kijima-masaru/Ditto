@@ -64,6 +64,9 @@ export interface RecordedStep {
 
   /** type時: 入力する定型文(ClipboardTemplate.id)。動的変数は再生の都度その場で解決する */
   templateId?: string
+  /** type時: 入力するメモ(Note.id)。手順書をメモに置いたまま対象アプリへ流し込むために使う。
+   *  templateIdとどちらか一方だけを持つ(両方ある場合はtemplateIdを優先する) */
+  noteId?: string
   /** type時: このステップ自体の{{seq}}用カウンタ。定型文のカウンタとは独立して進む */
   seq?: number
 
@@ -232,7 +235,26 @@ export interface Note {
   createdAt: string
   /** 本文または名前を最後に更新した日時 */
   updatedAt: string
+  /** 外部ファイルから読み込んだ場合の元のファイル。上書き保存の宛先になる */
+  file?: NoteFileInfo
 }
+
+/** 外部ファイルとして読み書きする場合の、そのファイルの文字コードと改行コード */
+export interface NoteFileInfo {
+  path: string
+  encoding: NoteFileEncoding
+  newline: NoteNewline
+}
+
+/**
+ * 外部ファイルの文字コード。日本語のテキストファイルで実際に出会うものだけを扱う。
+ * utf8bomはBOM付きUTF-8(Excelが書き出すCSVなど)、shift_jisはWindowsの
+ * 日本語既定(CP932)を指す
+ */
+export type NoteFileEncoding = 'utf8' | 'utf8bom' | 'shift_jis' | 'utf16le'
+
+/** 外部ファイルの改行コード。crlfはWindows、lfはUnix/Mac、crは古いMac */
+export type NoteNewline = 'crlf' | 'lf' | 'cr'
 
 /**
  * メモの編集画面の既定の見た目。全メモ共通の設定として保持する。
@@ -545,6 +567,8 @@ export const IPC = {
   reorderMacros: 'macros:reorder',
   // マクロへ「定型文を入力する」ステップを追加する(動的変数は再生の都度その場で解決する)
   addTemplateStepToMacro: 'macros:add-template-step',
+  // マクロへ「メモを入力する」ステップを追加する(本文は再生の都度その場で読む)
+  addNoteStepToMacro: 'macros:add-note-step',
 
   listFolders: 'folders:list',
   createFolder: 'folders:create',
@@ -684,6 +708,14 @@ export const IPC = {
   searchNotes: 'notes:search', // 本文まで含めた全文検索。一致したメモのidを返す
   getNoteBody: 'notes:get-body',
   getNoteHtml: 'notes:get-html', // 装飾付き本文(notes/<id>.html)。無ければnullを返す
+  importNoteFromFile: 'notes:import-file', // ダイアログでテキストファイルを選び、新しいメモとして取り込む
+  saveNoteToFile: 'notes:save-file', // 取り込み元のファイルへ上書き保存する
+  exportNoteToFile: 'notes:export-file', // 名前を付けてファイルへ保存する(以後の保存先にもなる)
+  setNoteFileInfo: 'notes:set-file-info', // 文字コード・改行コードを変更する
+  saveNoteImage: 'notes:save-image', // 貼り付けた画像をメモに添える
+  notesDirUrl: 'notes:dir-url', // 添えた画像を表示するためのfile URLの土台
+  insertTextToLastApp: 'notes:insert-to-last-app', // 選択範囲を直前に使っていたアプリへ入力する
+  applyFormatRulesToText: 'clipboard:apply-format-rules', // 登録済みの整形ルールを任意のテキストへ適用する
   listNoteVersions: 'notes:list-versions',
   getNoteVersion: 'notes:get-version',
   createNote: 'notes:create',
