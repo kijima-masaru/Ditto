@@ -229,6 +229,22 @@ export interface Note {
   updatedAt: string
 }
 
+/**
+ * メモの編集画面の見た目。全メモ共通の表示設定として保持する。
+ * 本文はプレーンテキストなので文字ごとの装飾は持たず、画面全体の見え方を調整する。
+ * 色をnullにしておくと、Dittoのテーマ(ライト/ダーク)に追従する
+ */
+export interface NoteEditorAppearance {
+  /** 本文の文字サイズ(px) */
+  fontSize: number
+  /** 本文を太字にする */
+  bold: boolean
+  /** 文字色(#rrggbb)。nullならテーマ既定 */
+  color: string | null
+  /** 背景色(#rrggbb)。nullならテーマ既定 */
+  background: string | null
+}
+
 export interface NoteFolder {
   id: string
   name: string
@@ -341,6 +357,8 @@ export interface AppSettings {
   /** コマンドパレットに一度に表示する件数の上限。履歴・定型文・マクロそれぞれの区分ごとに
    *  個別に指定できる。既定値はいずれも6 */
   commandPaletteMaxPerSection: CommandPaletteMaxPerSection
+  /** メモの編集画面の見た目(文字サイズ・太字・文字色・背景色) */
+  noteEditorAppearance: NoteEditorAppearance
   /** Ditto Remote(スマホ連携)でペアリング済みのデバイス一覧 */
   pairedDevices: PairedDevice[]
   /** ウィンドウを最後に表示していた位置(画面左上基準のスクリーン座標)。ウィンドウを
@@ -638,6 +656,9 @@ export const IPC = {
   setNotePinned: 'notes:set-pinned',
   reorderPinnedNotes: 'notes:reorder-pinned',
   openNoteEditor: 'notes:open-editor', // メインウィンドウ -> main(編集用の別ウィンドウを開く)
+  noteEditorShowing: 'notes:editor-showing', // 編集ウィンドウ -> main(今どのメモを表示しているか)
+  appendToOpenNote: 'notes:append-to-open', // main -> 編集ウィンドウ push(開いているメモへの追記を本人に行わせる)
+  setNoteEditorAppearance: 'settings:set-note-editor-appearance',
   openNoteInEditor: 'notes:open-in-editor', // main -> 編集ウィンドウ push(既に開いている場合の対象差し替え)
   notesChanged: 'notes:changed', // main -> メインウィンドウ push(編集ウィンドウでの保存を一覧へ反映する)
 

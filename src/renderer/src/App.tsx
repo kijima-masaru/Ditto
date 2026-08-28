@@ -152,7 +152,7 @@ function MainApp(): React.JSX.Element {
       <header className="app-header">
         <nav>
           <button className={view.name === 'clipboard' ? 'active' : ''} onClick={() => setView({ name: 'clipboard' })}>
-            クリップボード
+            クリップ
           </button>
           <button className={view.name === 'macro-list' ? 'active' : ''} onClick={() => setView({ name: 'macro-list' })}>
             マクロ

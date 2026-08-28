@@ -20,7 +20,8 @@ import {
   type HotkeyCombo,
   type ThemeMode,
   type MacroCase,
-  type MacroTarget
+  type MacroTarget,
+  type NoteEditorAppearance
 } from '../shared/types'
 import * as store from './store'
 import type { TargetManager } from './targetManager'
@@ -47,6 +48,16 @@ import { checkForUpdates } from './autoUpdater'
 import * as remoteServer from './remoteServer'
 
 export function registerIpcHandlers(getWindow: () => BrowserWindow | null, manager: TargetManager): void {
+  /**
+   * メモへ追記する。対象のメモを編集ウィンドウが開いている場合は、ファイルを直接
+   * 書き換えず開いているウィンドウ側に追記させる(理由はnoteEditorWindow.appendIfOpen参照)
+   */
+  const appendTextToNote = async (id: string, text: string): Promise<void> => {
+    if (noteEditorWindow.appendIfOpen(id, text)) return
+    await notesStore.appendToNote(id, text)
+    notifyNotesChanged()
+  }
+
   /** 編集ウィンドウでの保存をメインウィンドウのメモ一覧へ反映させる */
   const notifyNotesChanged = (): void => {
     const w = getWindow()
@@ -335,10 +346,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, manag
           ...(recentNotes.length > 0 ? [{ type: 'separator' as const }] : []),
           ...recentNotes.map((note) => ({
             label: note.title,
-            click: async () => {
-              await notesStore.appendToNote(note.id, text)
-              w?.webContents.send(IPC.notesChanged)
-            }
+            click: () => void appendTextToNote(note.id, text)
           }))
         ]
       },
@@ -565,11 +573,13 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, manag
 
   ipcMain.handle(IPC.deleteNoteFolder, async (_e, id: string) => notesStore.deleteNoteFolder(id))
 
-  ipcMain.handle(IPC.appendToNote, async (_e, id: string, text: string) => {
-    const note = await notesStore.appendToNote(id, text)
-    notifyNotesChanged()
-    return note
-  })
+  ipcMain.handle(IPC.appendToNote, async (_e, id: string, text: string) => appendTextToNote(id, text))
+
+  ipcMain.handle(IPC.noteEditorShowing, async (_e, id: string) => noteEditorWindow.setShowingNote(id))
+
+  ipcMain.handle(IPC.setNoteEditorAppearance, async (_e, appearance: NoteEditorAppearance) =>
+    settingsStore.setNoteEditorAppearance(appearance)
+  )
 
   ipcMain.handle(IPC.setNotePinned, async (_e, id: string, pinned: boolean) => notesStore.setNotePinned(id, pinned))
 

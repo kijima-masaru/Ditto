@@ -3,6 +3,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import { anyCategoryEnabled } from './piiDetect'
 import type {
+  NoteEditorAppearance,
   AppSettings,
   AutoMaskCategory,
   AutoMaskSettings,
@@ -56,8 +57,34 @@ const DEFAULT_SETTINGS: AppSettings = {
   // ここでは数値をそのまま持つ(hotkey.tsのformatComboLabelでも'Space'として表示される)
   commandPaletteHotkey: { ctrl: true, shift: true, alt: false, meta: false, keycode: 57, label: 'Ctrl+Shift+Space' },
   commandPaletteMaxPerSection: { history: 6, templates: 6, macros: 6, notes: 6 },
+  noteEditorAppearance: { fontSize: 14, bold: false, color: null, background: null },
   pairedDevices: [],
   windowPosition: null
+}
+
+// メモの文字サイズとして許容する範囲。小さすぎて読めない・大きすぎて使えない値を防ぐ
+const NOTE_FONT_SIZE_MIN = 10
+const NOTE_FONT_SIZE_MAX = 32
+
+/** 設定ファイルに壊れた値が入っていても表示が破綻しないよう、色は#rrggbb形式のみ受け付ける */
+function normalizeColor(value: unknown): string | null {
+  return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value) ? value : null
+}
+
+function normalizeNoteEditorAppearance(value: unknown): NoteEditorAppearance {
+  const d = DEFAULT_SETTINGS.noteEditorAppearance
+  if (!value || typeof value !== 'object') return { ...d }
+  const v = value as Partial<NoteEditorAppearance>
+  const fontSize =
+    typeof v.fontSize === 'number' && Number.isFinite(v.fontSize)
+      ? Math.min(NOTE_FONT_SIZE_MAX, Math.max(NOTE_FONT_SIZE_MIN, Math.round(v.fontSize)))
+      : d.fontSize
+  return {
+    fontSize,
+    bold: typeof v.bold === 'boolean' ? v.bold : d.bold,
+    color: normalizeColor(v.color),
+    background: normalizeColor(v.background)
+  }
 }
 
 // コマンドパレットの表示件数上限として許容する範囲。0や負数、極端に大きい値を防ぐ
@@ -199,6 +226,8 @@ export async function getSettings(): Promise<AppSettings> {
       textExpansionEnabled: parsed.textExpansionEnabled ?? DEFAULT_SETTINGS.textExpansionEnabled,
       commandPaletteHotkey: normalizeHotkeyCombo(parsed.commandPaletteHotkey),
       commandPaletteMaxPerSection: normalizeCommandPaletteMaxPerSection(parsed.commandPaletteMaxPerSection),
+      // v1.29.0で追加。旧い設定ファイルには無いため既定値を補う
+      noteEditorAppearance: normalizeNoteEditorAppearance(parsed.noteEditorAppearance),
       pairedDevices: Array.isArray(parsed.pairedDevices) ? parsed.pairedDevices : [],
       windowPosition: normalizeWindowPosition(parsed.windowPosition)
     }
@@ -276,6 +305,14 @@ export async function setCommandPaletteMaxPerSection(
     ...settings.commandPaletteMaxPerSection,
     [category]: clampCommandPaletteMaxPerSection(value)
   }
+  await writeSettings(settings)
+  return settings
+}
+
+/** メモの編集画面の見た目を保存する。壊れた値が入らないよう正規化してから書き込む */
+export async function setNoteEditorAppearance(appearance: NoteEditorAppearance): Promise<AppSettings> {
+  const settings = await getSettings()
+  settings.noteEditorAppearance = normalizeNoteEditorAppearance(appearance)
   await writeSettings(settings)
   return settings
 }

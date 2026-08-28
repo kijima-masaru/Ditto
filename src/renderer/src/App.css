@@ -2571,8 +2571,63 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 
 .note-editor-header {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
+}
+
+/* 文字の大きさ・色・背景色を変えるパネルの開閉ボタン */
+.note-editor-header .note-editor-appearance-btn {
+  flex-shrink: 0;
+  height: 34px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.note-editor-header .note-editor-appearance-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* 表示設定パネル。本文の上に横並びで置き、変更は即座に本文へ反映する */
+.note-editor-appearance {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-bg-alt, var(--panel-bg));
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.note-editor-appearance-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.note-editor-appearance-item input[type='number'] {
+  width: 56px;
+  height: 26px;
+  font-size: 12px;
+}
+
+.note-editor-appearance-item input[type='color'] {
+  width: 34px;
+  height: 26px;
+  padding: 2px;
+  cursor: pointer;
+}
+
+.note-editor-appearance .note-editor-appearance-reset {
+  height: 26px;
+  padding: 0 10px;
+  font-size: 11px;
 }
 
 .note-editor-title {
