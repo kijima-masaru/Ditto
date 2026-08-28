@@ -206,6 +206,11 @@ export interface ClipboardTemplateFolder {
  * メタ情報だけを持つ(一覧を開くたびに全本文を読まずに済むようにするため)。
  * 本文をプレーンテキストのまま置くのは、万一Dittoが壊れてもエクスプローラから
  * 開いて救出できるようにするため。
+ *
+ * 文字ごとの装飾(太字・文字色・文字サイズ・文字の背景色)は notes/<id>.html に
+ * 別ファイルとして持つ。装飾を本文ファイルに混ぜないのは、上記の「テキストとして
+ * 救出できる」性質を壊さないため。装飾ファイルが無い(または壊れている)場合は
+ * .txt から装飾なしの本文として復元できる。
  */
 export interface Note {
   id: string
@@ -230,19 +235,56 @@ export interface Note {
 }
 
 /**
- * メモの編集画面の見た目。全メモ共通の表示設定として保持する。
- * 本文はプレーンテキストなので文字ごとの装飾は持たず、画面全体の見え方を調整する。
- * 色をnullにしておくと、Dittoのテーマ(ライト/ダーク)に追従する
+ * メモの編集画面の既定の見た目。全メモ共通の設定として保持する。
+ *
+ * 太字・文字色・文字サイズ・文字の背景色は、選択した文字(または以降に入力する文字)
+ * だけに掛ける装飾としてメモ本文側が持つ(NoteCharStyle参照)。ここに残しているのは
+ * 「装飾を何も指定していない文字」の見え方、つまり土台の設定だけ。
  */
 export interface NoteEditorAppearance {
-  /** 本文の文字サイズ(px) */
+  /** 装飾していない文字の大きさ(px) */
   fontSize: number
-  /** 本文を太字にする */
-  bold: boolean
-  /** 文字色(#rrggbb)。nullならテーマ既定 */
-  color: string | null
-  /** 背景色(#rrggbb)。nullならテーマ既定 */
-  background: string | null
+  /** 行番号を左端に表示する */
+  lineNumbers: boolean
+  /** カーソルのある行を薄く強調する */
+  highlightCurrentLine: boolean
+  /** 長い行をウィンドウ幅で折り返す。falseなら折り返さず横スクロールする */
+  wordWrap: boolean
+}
+
+/**
+ * 文字単位の装飾。指定のないプロパティは「装飾しない(既定のまま)」を意味する。
+ * 選択範囲、または選択が無い場合は以降に入力する文字に対して適用する
+ */
+export interface NoteCharStyle {
+  bold?: boolean
+  /** 文字色(#rrggbb) */
+  color?: string
+  /** 文字の背景色(#rrggbb)。画面全体ではなく、その文字の後ろだけを塗る */
+  background?: string
+  /** 文字サイズ(px) */
+  fontSize?: number
+}
+
+/**
+ * メモの版(編集履歴)の見出し。本文そのものは含めず、一覧表示に必要な情報だけを持つ。
+ * 版は保存のたびに無条件に増やすのではなく、前回の版から一定時間が経っている場合だけ
+ * 積む(自動保存は入力が止まるたびに走るため、そのまま記録すると版が溢れる)
+ */
+export interface NoteVersion {
+  id: string
+  /** その内容が保存されていた時刻(ISO8601) */
+  savedAt: string
+  /** 一覧に出す本文の先頭抜粋 */
+  preview: string
+  /** その版の本文の文字数 */
+  length: number
+}
+
+/** メモの版の中身。htmlは装飾付きの本文(装飾なしで保存された版ではnull) */
+export interface NoteVersionContent {
+  plain: string
+  html: string | null
 }
 
 export interface NoteFolder {
@@ -357,7 +399,7 @@ export interface AppSettings {
   /** コマンドパレットに一度に表示する件数の上限。履歴・定型文・マクロそれぞれの区分ごとに
    *  個別に指定できる。既定値はいずれも6 */
   commandPaletteMaxPerSection: CommandPaletteMaxPerSection
-  /** メモの編集画面の見た目(文字サイズ・太字・文字色・背景色) */
+  /** メモの編集画面の既定の見た目(装飾していない文字の大きさ・行番号・現在行の強調・折り返し) */
   noteEditorAppearance: NoteEditorAppearance
   /** Ditto Remote(スマホ連携)でペアリング済みのデバイス一覧 */
   pairedDevices: PairedDevice[]
@@ -641,6 +683,9 @@ export const IPC = {
   listNotes: 'notes:list',
   searchNotes: 'notes:search', // 本文まで含めた全文検索。一致したメモのidを返す
   getNoteBody: 'notes:get-body',
+  getNoteHtml: 'notes:get-html', // 装飾付き本文(notes/<id>.html)。無ければnullを返す
+  listNoteVersions: 'notes:list-versions',
+  getNoteVersion: 'notes:get-version',
   createNote: 'notes:create',
   updateNoteBody: 'notes:update-body',
   renameNote: 'notes:rename',
