@@ -536,16 +536,27 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, manag
 
   ipcMain.handle(IPC.getNoteBody, async (_e, id: string) => notesStore.getNoteBody(id))
 
+  ipcMain.handle(IPC.getNoteHtml, async (_e, id: string) => notesStore.getNoteHtml(id))
+
+  ipcMain.handle(IPC.listNoteVersions, async (_e, id: string) => notesStore.listNoteVersions(id))
+
+  ipcMain.handle(IPC.getNoteVersion, async (_e, id: string, versionId: string) =>
+    notesStore.getNoteVersion(id, versionId)
+  )
+
   ipcMain.handle(IPC.createNote, async (_e, folderId: string | null, body?: string) =>
     notesStore.createNote(folderId, body ?? '')
   )
 
   // 編集ウィンドウからの自動保存。保存のたびにメインウィンドウの一覧へ反映させる
-  ipcMain.handle(IPC.updateNoteBody, async (_e, id: string, body: string) => {
-    const note = await notesStore.updateNoteBody(id, body)
-    notifyNotesChanged()
-    return note
-  })
+  ipcMain.handle(
+    IPC.updateNoteBody,
+    async (_e, id: string, body: string, html?: string | null, forceVersion?: boolean) => {
+      const note = await notesStore.updateNoteBody(id, body, html, forceVersion === true)
+      notifyNotesChanged()
+      return note
+    }
+  )
 
   ipcMain.handle(IPC.renameNote, async (_e, id: string, title: string) => {
     const note = await notesStore.renameNote(id, title)

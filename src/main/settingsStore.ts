@@ -57,7 +57,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   // ここでは数値をそのまま持つ(hotkey.tsのformatComboLabelでも'Space'として表示される)
   commandPaletteHotkey: { ctrl: true, shift: true, alt: false, meta: false, keycode: 57, label: 'Ctrl+Shift+Space' },
   commandPaletteMaxPerSection: { history: 6, templates: 6, macros: 6, notes: 6 },
-  noteEditorAppearance: { fontSize: 14, bold: false, color: null, background: null },
+  noteEditorAppearance: { fontSize: 14, lineNumbers: true, highlightCurrentLine: true, wordWrap: true },
   pairedDevices: [],
   windowPosition: null
 }
@@ -65,11 +65,6 @@ const DEFAULT_SETTINGS: AppSettings = {
 // メモの文字サイズとして許容する範囲。小さすぎて読めない・大きすぎて使えない値を防ぐ
 const NOTE_FONT_SIZE_MIN = 10
 const NOTE_FONT_SIZE_MAX = 32
-
-/** 設定ファイルに壊れた値が入っていても表示が破綻しないよう、色は#rrggbb形式のみ受け付ける */
-function normalizeColor(value: unknown): string | null {
-  return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value) ? value : null
-}
 
 function normalizeNoteEditorAppearance(value: unknown): NoteEditorAppearance {
   const d = DEFAULT_SETTINGS.noteEditorAppearance
@@ -79,11 +74,14 @@ function normalizeNoteEditorAppearance(value: unknown): NoteEditorAppearance {
     typeof v.fontSize === 'number' && Number.isFinite(v.fontSize)
       ? Math.min(NOTE_FONT_SIZE_MAX, Math.max(NOTE_FONT_SIZE_MIN, Math.round(v.fontSize)))
       : d.fontSize
+  const flag = (value: unknown, fallback: boolean): boolean => (typeof value === 'boolean' ? value : fallback)
+  // v1.29.0まではここに太字・文字色・背景色があり、メモ全体に一律で掛かっていた。
+  // それらは文字単位の装飾としてメモ本文側(notes/<id>.html)へ移したため読み捨てる
   return {
     fontSize,
-    bold: typeof v.bold === 'boolean' ? v.bold : d.bold,
-    color: normalizeColor(v.color),
-    background: normalizeColor(v.background)
+    lineNumbers: flag(v.lineNumbers, d.lineNumbers),
+    highlightCurrentLine: flag(v.highlightCurrentLine, d.highlightCurrentLine),
+    wordWrap: flag(v.wordWrap, d.wordWrap)
   }
 }
 

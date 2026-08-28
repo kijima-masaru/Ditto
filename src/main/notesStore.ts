@@ -2,7 +2,7 @@ import { app } from 'electron'
 import { randomUUID } from 'crypto'
 import fs from 'fs/promises'
 import path from 'path'
-import type { Note, NoteFolder } from '../shared/types'
+import type { Note, NoteFolder, NoteVersion, NoteVersionContent } from '../shared/types'
 
 /**
  * メモの保存を担当する。
@@ -11,6 +11,14 @@ import type { Note, NoteFolder } from '../shared/types'
  * 一覧を開くたびに全メモの本文を読まずに済ませるため。本文をプレーンテキストの
  * 個別ファイルにしているのは、万一Dittoが壊れてもエクスプローラから開いて
  * 中身を救出できるようにするため。
+ *
+ * 文字ごとの装飾は notes/<id>.html に分けて持つ。装飾を本文ファイルへ混ぜないのは
+ * 上の「テキストとして救出できる」性質を壊さないため。.html が無い・壊れている場合は
+ * .txt だけで装飾なしの本文として復元できる(装飾は失われるが本文は失われない)。
+ *
+ * 編集履歴(版)は notes/<id>.history.json に保持する。自動保存のたびに版を積むと
+ * すぐ溢れるため、前の版から一定時間が経っている場合だけ積み、上限件数を超えたら
+ * 古いものから捨てる。
  */
 
 /** 一覧に出す本文抜粋の長さ */
@@ -33,6 +41,15 @@ function notesDir(): string {
 
 function noteBodyPath(id: string): string {
   return path.join(notesDir(), `${id}.txt`)
+}
+
+/** 装飾付き本文。renderer(メモ編集ウィンドウ)が組み立てたHTMLをそのまま保持する */
+function noteHtmlPath(id: string): string {
+  return path.join(notesDir(), `${id}.html`)
+}
+
+function noteHistoryPath(id: string): string {
+  return path.join(notesDir(), `${id}.history.json`)
 }
 
 /** 直前の本文を1世代だけ残すバックアップ。自動保存で内容を失った時の救済用 */
@@ -85,11 +102,24 @@ export async function getNoteBody(id: string): Promise<string> {
 }
 
 /**
- * 本文を書き込む。自動保存で頻繁に呼ばれるため、内容を失わないよう
- * 「直前の内容をバックアップ → 一時ファイルへ書く → 置き換える」の順で行う。
- * 書き込みの途中で中断されても、本体のファイルが壊れた状態にはならない。
+ * ファイルを書き込む。自動保存で頻繁に呼ばれるため、内容を失わないよう
+ * 「一時ファイルへ書く → 置き換える」の順で行う。書き込みの途中で中断されても、
+ * 本体のファイルが壊れた状態にはならない。
  */
-async function writeBody(id: string, body: string): Promise<void> {
+async function writeAtomic(target: string, content: string): Promise<void> {
+  const tmp = `${target}.tmp`
+  await fs.writeFile(tmp, content, 'utf-8')
+  await fs.rename(tmp, target)
+}
+
+/**
+ * 本文(と、渡されていれば装飾付き本文)を書き込む。
+ * 直前の本文は1世代だけ .bak に残す(自動保存で内容を失った時の救済用)。
+ *
+ * htmlにnullを渡した場合は装飾ファイルを消す。装飾を全部外した時に古い装飾が
+ * 残り続けると、次に開いた時に消したはずの装飾が戻ってしまうため。
+ */
+async function writeBody(id: string, body: string, html?: string | null): Promise<void> {
   await fs.mkdir(notesDir(), { recursive: true })
   const target = noteBodyPath(id)
   try {
@@ -97,9 +127,26 @@ async function writeBody(id: string, body: string): Promise<void> {
   } catch {
     // 初回保存でまだ本体が無い場合はバックアップも不要
   }
-  const tmp = `${target}.tmp`
-  await fs.writeFile(tmp, body, 'utf-8')
-  await fs.rename(tmp, target)
+  await writeAtomic(target, body)
+  if (html === undefined) return
+  if (html === null) {
+    try {
+      await fs.unlink(noteHtmlPath(id))
+    } catch {
+      // 元から無い場合は無視する
+    }
+    return
+  }
+  await writeAtomic(noteHtmlPath(id), html)
+}
+
+/** 装飾付き本文を読む。まだ一度も装飾を付けていないメモではnullを返す */
+export async function getNoteHtml(id: string): Promise<string | null> {
+  try {
+    return await fs.readFile(noteHtmlPath(id), 'utf-8')
+  } catch {
+    return null
+  }
 }
 
 export async function createNote(folderId: string | null = null, body = ''): Promise<Note> {
@@ -120,17 +167,97 @@ export async function createNote(folderId: string | null = null, body = ''): Pro
   return note
 }
 
-/** 本文を保存し、一覧用のメタ情報(名前・抜粋・更新日時)を更新する */
-export async function updateNoteBody(id: string, body: string): Promise<Note | undefined> {
+/**
+ * 本文を保存し、一覧用のメタ情報(名前・抜粋・更新日時)を更新する。
+ *
+ * htmlは装飾付き本文。undefinedなら装飾ファイルには触れず、nullなら装飾を消す。
+ * forceVersionがtrueの場合は、間隔に関わらず保存前の内容を版として残す
+ * (利用者がCtrl+Sなどで明示的に保存した区切りを履歴に残せるようにするため)
+ */
+export async function updateNoteBody(
+  id: string,
+  body: string,
+  html?: string | null,
+  forceVersion = false
+): Promise<Note | undefined> {
   const notes = await listNotes()
   const note = notes.find((n) => n.id === id)
   if (!note) return undefined
-  await writeBody(id, body)
+  await pushVersionIfNeeded(id, body, forceVersion)
+  await writeBody(id, body, html)
   if (!note.titleManual) note.title = deriveTitle(body)
   note.preview = derivePreview(body)
   note.updatedAt = new Date().toISOString()
   await writeNotes(notes)
   return note
+}
+
+/* --- 編集履歴(版) --- */
+
+/** 保持する版の上限。古いものから捨てる */
+const MAX_VERSIONS = 30
+/** 前の版からこれだけ時間が経っていれば新しい版を積む */
+const VERSION_INTERVAL_MS = 3 * 60 * 1000
+/** これより大きい本文は版に残さない(履歴ファイルが肥大化して保存が重くなるため) */
+const VERSION_MAX_BODY_LENGTH = 200_000
+
+interface StoredVersion extends NoteVersion {
+  plain: string
+  html: string | null
+}
+
+async function readHistory(id: string): Promise<StoredVersion[]> {
+  const list = await readJson<StoredVersion[]>(noteHistoryPath(id), [])
+  return Array.isArray(list) ? list : []
+}
+
+/**
+ * 保存の直前に、いま保存されている内容を版として積む。
+ *
+ * 積むのは「内容が変わっている」かつ「前の版から一定時間が経っている(または明示保存)」場合だけ。
+ * 自動保存は入力が止まるたびに走るため、無条件に積むと数分で上限に達して
+ * 少し前の状態へ戻れなくなってしまう
+ */
+async function pushVersionIfNeeded(id: string, nextBody: string, force: boolean): Promise<void> {
+  const current = await getNoteBody(id)
+  if (current === nextBody) return
+  if (current.length === 0 || current.length > VERSION_MAX_BODY_LENGTH) return
+  const history = await readHistory(id)
+  const last = history[history.length - 1]
+  if (last) {
+    if (last.plain === current) return
+    if (!force && Date.now() - new Date(last.savedAt).getTime() < VERSION_INTERVAL_MS) return
+  }
+  const version: StoredVersion = {
+    id: randomUUID(),
+    savedAt: new Date().toISOString(),
+    preview: derivePreview(current),
+    length: current.length,
+    plain: current,
+    html: await getNoteHtml(id)
+  }
+  const next = [...history, version].slice(-MAX_VERSIONS)
+  try {
+    await fs.mkdir(notesDir(), { recursive: true })
+    await writeAtomic(noteHistoryPath(id), JSON.stringify(next))
+  } catch {
+    // 履歴は補助的なもの。書けなくても本文の保存は続ける
+  }
+}
+
+/** 版の一覧を新しい順で返す(本文は含めない) */
+export async function listNoteVersions(id: string): Promise<NoteVersion[]> {
+  const history = await readHistory(id)
+  return history
+    .map((v) => ({ id: v.id, savedAt: v.savedAt, preview: v.preview, length: v.length }))
+    .reverse()
+}
+
+/** 指定した版の中身を返す */
+export async function getNoteVersion(id: string, versionId: string): Promise<NoteVersionContent | null> {
+  const history = await readHistory(id)
+  const found = history.find((v) => v.id === versionId)
+  return found ? { plain: found.plain, html: found.html ?? null } : null
 }
 
 /**
@@ -161,7 +288,29 @@ export async function renameNote(id: string, title: string): Promise<Note | unde
 export async function appendToNote(id: string, text: string): Promise<Note | undefined> {
   const current = await getNoteBody(id)
   const separator = current.length === 0 || current.endsWith('\n') ? '' : '\n'
-  return updateNoteBody(id, `${current}${separator}${text}`)
+  const html = await getNoteHtml(id)
+  // 装飾付き本文がある場合は、そちらにも同じ行を装飾なしで足す。片方だけ更新すると
+  // 次に開いた時に装飾側が優先され、追記した行が消えたように見えてしまう
+  const nextHtml = html === null ? undefined : html + htmlLinesFromPlainText(text)
+  return updateNoteBody(id, `${current}${separator}${text}`, nextHtml)
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+/**
+ * プレーンテキストを、編集ウィンドウが扱う「1行=1つのdiv」形式のHTMLへ変換する。
+ * 空行は中身が無いとつぶれてしまうため<br>を1つ置く(renderer側の表現と合わせている)
+ */
+function htmlLinesFromPlainText(text: string): string {
+  return text
+    .split(/\r\n|\r|\n/)
+    .map((line) => `<div class="note-line">${line === '' ? '<br>' : escapeHtml(line)}</div>`)
+    .join('')
 }
 
 /** コマンドパレットの初期表示(未入力時)にこのメモを出すかどうかを切り替える */
@@ -185,7 +334,7 @@ export async function reorderPinnedNotes(orderedIds: string[]): Promise<void> {
 export async function deleteNote(id: string): Promise<void> {
   const notes = await listNotes()
   await writeNotes(notes.filter((n) => n.id !== id))
-  for (const file of [noteBodyPath(id), noteBackupPath(id)]) {
+  for (const file of [noteBodyPath(id), noteBackupPath(id), noteHtmlPath(id), noteHistoryPath(id)]) {
     try {
       await fs.unlink(file)
     } catch {

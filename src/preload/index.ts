@@ -17,6 +17,8 @@ import {
   type Note,
   type NoteEditorAppearance,
   type NoteFolder,
+  type NoteVersion,
+  type NoteVersionContent,
   type PairedDevice,
   type RecordedStep,
   type RecordingFrameBounds,
@@ -120,10 +122,18 @@ const api = {
   listNotes: (): Promise<Note[]> => ipcRenderer.invoke(IPC.listNotes),
   searchNotes: (query: string): Promise<string[]> => ipcRenderer.invoke(IPC.searchNotes, query),
   getNoteBody: (id: string): Promise<string> => ipcRenderer.invoke(IPC.getNoteBody, id),
+  getNoteHtml: (id: string): Promise<string | null> => ipcRenderer.invoke(IPC.getNoteHtml, id),
+  listNoteVersions: (id: string): Promise<NoteVersion[]> => ipcRenderer.invoke(IPC.listNoteVersions, id),
+  getNoteVersion: (id: string, versionId: string): Promise<NoteVersionContent | null> =>
+    ipcRenderer.invoke(IPC.getNoteVersion, id, versionId),
   createNote: (folderId: string | null, body?: string): Promise<Note> =>
     ipcRenderer.invoke(IPC.createNote, folderId, body),
-  updateNoteBody: (id: string, body: string): Promise<Note | undefined> =>
-    ipcRenderer.invoke(IPC.updateNoteBody, id, body),
+  updateNoteBody: (
+    id: string,
+    body: string,
+    html?: string | null,
+    forceVersion?: boolean
+  ): Promise<Note | undefined> => ipcRenderer.invoke(IPC.updateNoteBody, id, body, html, forceVersion),
   renameNote: (id: string, title: string): Promise<Note | undefined> => ipcRenderer.invoke(IPC.renameNote, id, title),
   deleteNote: (id: string): Promise<void> => ipcRenderer.invoke(IPC.deleteNote, id),
   moveNote: (id: string, folderId: string | null): Promise<void> => ipcRenderer.invoke(IPC.moveNote, id, folderId),

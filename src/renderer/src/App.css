@@ -427,7 +427,7 @@ button.danger:hover {
   background: var(--danger-hover-bg);
 }
 
-button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):not(.macro-playback-window-close) {
+button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):not(.macro-playback-window-close):not(.note-editor-toolbar button):not(.note-find-bar button):not(.note-versions button) {
   background: var(--btn-bg);
   color: var(--text-secondary);
   border: 1.5px solid var(--border-strong);
@@ -436,12 +436,12 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   cursor: pointer;
 }
 
-button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):not(.macro-playback-window-close):hover {
+button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):not(.macro-playback-window-close):not(.note-editor-toolbar button):not(.note-find-bar button):not(.note-versions button):hover {
   background: var(--btn-bg-hover);
   border-color: var(--border-strong);
 }
 
-button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):not(.macro-playback-window-close):disabled {
+button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):not(.macro-playback-window-close):not(.note-editor-toolbar button):not(.note-find-bar button):not(.note-versions button):disabled {
   background: var(--bg);
   color: var(--text-muted);
   border-color: var(--border);
@@ -2578,20 +2578,102 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   border-bottom: 1px solid var(--border);
 }
 
-/* 文字の大きさ・色・背景色を変えるパネルの開閉ボタン */
-.note-editor-header .note-editor-appearance-btn {
-  flex-shrink: 0;
+
+.note-editor-title {
+  width: 100%;
   height: 34px;
-  padding: 0 12px;
-  font-size: 12px;
+  font-size: 15px;
+  font-weight: 600;
 }
 
-.note-editor-header .note-editor-appearance-btn.active {
+/* 装飾のツールバー。太字・文字サイズ・文字色・文字の背景色は、選んだ文字
+   (選択が無ければこれから入力する文字)にだけ掛かる */
+.note-editor-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-bg-alt);
+}
+
+.note-editor-toolbar button {
+  height: 28px;
+  min-width: 28px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+  background: var(--btn-bg);
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border-strong);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.note-editor-toolbar button:hover {
+  background: var(--btn-bg-hover);
+}
+
+.note-editor-toolbar button.active {
   border-color: var(--accent);
   color: var(--accent);
+  background: var(--accent-bg);
 }
 
-/* 表示設定パネル。本文の上に横並びで置き、変更は即座に本文へ反映する */
+.note-tool--bold {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.note-tool-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  height: 28px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel-bg);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.note-tool-label {
+  white-space: nowrap;
+}
+
+.note-tool-field select {
+  height: 22px;
+  font-size: 11px;
+  padding: 0 2px;
+}
+
+.note-tool-field input[type='color'] {
+  width: 28px;
+  height: 20px;
+  padding: 1px;
+  cursor: pointer;
+}
+
+/* 色を「指定なし」へ戻す小さなボタン。ツールバーの他のボタンより一回り小さくする */
+.note-editor-toolbar button.note-tool-clear {
+  height: 20px;
+  min-width: 20px;
+  padding: 0;
+  font-size: 10px;
+  border-width: 1px;
+}
+
+.note-toolbar-spacer {
+  flex: 1;
+}
+
+/* 行番号・折り返しなどの表示設定パネル */
 .note-editor-appearance {
   flex-shrink: 0;
   display: flex;
@@ -2600,7 +2682,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   gap: 6px 16px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
-  background: var(--panel-bg-alt, var(--panel-bg));
+  background: var(--panel-bg-alt);
   font-size: 12px;
   color: var(--text-secondary);
 }
@@ -2617,24 +2699,117 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   font-size: 12px;
 }
 
-.note-editor-appearance-item input[type='color'] {
-  width: 34px;
-  height: 26px;
-  padding: 2px;
-  cursor: pointer;
-}
-
-.note-editor-appearance .note-editor-appearance-reset {
-  height: 26px;
-  padding: 0 10px;
+.note-editor-appearance-note {
+  color: var(--text-muted);
   font-size: 11px;
 }
 
-.note-editor-title {
-  width: 100%;
-  height: 34px;
-  font-size: 15px;
-  font-weight: 600;
+/* --- 検索・置換バー --- */
+
+.note-find-bar {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-bg-alt);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.note-find-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.note-find-input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  font-size: 12px;
+}
+
+.note-find-bar button {
+  height: 28px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+  background: var(--btn-bg);
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border-strong);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.note-find-bar button:hover {
+  background: var(--btn-bg-hover);
+}
+
+.note-find-status {
+  min-width: 84px;
+  text-align: right;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.note-find-status--none {
+  color: var(--danger);
+}
+
+.note-find-bar button.note-find-close {
+  min-width: 28px;
+  padding: 0;
+}
+
+.note-find-options {
+  gap: 16px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.note-find-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.note-find-option--disabled {
+  opacity: 0.5;
+}
+
+/* --- 本文(行番号 + 入力欄) --- */
+
+.note-editor-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  position: relative;
+}
+
+/* 行番号。行ごとに高さが変わる(文字サイズを変えた行・折り返した行)ため、
+   実際の行の位置と高さを測って1つずつ置いている */
+.note-editor-gutter {
+  flex-shrink: 0;
+  position: relative;
+  width: 52px;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+  background: var(--panel-bg-alt);
+  color: var(--text-muted);
+  font-family: Consolas, 'BIZ UDGothic', Meiryo, 'Yu Gothic UI', monospace;
+  line-height: 2;
+  user-select: none;
+}
+
+.note-editor-gutter-line {
+  position: absolute;
+  right: 8px;
+  text-align: right;
 }
 
 /* 本文の入力欄。ウィンドウの残り全体をここが占める。
@@ -2645,17 +2820,13 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
    日本語は字画が多く行間が詰まると読みにくいため、行間も広めに取る */
 .note-editor-body {
   flex: 1;
-  min-height: 0;
-  width: 100%;
-  box-sizing: border-box;
-  resize: none;
-  border: none;
-  border-radius: 0;
+  min-width: 0;
+  position: relative;
+  overflow: auto;
   padding: 16px 18px;
   background: var(--panel-bg);
   color: var(--text);
   font-family: Consolas, 'BIZ UDGothic', Meiryo, 'Yu Gothic UI', monospace;
-  font-size: 14px;
   line-height: 2;
   letter-spacing: 0.02em;
   tab-size: 4;
@@ -2665,11 +2836,140 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   outline: none;
 }
 
+/* 1行=1つのdiv。空行でも高さが潰れないようにする */
+.note-editor-body .note-line {
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 1em;
+}
+
+.note-editor-body--nowrap .note-line {
+  white-space: pre;
+  word-break: normal;
+  width: max-content;
+  min-width: 100%;
+}
+
+/* カーソルのある行の強調。文字ごとの背景色(span)はこの上に描かれる */
+.note-editor-body--current-line .note-line.is-current {
+  background: var(--panel-bg-alt);
+}
+
+.note-editor-placeholder {
+  position: absolute;
+  top: 16px;
+  left: 18px;
+  pointer-events: none;
+  color: var(--text-muted);
+  line-height: 2;
+}
+
+/* --- 編集履歴 --- */
+
+.note-versions {
+  flex-shrink: 0;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+  background: var(--panel-bg-alt);
+}
+
+.note-versions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.note-versions button.note-versions-close {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.note-versions-empty {
+  padding: 12px 10px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+
+.note-versions-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+}
+
+.note-versions-item {
+  padding: 8px;
+  margin-bottom: 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel-bg);
+}
+
+.note-versions-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.note-versions-length {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.note-versions-preview {
+  margin: 4px 0 6px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.note-versions button.note-versions-restore {
+  width: 100%;
+  height: 24px;
+  font-size: 11px;
+  background: var(--btn-bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.note-versions button.note-versions-restore:hover {
+  background: var(--btn-bg-hover);
+}
+
+/* --- フッター --- */
+
 .note-editor-footer {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   padding: 6px 12px;
   border-top: 1px solid var(--border);
@@ -2683,9 +2983,19 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 
 /* 定型文への登録・コピーの結果を数秒だけ知らせる */
 .note-editor-toast {
-  margin-left: auto;
-  margin-right: 12px;
   color: var(--accent);
+}
+
+.note-editor-updated {
+  margin-left: auto;
+}
+
+.note-editor-count {
+  margin-left: auto;
+}
+
+.note-editor-updated + .note-editor-count {
+  margin-left: 0;
 }
 
 .note-editor-empty {
@@ -2695,4 +3005,16 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   height: 100vh;
   font-size: 13px;
   color: var(--text-muted);
+}
+
+/* 行番号を出している時は、その幅のぶん右へずらす */
+.note-editor-placeholder--gutter {
+  left: 70px;
+}
+
+/* 背景色を付けた文字。文字色を指定していない場合でも読めるように濃い色にする
+   (暗いテーマの白い文字のままだと、明るい背景色の上で読めなくなるため)。
+   文字色を指定した場合はspanのstyle属性が優先されるので、この指定は効かない */
+.note-editor-body .note-mark {
+  color: #1a1a1a;
 }
