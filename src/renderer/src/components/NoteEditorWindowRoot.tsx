@@ -1235,6 +1235,10 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
           書式クリア
         </button>
 
+        {/* ここまでが「選んだ文字の見た目」、ここから先が「メモ全体への操作」。
+            14個が同じ間隔で並んでいると、どこで役割が変わるのか読み取れないため区切る */}
+        <span className="note-toolbar-divider" aria-hidden="true" />
+
         <span className="note-toolbar-spacer" />
 
         <button
@@ -1270,7 +1274,7 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
           onClick={() => setPreviewOpen((v) => !v)}
           title="本文をMarkdownとして表示する"
         >
-          Md
+          プレビュー
         </button>
         <button
           type="button"
