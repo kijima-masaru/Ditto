@@ -605,6 +605,25 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   border-radius: 4px;
 }
 
+/* 一覧の項目(履歴・定型文・整形ルール・マクロ・メモ)はキーボードで辿れるようにしたため、
+   フォーカスリングもここに出る。項目同士が詰まって並ぶので、リングを外側ではなく
+   内側に寄せて隣の項目に被らないようにし、角丸は項目自身のものを保つ
+   (上の共通指定のborder-radius:4pxが項目の角を変えてしまうため打ち消す) */
+.clip-list > li:focus-visible,
+.note-list > li:focus-visible,
+.macro-name-list > li:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: inherit;
+}
+
+/* キーボードで今いる項目。フォーカスが外れている間も「戻ってくる場所」が分かるようにする */
+.clip-list > li[aria-selected='true'],
+.note-list > li[aria-selected='true'],
+.macro-name-list > li[aria-selected='true'] {
+  scroll-margin: 8px;
+}
+
 .hint {
   font-size: 11px;
   color: var(--text-muted);
@@ -1225,25 +1244,6 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   font-size: 12px;
 }
 
-/* 整形ルールへの導線。履歴・定型文と並列のタブというより「設定」寄りの位置づけのため、
-   横幅いっぱいに広がるタブボタンではなく、ヘッダーの歯車アイコンと同じ見た目の
-   正方形アイコンボタンにする(ただしヘッダー用の配色変数はここでは合わず使えないため、
-   パネル上でも視認できる配色に置き換えている) */
-.clipboard-history-toolbar .subtab-icon-btn {
-  flex: 0 0 auto;
-  aspect-ratio: 1;
-  height: 32px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  line-height: 1;
-  border: 1px solid var(--border-strong);
-  background: var(--panel-bg);
-  color: var(--text-secondary);
-  border-radius: 6px;
-}
 
 .clip-list {
   list-style: none;

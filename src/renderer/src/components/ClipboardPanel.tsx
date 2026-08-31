@@ -9,6 +9,7 @@ import type {
 import { flattenFolders, folderBreadcrumb } from '../folderTree'
 import { useHoverIntent } from '../hooks/useHoverIntent'
 import { useDragReorder } from '../hooks/useDragReorder'
+import { useListKeyboard } from '../lib/useListKeyboard'
 import FolderPreviewFlyout from './FolderPreviewFlyout'
 import ConfirmDialog from './ConfirmDialog'
 import { FolderIcon, PinIcon } from './icons'
@@ -98,6 +99,10 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
   const [templateFolders, setTemplateFolders] = useState<ClipboardTemplateFolder[]>([])
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(initialFolderId)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  // main側の読み込みが終わるまでtrue。これが無いと、履歴が空配列の状態で
+  // 「クリップボード履歴はまだありません」という事実と違う案内が一瞬出てしまう
+  // (メモ・マクロの一覧は元から同じ仕組みを持っている)
+  const [loading, setLoading] = useState(true)
 
   const [creating, setCreating] = useState(false)
   const [newText, setNewText] = useState('')
@@ -145,6 +150,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
     setTemplates(t)
     setTemplateFolders(f)
     setFormatRules(r)
+    setLoading(false)
   }
 
   useEffect(() => {
@@ -186,8 +192,9 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
     else handleCopy(entry.id, entry.text)
   }
 
-  const handleHistoryContextMenu = (e: React.MouseEvent, entry: ClipboardHistoryEntry): void => {
-    e.preventDefault()
+  // eはキーボード(Shift+F10・メニューキー)から呼ぶ場合はnullになる
+  const handleHistoryContextMenu = (e: React.MouseEvent | null, entry: ClipboardHistoryEntry): void => {
+    e?.preventDefault()
     if (entry.type === 'image') window.api.showClipboardImageHistoryMenu(entry.id)
     else window.api.showClipboardHistoryMenu(entry.id, entry.text)
   }
@@ -422,9 +429,9 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
     reload()
   }
 
-  const handleTemplateContextMenu = async (e: React.MouseEvent, t: ClipboardTemplate): Promise<void> => {
-    e.preventDefault()
-    e.stopPropagation()
+  const handleTemplateContextMenu = async (e: React.MouseEvent | null, t: ClipboardTemplate): Promise<void> => {
+    e?.preventDefault()
+    e?.stopPropagation()
     const ids = visibleTemplates.map((vt) => vt.id)
     const index = ids.indexOf(t.id)
     const result = await window.api.showContextMenu([
@@ -460,9 +467,9 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
     }
   }
 
-  const handleRuleContextMenu = async (e: React.MouseEvent, r: ClipboardFormatRule): Promise<void> => {
-    e.preventDefault()
-    e.stopPropagation()
+  const handleRuleContextMenu = async (e: React.MouseEvent | null, r: ClipboardFormatRule): Promise<void> => {
+    e?.preventDefault()
+    e?.stopPropagation()
     const ids = formatRules.map((fr) => fr.id)
     const index = ids.indexOf(r.id)
     const result = await window.api.showContextMenu([
@@ -480,14 +487,57 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
     }
   }
 
+  // --- キーボードだけで一覧を操作できるようにする(useListKeyboard.ts参照) ---
+  // 編集・削除の確認を開いている間はdisabledにして、フォームの入力欄が素直にTabで辿れるようにする
+  const historyKeys = useListKeyboard('クリップボード履歴', {
+    items: filteredHistory,
+    onActivate: handleHistoryClick,
+    onContextMenu: (h) => handleHistoryContextMenu(null, h),
+    // 履歴の削除は右クリックメニューでも確認を挟まない(記録し続けている流れの一部のため)。
+    // Deleteキーもそれに合わせる
+    onDelete: (h) => void window.api.deleteClipboardHistoryEntry(h.id).then(reload)
+  })
+  const templateKeys = useListKeyboard('定型文', {
+    items: templateDrag.orderedItems,
+    onActivate: (t) => void handleCopyTemplate(t.id),
+    onContextMenu: (t) => void handleTemplateContextMenu(null, t),
+    onDelete: (t) => setDeletingTemplateId(t.id),
+    disabled: editingId !== null || deletingTemplateId !== null
+  })
+  const ruleKeys = useListKeyboard('整形ルール', {
+    items: ruleDrag.orderedItems,
+    onActivate: (r) => startEditRule(r),
+    onContextMenu: (r) => void handleRuleContextMenu(null, r),
+    onDelete: (r) => setDeletingRuleId(r.id),
+    disabled: editingRuleId !== null || deletingRuleId !== null
+  })
+
   return (
     <div className="clipboard-panel">
+      {/* 整形ルールは以前、履歴の検索欄の隣にある「✎」ボタンからしか開けず、開いた先では
+          どちらのサブタブも非選択になり、見出しも戻るボタンも無かった。3つめのタブにすることで
+          入口・現在地・戻り道が同時に片付く(あわせて絵文字のボタンも無くなる) */}
       <div className="clipboard-subtabs">
-        <button className={subTab === 'history' ? 'active' : ''} onClick={() => setSubTab('history')}>
+        <button
+          className={subTab === 'history' ? 'active' : ''}
+          aria-current={subTab === 'history' ? 'page' : undefined}
+          onClick={() => setSubTab('history')}
+        >
           履歴
         </button>
-        <button className={subTab === 'templates' ? 'active' : ''} onClick={() => setSubTab('templates')}>
+        <button
+          className={subTab === 'templates' ? 'active' : ''}
+          aria-current={subTab === 'templates' ? 'page' : undefined}
+          onClick={() => setSubTab('templates')}
+        >
           定型文
+        </button>
+        <button
+          className={subTab === 'rules' ? 'active' : ''}
+          aria-current={subTab === 'rules' ? 'page' : undefined}
+          onClick={() => setSubTab('rules')}
+        >
+          整形ルール
         </button>
       </div>
 
@@ -499,12 +549,11 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
               onChange={(e) => setHistoryQuery(e.target.value)}
               placeholder="履歴を検索"
             />
-            <button className="subtab-icon-btn" onClick={() => setSubTab('rules')} title="整形ルール">
-              ✎
-            </button>
           </div>
 
-          {history.length === 0 ? (
+          {/* 読み込み中は空状態も一覧も出さない。ここは数十msで終わるため、
+              「読み込み中...」を出すと今度はその文字が一瞬ちらつく */}
+          {loading ? null : history.length === 0 ? (
             <div className="panel">
               <p>
                 クリップボード履歴はまだありません。
@@ -517,7 +566,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
               <p>「{historyQuery}」に一致する履歴が見つかりません。</p>
             </div>
           ) : (
-            <ul className="clip-list">
+            <ul className="clip-list" {...historyKeys.listProps}>
               {filteredHistory.map((h) => (
                 <li
                   key={h.id}
@@ -526,6 +575,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                   title={h.type === 'image' ? '画像' : h.text}
                   onClick={() => handleHistoryClick(h)}
                   onContextMenu={(e) => handleHistoryContextMenu(e, h)}
+                  {...historyKeys.getItemProps(h)}
                 >
                   {h.type === 'image' ? (
                     <div className="clip-item-image-row">
@@ -702,13 +752,13 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
             </div>
           )}
 
-          {visibleTemplates.length === 0 && !creating && subfolders.length === 0 ? (
+          {loading ? null : visibleTemplates.length === 0 && !creating && subfolders.length === 0 ? (
             <div className="panel">
               <p>定型文はまだありません。</p>
               <p>右クリックして「新規定型文を作成」、または履歴を右クリックして登録できます。</p>
             </div>
           ) : (
-            <ul className="clip-list">
+            <ul className="clip-list" {...templateKeys.listProps}>
               {templateDrag.orderedItems.map((t) => {
                 const isEditingTemplate = editingId === t.id || deletingTemplateId === t.id
                 const drag = isEditingTemplate ? null : templateDrag.getHandlers(t)
@@ -745,6 +795,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                     className={`clip-item${copiedId === t.id ? ' clip-item--copied' : ''}${drag ? ` ${drag.className}` : ''}`}
                     onClick={() => handleCopyTemplate(t.id)}
                     onContextMenu={(e) => handleTemplateContextMenu(e, t)}
+                    {...templateKeys.getItemProps(t)}
                     {...(drag
                       ? {
                           draggable: drag.draggable,
@@ -812,13 +863,13 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
             </div>
           )}
 
-          {formatRules.length === 0 && !creatingRule ? (
+          {loading ? null : formatRules.length === 0 && !creatingRule ? (
             <div className="panel">
               <p>整形ルールはまだありません。</p>
               <p>右クリックして「新規ルールを作成」から追加できます。</p>
             </div>
           ) : (
-            <ul className="clip-list">
+            <ul className="clip-list" {...ruleKeys.listProps}>
               {ruleDrag.orderedItems.map((r) => {
                 const isEditingRule = editingRuleId === r.id || deletingRuleId === r.id
                 const drag = isEditingRule ? null : ruleDrag.getHandlers(r)
@@ -858,6 +909,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                     key={r.id}
                     className={`clip-item${drag ? ` ${drag.className}` : ''}`}
                     onContextMenu={(e) => handleRuleContextMenu(e, r)}
+                    {...ruleKeys.getItemProps(r)}
                     {...(drag
                       ? {
                           draggable: drag.draggable,

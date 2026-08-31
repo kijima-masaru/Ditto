@@ -3,6 +3,7 @@ import type { ContextMenuItem, MacroCase, MacroFolder } from '../../../shared/ty
 import { flattenFolders, folderBreadcrumb } from '../folderTree'
 import { useHoverIntent } from '../hooks/useHoverIntent'
 import { useDragReorder } from '../hooks/useDragReorder'
+import { useListKeyboard } from '../lib/useListKeyboard'
 import FolderPreviewFlyout from './FolderPreviewFlyout'
 import ConfirmDialog from './ConfirmDialog'
 import { FolderIcon, PinIcon } from './icons'
@@ -190,9 +191,10 @@ export default function MacroList({ onRun, onCreateMacro, initialFolderId = null
     reload()
   }
 
-  const handleMacroContextMenu = async (e: React.MouseEvent, t: MacroCase): Promise<void> => {
-    e.preventDefault()
-    e.stopPropagation()
+  // eはキーボード(Shift+F10・メニューキー)から呼ぶ場合はnullになる
+  const handleMacroContextMenu = async (e: React.MouseEvent | null, t: MacroCase): Promise<void> => {
+    e?.preventDefault()
+    e?.stopPropagation()
     const ids = visibleMacros.map((vt) => vt.id)
     const index = ids.indexOf(t.id)
     const result = await window.api.showContextMenu([
@@ -217,6 +219,16 @@ export default function MacroList({ onRun, onCreateMacro, initialFolderId = null
       if (next) handleReorderMacros(next)
     }
   }
+
+  // 一覧をキーボードだけで操作できるようにする(useListKeyboard.ts参照)。
+  // マクロはEnterで実行する(右クリックメニューの「実行」と同じ)
+  const macroKeys = useListKeyboard('マクロ', {
+    items: macroDrag.orderedItems,
+    onActivate: (t) => onRun(t),
+    onContextMenu: (t) => void handleMacroContextMenu(null, t),
+    onDelete: (t) => setDeletingMacroId(t.id),
+    disabled: renamingMacroId !== null || deletingMacroId !== null
+  })
 
   if (loading) return <div className="panel">読み込み中...</div>
 
@@ -346,7 +358,7 @@ export default function MacroList({ onRun, onCreateMacro, initialFolderId = null
           )}
 
           {visibleMacros.length > 0 && (
-            <ul className="macro-name-list">
+            <ul className="macro-name-list" {...macroKeys.listProps}>
               {macroDrag.orderedItems.map((t) => {
                 const isEditingMacro = renamingMacroId === t.id || deletingMacroId === t.id
                 const drag = isEditingMacro ? null : macroDrag.getHandlers(t)
@@ -354,6 +366,7 @@ export default function MacroList({ onRun, onCreateMacro, initialFolderId = null
                 <li
                   key={t.id}
                   className={drag?.className}
+                  {...macroKeys.getItemProps(t)}
                   {...(drag
                     ? {
                         draggable: drag.draggable,
