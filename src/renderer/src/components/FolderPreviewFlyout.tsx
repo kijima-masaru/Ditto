@@ -87,7 +87,8 @@ function FolderPreviewRow({
       onMouseLeave={hover.scheduleHide}
     >
       <button className="folder-preview-item folder-preview-folder" onClick={() => onNavigate(folder.id)}>
-        <FolderIcon /> {folder.name}
+        <FolderIcon />
+        <span>{folder.name}</span>
       </button>
     </div>
   )
