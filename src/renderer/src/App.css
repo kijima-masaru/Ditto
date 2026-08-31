@@ -1,23 +1,30 @@
 :root {
-  --bg: #f4ead9;
-  --panel-bg: #ffffff;
-  --panel-bg-alt: #faf5ec;
+  /* ライトテーマ。以前はクリーム(#f4ead9)と純白のカードで、実機だと明るすぎて
+     目に痛いという指摘があったため、全体の明るさを一段落とし、白のギラつきも
+     わずかに抑えている(相対輝度 背景0.83→0.77 / カード1.00→0.95)。
+     文字色はこの新しい面の上でも本文基準4.5:1を超える値に取り直した */
+  --bg: #e9e2d6;
+  --panel-bg: #fbf9f5;
+  --panel-bg-alt: #f2ece1;
   --text: #1a1a1a;
-  --text-secondary: #334e68;
+  --text-secondary: #2b4257;
   /* 補助文字。白いカードからボタンのベージュまで、どの面に載せても
      WCAGの本文基準4.5:1を超える濃さにしてある(最小で4.64:1) */
   --text-muted: #4d6773;
-  --border: #e6dcc4;
-  --border-strong: #d1c2a0;
-  --hover-bg: #f0e4cc;
-  --btn-bg: #efe1c5;
-  --btn-bg-hover: #e4d2a9;
+  --border: #ddd4c2;
+  --border-strong: #c2b599;
+  --hover-bg: #ebe1d0;
+  --btn-bg: #ece3d5;
+  --btn-bg-hover: #e0d5c0;
 
   /* 塗りつぶした上の白文字としても、白地に載せる文字としても4.5:1を満たす青
      (どちらも5.85:1)。以前の#2f80edは3.87:1で、11pxの太字ラベルが読みにくかった */
   --accent: #1a63c0;
   --accent-hover: #12497f;
-  --accent-bg: #eaf2fe;
+  /* ボタン・選択中のタブなど「青で塗りつぶした面」の色。文字は白を載せる。
+     テーマごとに地の明るさが違うため、面の青も分けている */
+  --accent-solid: #1a63c0;
+  --accent-bg: #e4edfa;
   /* accent-bgで塗った面に載せる文字の色。暗いテーマでは通常のaccentだと
      その薄青の上で3.76:1しか出ないため、明るい方の青を使う */
   --accent-on-bg: #1a63c0;
@@ -58,13 +65,16 @@
   --btn-bg: #23272e;
   --btn-bg-hover: #2a2f36;
 
-  --accent: #4d94f0;
+  /* 暗い地の上で読める明るさにしつつ、hover時のカード(--hover-bg)の上でも
+     4.5:1を超える青 */
+  --accent: #589bf2;
   --accent-hover: #79b0f5;
+  /* 塗りつぶした面は、白文字が乗せられる深さの青にする(明るい青に濃い文字を
+     載せる形は実機で読みにくいという指摘があったため戻した) */
+  --accent-solid: #1f6fd0;
   --accent-bg: #1d3a5c;
   --accent-on-bg: #79b0f5;
-  /* 暗いテーマの青は明るいので、その上に載せる文字は白ではなく濃い色にする
-     (白だと3.08:1で読みにくい。濃い色なら6.07:1) */
-  --accent-text: #0b1220;
+  --accent-text: #ffffff;
   --accent-disabled: #3a4b5e;
 
   --danger: #ff6b62;
@@ -164,8 +174,8 @@ body {
 /* 選択中は塗りに加えて下線と太字も付ける。色だけに頼らずに状態が伝わるようにする */
 .app-header nav button.active,
 .app-header nav button.active:hover {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-solid);
+  border-color: var(--accent-solid);
   color: var(--accent-text);
   font-weight: 700;
   box-shadow: inset 0 -3px 0 rgba(255, 255, 255, 0.85);
@@ -366,7 +376,7 @@ body {
 
 .settings-icon-btn.active,
 .settings-icon-btn:hover {
-  background: var(--accent);
+  background: var(--accent-solid);
   border-color: var(--accent);
   color: var(--accent-text);
 }
@@ -523,7 +533,7 @@ button {
 }
 
 button.primary {
-  background: var(--accent);
+  background: var(--accent-solid);
   color: var(--accent-text);
   border: none;
   padding: 9px 14px;
@@ -808,7 +818,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 }
 
 .target-tabs button.active {
-  background: var(--accent);
+  background: var(--accent-solid);
   color: var(--accent-text);
   border-color: var(--accent);
 }
@@ -1376,7 +1386,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   position: absolute;
   top: 8px;
   right: 10px;
-  background: var(--accent);
+  background: var(--accent-solid);
   color: var(--accent-text);
   font-size: 10px;
   font-weight: 700;
@@ -1674,7 +1684,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 }
 
 .theme-toggle-switch input:checked + .theme-toggle-slider {
-  background: var(--accent);
+  background: var(--accent-solid);
 }
 
 .theme-toggle-switch input:checked + .theme-toggle-slider::before {
@@ -1953,7 +1963,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 
 .remote-pairing-progress-fill {
   height: 100%;
-  background: var(--accent);
+  background: var(--accent-solid);
   transition: width 0.25s linear;
 }
 
@@ -2147,12 +2157,12 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 
 .se-text-btn--primary {
   border-color: var(--accent);
-  background: var(--accent);
+  background: var(--accent-solid);
   color: #fff;
 }
 
 .se-text-btn--primary:hover {
-  background: var(--accent);
+  background: var(--accent-solid);
   opacity: 0.9;
 }
 
@@ -2677,20 +2687,6 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   min-width: 0;
   height: 30px;
   font-size: 12px;
-}
-
-/* 高さを検索欄に合わせるため、グローバルのbutton.primary(padding: 9px 14px)より
-   詳細度を上げて上下パディングを打ち消し、文字はflexで中央に置く
-   (パディングが残ると文字がボタンの下側に寄ってしまう) */
-.notes-toolbar .notes-new-btn {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 30px;
-  padding: 0 12px;
-  font-size: 12px;
-  white-space: nowrap;
 }
 
 .note-list {
