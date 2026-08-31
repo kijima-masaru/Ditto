@@ -50,6 +50,31 @@
 
   --shadow: rgba(0, 0, 0, 0.08);
 
+  /* 動きの長さ。テーマでは変えないのでライト側にだけ置く。
+     3,378行のCSSにtransitionが4件(トグル・進捗・回転)しか無く、ボタン・タブ・
+     一覧項目は0msで瞬間的に切り替わっていた。押したのか分からない側の失敗なので、
+     手応えが要るところにだけこの2つを使う。派手な演出はこのアプリには要らない */
+  --motion-fast: 120ms;
+  --motion: 180ms;
+  --ease: cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+/* OS側で「動きを減らす」を選んでいる人には動かさない。
+   打ち消し漏れが出ないよう、個別の指定ではなく変数を0sにして一括で止める */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0s;
+    --motion: 0s;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 :root[data-theme='dark'] {
@@ -157,6 +182,9 @@ body {
   height: 32px;
   background: var(--header-btn-bg);
   color: var(--header-text);
+  transition:
+    background-color var(--motion-fast) var(--ease),
+    color var(--motion-fast) var(--ease);
   border: 1px solid var(--header-btn-border);
   padding: 0 4px;
   border-radius: 6px;
@@ -574,7 +602,7 @@ button.danger:hover {
   background: var(--danger-hover-bg);
 }
 
-button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):not(.macro-playback-window-close):not(.note-editor-toolbar button):not(.note-find-bar button):not(.note-versions button):not(.folder-card-name):not(.folder-preview-folder) {
+button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):not(.macro-playback-window-close):not(.note-editor-toolbar button):not(.note-find-bar button):not(.note-versions button):not(.folder-card-name):not(.folder-preview-folder):not(.clip-item-more) {
   background: var(--btn-bg);
   color: var(--text-secondary);
   border: 1.5px solid var(--border-strong);
@@ -583,12 +611,12 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   cursor: pointer;
 }
 
-button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):not(.macro-playback-window-close):not(.note-editor-toolbar button):not(.note-find-bar button):not(.note-versions button):not(.folder-card-name):not(.folder-preview-folder):hover {
+button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):not(.macro-playback-window-close):not(.note-editor-toolbar button):not(.note-find-bar button):not(.note-versions button):not(.folder-card-name):not(.folder-preview-folder):not(.clip-item-more):hover {
   background: var(--btn-bg-hover);
   border-color: var(--border-strong);
 }
 
-button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):not(.macro-playback-window-close):not(.note-editor-toolbar button):not(.note-find-bar button):not(.note-versions button):not(.folder-card-name):not(.folder-preview-folder):disabled {
+button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):not(.macro-playback-window-close):not(.note-editor-toolbar button):not(.note-find-bar button):not(.note-versions button):not(.folder-card-name):not(.folder-preview-folder):not(.clip-item-more):disabled {
   background: var(--bg);
   color: var(--text-muted);
   border-color: var(--border);
@@ -764,6 +792,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   cursor: default;
   display: flex;
   align-items: center;
+  transition: background-color var(--motion-fast) var(--ease);
 }
 
 .macro-name-item:hover {
@@ -1072,6 +1101,9 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   justify-content: space-between;
   gap: 8px;
   flex-wrap: wrap;
+  transition:
+    border-color var(--motion-fast) var(--ease),
+    background-color var(--motion-fast) var(--ease);
 }
 
 /* フォルダにカーソルを乗せた時に中身を先読み表示するフライアウト(「別窓」風のプレビュー)。
@@ -1216,6 +1248,10 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   color: var(--text-secondary);
   border-radius: 6px;
   font-size: 11px;
+  transition:
+    background-color var(--motion-fast) var(--ease),
+    color var(--motion-fast) var(--ease),
+    border-color var(--motion-fast) var(--ease);
 }
 
 .clipboard-subtabs button.active {
@@ -1259,11 +1295,15 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   background: var(--panel-bg);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 10px 12px;
+  /* 右下に「その他の操作」ボタンが座るため、右側だけ広めに空ける */
+  padding: 10px 40px 10px 12px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  transition:
+    border-color var(--motion-fast) var(--ease),
+    background-color var(--motion-fast) var(--ease);
 }
 
 .clip-item:hover {
@@ -1410,6 +1450,58 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   color: var(--text-muted);
 }
 
+/* 一覧の各行に常設する「その他の操作」ボタン。押すと右クリックと同じメニューが開く。
+   これまで削除・ピン留め・フォルダ移動などは右クリックの中にしか無く、その案内は
+   一覧が空のときにしか出ていなかった(1件でも入ると消える)。
+
+   大きさは28x28。WCAGの目安24pxを下回らないようにしてある。
+   ふだんは控えめにし、行にカーソルを乗せるかキーボードで辿った時にはっきりさせる
+   (ホバーでしか"存在しない"ことにはしない。触れる面は常にここにある) */
+.clip-item-more {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0.55;
+  transition:
+    opacity var(--motion-fast) var(--ease),
+    background-color var(--motion-fast) var(--ease),
+    border-color var(--motion-fast) var(--ease);
+}
+
+.clip-item:hover .clip-item-more,
+.note-item:hover .clip-item-more,
+.macro-name-item:hover .clip-item-more,
+.clip-item-more:hover,
+.clip-item-more:focus-visible {
+  opacity: 1;
+}
+
+.clip-item-more:hover {
+  background: var(--btn-bg);
+  border-color: var(--border-strong);
+  color: var(--text-secondary);
+}
+
+/* 整形ルールとマクロの行は、切り替えスイッチや名前と横に並ぶ形なので、
+   浮かせずその列の一員として置く */
+.clip-item-more--inline {
+  position: static;
+  flex: 0 0 auto;
+  margin-left: 2px;
+}
+
+/* 「コピーしました」の合図は右上、その他の操作は右下。重ならないようにしてある */
 .clip-copied-badge {
   position: absolute;
   top: 8px;
@@ -1420,6 +1512,19 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 4px;
+  /* コピーできたことがいちばん伝わってほしい瞬間なので、ここだけ出現に動きを付ける */
+  animation: copied-badge-in var(--motion) var(--ease);
+}
+
+@keyframes copied-badge-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .clip-edit-form {
@@ -2727,14 +2832,18 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 }
 
 .note-item {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 8px 10px;
+  padding: 8px 40px 8px 10px;
   background: var(--panel-bg);
   border: 1px solid var(--border);
   border-radius: 8px;
   cursor: pointer;
+  transition:
+    border-color var(--motion-fast) var(--ease),
+    background-color var(--motion-fast) var(--ease);
 }
 
 .note-item:hover {
@@ -2775,18 +2884,40 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 .note-editor-header {
   flex-shrink: 0;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: baseline;
+  gap: 10px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
 }
 
+/* 名前欄のラベル。入力欄の中のplaceholderではなく外に出しているので、
+   打ち始めても「ここが名前」だと分かり続ける */
+.note-editor-title-label {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.note-editor-title-field {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 
 .note-editor-title {
   width: 100%;
   height: 34px;
   font-size: 15px;
   font-weight: 600;
+}
+
+/* 補足は常に見えるところへ。placeholderに混ぜていた頃は、
+   書き始めた瞬間に消えてしまっていた */
+.note-editor-title-hint {
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 /* 装飾のツールバー。太字・文字サイズ・文字色・文字の背景色は、選んだ文字

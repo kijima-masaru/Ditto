@@ -12,7 +12,7 @@ import { useDragReorder } from '../hooks/useDragReorder'
 import { useListKeyboard } from '../lib/useListKeyboard'
 import FolderPreviewFlyout from './FolderPreviewFlyout'
 import ConfirmDialog from './ConfirmDialog'
-import { FolderIcon, PinIcon } from './icons'
+import { FolderIcon, MoreIcon, PinIcon } from './icons'
 
 type SubTab = 'history' | 'templates' | 'rules'
 
@@ -23,6 +23,21 @@ function truncate(text: string, max = 80): string {
 
 /** 一覧で2行まで見せるため、1行分より多めに残してから切る(実際の折り返しはCSSが行う) */
 const LIST_TEXT_MAX = 160
+
+/**
+ * 整形ルールの検索文字列・置換文字列を一覧で見せるための整形。
+ *
+ * 素のまま並べると、空白を扱うルール(「全角空白を半角にする」等、いちばんよく使う形)が
+ * 「　 → 」のように矢印だけになって読めなかった。目に見えない文字を記号に置き換える。
+ * 記号は本文と紛れないよう、表示のときだけ使う(保存されている値は変えない)。
+ */
+function visualizeWhitespace(value: string): string {
+  return value
+    .replace(/\t/g, '⇥')
+    .replace(/\r?\n/g, '↵')
+    .replace(/\u3000/g, '□') // 全角空白
+    .replace(/ /g, '␣')
+}
 
 /**
  * コピーした時刻を「たった今 / 12分前 / 3時間前 / 昨日 / 8/29」の形にする。
@@ -591,6 +606,20 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                     </div>
                   )}
                   {copiedId === h.id && <span className="clip-copied-badge">コピーしました</span>}
+                  {/* 右クリックでしか出せなかった操作の、見えている入口 */}
+                  <button
+                    type="button"
+                    className="clip-item-more"
+                    title="その他の操作"
+                    aria-label="その他の操作"
+                    tabIndex={-1}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleHistoryContextMenu(null, h)
+                    }}
+                  >
+                    <MoreIcon />
+                  </button>
                 </li>
               ))}
             </ul>
@@ -820,6 +849,19 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                     )}
                     <div className="clip-item-text">{truncate(t.text, LIST_TEXT_MAX)}</div>
                     {copiedId === t.id && <span className="clip-copied-badge">コピーしました</span>}
+                    <button
+                      type="button"
+                      className="clip-item-more"
+                      title="その他の操作"
+                      aria-label="その他の操作"
+                      tabIndex={-1}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        void handleTemplateContextMenu(null, t)
+                      }}
+                    >
+                      <MoreIcon />
+                    </button>
                   </li>
                 )
               })}
@@ -833,6 +875,8 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
           <p className="hint hint--emphasis">
             コピーしたテキストへ上から順に自動で適用される置換ルールです。実際にコピーした内容自体が書き換わります。
           </p>
+          {/* 目に見えない文字を記号で見せているので、その読み方をここで示す */}
+          <p className="hint">一覧の記号: ␣ 半角空白 / □ 全角空白 / ⇥ タブ / ↵ 改行</p>
 
           {creatingRule && (
             <div className="panel clip-edit-form" onContextMenu={(e) => e.stopPropagation()}>
@@ -925,7 +969,8 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                       <div className="clip-item-rule-summary">
                         {r.label && <div className="clip-item-label">{r.label}</div>}
                         <div className="clip-item-text">
-                          {r.isRegex ? `/${r.find}/` : r.find} → {r.replace || '(削除)'}
+                          {r.isRegex ? `/${r.find}/` : visualizeWhitespace(r.find)} →{' '}
+                          {r.replace ? visualizeWhitespace(r.replace) : '(削除)'}
                         </div>
                       </div>
                       <label className="theme-toggle-switch" onClick={(e) => e.stopPropagation()}>
@@ -936,6 +981,19 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                         />
                         <span className="theme-toggle-slider" />
                       </label>
+                      <button
+                        type="button"
+                        className="clip-item-more clip-item-more--inline"
+                        title="その他の操作"
+                        aria-label="その他の操作"
+                        tabIndex={-1}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          void handleRuleContextMenu(null, r)
+                        }}
+                      >
+                        <MoreIcon />
+                      </button>
                     </div>
                   </li>
                 )
