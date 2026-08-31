@@ -427,169 +427,55 @@ export default function SettingsPanel({ theme, onThemeChange, onClipboardItemLin
     <div className="settings-page">
       <h2>設定</h2>
 
+      {/* 以前は13個の設定が区切りなく縦に並び、見出しは「設定」の1つだけだった
+          (360x640で2.4画面ぶん、操作できる部品は42個)。探しに来た人が毎回スクロールで
+          拾うことになるため、役割ごとの群に割った。使う頻度の低い2群は既定で閉じてある */}
       <div className="settings-list">
-        <div className="settings-item">
-          <div className="settings-item-row">
-            <span className="settings-item-label">
-              ウィンドウ表示ホットキー
-              <HelpIcon
-                text={
-                  'ホットキーを押すとDittoのウィンドウを表示します。「遷移先」を指定すると、表示と同時にその画面へ切り替えます。\n' +
-                  '「+ 追加」で複数のホットキーを登録できます(画面ごとに別々のホットキーを割り当てる等)。\n' +
-                  'ホットキーの変更は「変更」を押してからキーを押してください。修飾キー(Ctrl/Shift/Alt/Win)単体なら素早く2回、修飾キーを押しながら別のキーを押せば1回押しで発火します。'
-                }
-              />
-            </span>
-            <button className="settings-action-btn" onClick={addBinding}>
-              + 追加
-            </button>
-          </div>
-
-          {hotkeyBindings.length === 0 ? (
-            <p className="hint">登録されたホットキーはありません。「+ 追加」から追加してください。</p>
-          ) : (
-            <div className="hotkey-binding-list">
-              {hotkeyBindings.map((binding) => (
-                <div className="hotkey-binding-row" key={binding.id}>
-                  {renderTargetSelect(binding)}
-                  {capturingId === binding.id ? (
-                    <div className="settings-item-control">
-                      <span className="hotkey-preview">{previewLabel}</span>
-                      <button className="settings-action-btn" onClick={cancelCapture}>
-                        キャンセル
-                      </button>
-                    </div>
-                  ) : (
-                    <button className="settings-action-btn" onClick={() => startCapture(binding.id)}>
-                      {binding.hotkey.label}
-                    </button>
-                  )}
-                  <button
-                    className="hotkey-binding-delete-btn"
-                    onClick={() => removeBinding(binding.id)}
-                    title="このホットキーを削除"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="settings-item">
-          <div className="settings-item-row">
-            <span className="settings-item-label">
-              コマンドパレット
-              <HelpIcon
-                text={
-                  'ホットキーでDitto以外のどのアプリからでも小さな検索窓を呼び出せます。\n' +
-                  '未入力時はコマンドパレットに固定指定した定型文・マクロのみを表示し、\n' +
-                  '文字を入力するとクリップボード履歴・定型文・マクロすべてをあいまい検索できます。\n' +
-                  '履歴/定型文はEnterで元のウィンドウへ直接入力します(同じ内容がクリップボードにも\n' +
-                  'コピーされます)。マクロはEnterでその再生画面を開きます(実行はボタンを押すまで\n' +
-                  '開始しません)。ホットキーを「×」で未設定にすると機能自体を無効化できます。'
-                }
-              />
-            </span>
-            {capturingId === COMMAND_PALETTE_CAPTURE_ID ? (
-              <div className="settings-item-control">
-                <span className="hotkey-preview">{previewLabel}</span>
-                <button className="settings-action-btn" onClick={cancelCapture}>
-                  キャンセル
-                </button>
-              </div>
-            ) : (
-              <div className="settings-item-control">
-                <button className="settings-action-btn" onClick={() => startCapture(COMMAND_PALETTE_CAPTURE_ID)}>
-                  {commandPaletteHotkey?.label ?? '未設定'}
-                </button>
-                <button
-                  className="hotkey-binding-delete-btn"
-                  onClick={clearCommandPaletteHotkey}
-                  title="ホットキーを未設定にして無効化"
-                >
-                  ×
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="settings-item">
-          <div className="settings-item-row">
-            <span className="settings-item-label">
-              コマンドパレットの表示件数
-              <HelpIcon
-                text={
-                  'コマンドパレットに一度に表示する件数の上限を、履歴・定型文・マクロそれぞれ\n' +
-                  '個別に指定できます。固定指定した定型文・マクロがこの件数を超える場合、\n' +
-                  '超えた分は未入力時の一覧には表示されませんが、検索すれば見つけて選択できます。'
-                }
-              />
-            </span>
-          </div>
-
-          <div className="settings-subitem-list">
-            {(
-              [
-                { key: 'history', label: '履歴' },
-                { key: 'templates', label: '定型文' },
-                { key: 'macros', label: 'マクロ' },
-                { key: 'notes', label: 'メモ' }
-              ] as { key: CommandPalettePerSectionCategory; label: string }[]
-            ).map(({ key, label }) => (
-              <div className="settings-subitem-row" key={key}>
-                <span className="settings-subitem-label">{label}</span>
-                <div className="settings-item-control">
-                  <input
-                    type="number"
-                    className="command-palette-max-input"
-                    min={1}
-                    max={30}
-                    value={commandPaletteMaxPerSection[key]}
-                    onChange={(e) =>
-                      setCommandPaletteMaxPerSection((prev) => ({ ...prev, [key]: Number(e.target.value) }))
-                    }
-                    onBlur={(e) => handleCommandPaletteMaxPerSectionChange(key, Number(e.target.value))}
-                  />
-                  <span className="hint">件</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {DITTO_REMOTE_ENABLED && (
+        <details className="settings-group" open>
+          <summary className="settings-group-title">
+            呼び出し方
+            <span className="settings-group-desc">ホットキー・コマンドパレット・トリガーなど、Dittoを呼び出す手段</span>
+          </summary>
           <div className="settings-item">
             <div className="settings-item-row">
               <span className="settings-item-label">
-                スマホ連携(Ditto Remote)
+                ウィンドウ表示ホットキー
                 <HelpIcon
                   text={
-                    '同一Wi-Fi内のAndroidアプリから、PC側の定型文入力・マクロ実行を\n' +
-                    'ワンタップで起動できます。「接続」でQRコード/数字コードを\n' +
-                    '表示し、スマホ側アプリで読み取ってください。連携にはPC側での明示的な\n' +
-                    '許可(ダイアログ表示)が必要です。'
+                    'ホットキーを押すとDittoのウィンドウを表示します。「遷移先」を指定すると、表示と同時にその画面へ切り替えます。\n' +
+                    '「+ 追加」で複数のホットキーを登録できます(画面ごとに別々のホットキーを割り当てる等)。\n' +
+                    'ホットキーの変更は「変更」を押してからキーを押してください。修飾キー(Ctrl/Shift/Alt/Win)単体なら素早く2回、修飾キーを押しながら別のキーを押せば1回押しで発火します。'
                   }
                 />
               </span>
-              <button className="settings-action-btn" onClick={openRemotePairing}>
-                接続
+              <button className="settings-action-btn" onClick={addBinding}>
+                + 追加
               </button>
             </div>
 
-            {remoteDevices.length === 0 ? (
-              <p className="hint">ペアリング済みのデバイスはありません。</p>
+            {hotkeyBindings.length === 0 ? (
+              <p className="hint">登録されたホットキーはありません。「+ 追加」から追加してください。</p>
             ) : (
-              <div className="settings-subitem-list">
-                {remoteDevices.map((device) => (
-                  <div className="settings-subitem-row" key={device.id}>
-                    <span className="settings-subitem-label">{device.name}</span>
+              <div className="hotkey-binding-list">
+                {hotkeyBindings.map((binding) => (
+                  <div className="hotkey-binding-row" key={binding.id}>
+                    {renderTargetSelect(binding)}
+                    {capturingId === binding.id ? (
+                      <div className="settings-item-control">
+                        <span className="hotkey-preview">{previewLabel}</span>
+                        <button className="settings-action-btn" onClick={cancelCapture}>
+                          キャンセル
+                        </button>
+                      </div>
+                    ) : (
+                      <button className="settings-action-btn" onClick={() => startCapture(binding.id)}>
+                        {binding.hotkey.label}
+                      </button>
+                    )}
                     <button
                       className="hotkey-binding-delete-btn"
-                      onClick={() => revokeRemoteDevice(device.id)}
-                      title="このデバイスの連携を解除"
+                      onClick={() => removeBinding(binding.id)}
+                      title="このホットキーを削除"
                     >
                       ×
                     </button>
@@ -598,271 +484,418 @@ export default function SettingsPanel({ theme, onThemeChange, onClipboardItemLin
               </div>
             )}
           </div>
-        )}
 
-        <div className="settings-item">
-          <div className="settings-item-row">
-            <span className="settings-item-label">テーマカラー</span>
-            <div className="settings-item-control">
-              <span className="toggle-state-label">{theme === 'dark' ? 'ダーク' : 'ライト'}</span>
-              <label className="theme-toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={theme === 'dark'}
-                  onChange={(e) => handleThemeChange(e.target.checked ? 'dark' : 'light')}
+          <div className="settings-item">
+            <div className="settings-item-row">
+              <span className="settings-item-label">
+                コマンドパレット
+                <HelpIcon
+                  text={
+                    'ホットキーでDitto以外のどのアプリからでも小さな検索窓を呼び出せます。\n' +
+                    '未入力時はコマンドパレットに固定指定した定型文・マクロのみを表示し、\n' +
+                    '文字を入力するとクリップボード履歴・定型文・マクロすべてをあいまい検索できます。\n' +
+                    '履歴/定型文はEnterで元のウィンドウへ直接入力します(同じ内容がクリップボードにも\n' +
+                    'コピーされます)。マクロはEnterでその再生画面を開きます(実行はボタンを押すまで\n' +
+                    '開始しません)。ホットキーを「×」で未設定にすると機能自体を無効化できます。'
+                  }
                 />
-                <span className="theme-toggle-slider" />
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div className="settings-item">
-          <div className="settings-item-row">
-            <span className="settings-item-label">
-              クリップの一覧
-              <HelpIcon
-                text={
-                  '履歴・定型文の一覧で、1件あたり本文を何行まで見せるかを切り替えます。\n' +
-                  '2行にすると、書き出しが同じSQLやURLが並んでも見分けが付きます。1行にすると一度に見える件数が増えます。\n' +
-                  'どちらの場合も、項目にマウスを乗せれば省略された部分を含めた全文が出ます。'
-                }
-              />
-            </span>
-            <div className="settings-item-control">
-              <span className="toggle-state-label">{clipboardItemLines === 2 ? '2行' : '1行'}</span>
-              <label className="theme-toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={clipboardItemLines === 2}
-                  onChange={(e) => handleClipboardItemLinesChange(e.target.checked)}
-                />
-                <span className="theme-toggle-slider" />
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div className="settings-item">
-          <div className="settings-item-row">
-            <span className="settings-item-label">
-              ウィンドウサイズ
-              <HelpIcon text={'Dittoのウィンドウの大きさを固定するか、自由に変更できるようにするかを切り替えます。'} />
-            </span>
-            <div className="settings-item-control">
-              <span className="toggle-state-label">{windowSizeLocked ? '固定' : '自由'}</span>
-              <label className="theme-toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={windowSizeLocked}
-                  onChange={(e) => handleWindowSizeLockedChange(e.target.checked)}
-                />
-                <span className="theme-toggle-slider" />
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div className="settings-item">
-          <div className="settings-item-row">
-            <span className="settings-item-label">
-              固定サイズ
-              <HelpIcon text={'「ウィンドウサイズ」が固定の場合のみ、ここで指定した幅・高さでDittoのウィンドウが固定されます。'} />
-            </span>
-            <div className="settings-item-control fixed-window-size-control">
-              <input
-                type="number"
-                min={300}
-                value={fixedWidth}
-                disabled={!windowSizeLocked}
-                onChange={(e) => setFixedWidth(e.target.value)}
-                onBlur={() => commitFixedWindowSize(fixedWidth, fixedHeight)}
-                aria-label="固定する幅"
-                title="幅"
-              />
-              <span className="fixed-window-size-sep">×</span>
-              <input
-                type="number"
-                min={420}
-                value={fixedHeight}
-                disabled={!windowSizeLocked}
-                onChange={(e) => setFixedHeight(e.target.value)}
-                onBlur={() => commitFixedWindowSize(fixedWidth, fixedHeight)}
-                aria-label="固定する高さ"
-                title="高さ"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="settings-item">
-          <div className="settings-item-row">
-            <span className="settings-item-label">
-              常に最前面に表示
-              <HelpIcon text={'ONにすると、Dittoのウィンドウを他のアプリより常に前面に表示します。'} />
-            </span>
-            <div className="settings-item-control">
-              <span className="toggle-state-label">{alwaysOnTop ? 'ON' : 'OFF'}</span>
-              <label className="theme-toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={alwaysOnTop}
-                  onChange={(e) => handleAlwaysOnTopChange(e.target.checked)}
-                />
-                <span className="theme-toggle-slider" />
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div className="settings-item">
-          <div className="settings-item-row">
-            <span className="settings-item-label">
-              定型文のトリガー展開
-              <HelpIcon
-                text={
-                  'ONにすると、定型文に設定した「トリガー」文字列(例: ;greeting)を、\n' +
-                  'Ditto以外のどのアプリでも直接入力するだけで本文へ自動的に置き換えます。\n' +
-                  '半角英数字と一部記号のみ対応です。IMEで日本語変換中の入力には反応しないため、\n' +
-                  'トリガーは半角/直接入力モードで入力してください。'
-                }
-              />
-            </span>
-            <div className="settings-item-control">
-              <span className="toggle-state-label">{textExpansionEnabled ? 'ON' : 'OFF'}</span>
-              <label className="theme-toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={textExpansionEnabled}
-                  onChange={(e) => handleTextExpansionEnabledChange(e.target.checked)}
-                />
-                <span className="theme-toggle-slider" />
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div className="settings-item">
-          <div className="settings-item-row">
-            <span className="settings-item-label">
-              機密情報の保護
-              <HelpIcon
-                text={
-                  '電話番号・郵便番号・メールアドレス・クレジットカード番号らしき内容をOCR/文字列検出し、\n' +
-                  '保護する対象をON/OFFで選べます。\n' +
-                  '「スクリーンショット」: 撮影画像・マクロ失敗時のエビデンス画像内の該当箇所を自動で黒塗りします。\n' +
-                  '「クリップボード履歴」: コピーされた内容がDittoの履歴に記録される前に、\n' +
-                  '「マスキング」(該当箇所を*に置き換えて保存。コピーした内容自体は変わりません)か\n' +
-                  '「自動消去」(履歴に一切保存しません)のどちらかで保護します。\n' +
-                  'いずれも項目ごとにON/OFFを切り替えられます。'
-                }
-              />
-            </span>
-          </div>
-
-          <div className="settings-subitem-list">
-            <div className="settings-subitem-row">
-              <span className="settings-subitem-label">クリップボード履歴</span>
-              <div className="settings-item-control">
-                <span className="toggle-state-label">{clipboardPiiProtection.enabled ? 'ON' : 'OFF'}</span>
-                <label className="theme-toggle-switch">
-                  <input
-                    type="checkbox"
-                    checked={clipboardPiiProtection.enabled}
-                    onChange={(e) => handleClipboardPiiEnabledChange(e.target.checked)}
-                  />
-                  <span className="theme-toggle-slider" />
-                </label>
-              </div>
-            </div>
-            {clipboardPiiProtection.enabled && (
-              <div className="settings-subitem-row settings-subitem-row--nested">
-                <span className="settings-subitem-label">保護方法</span>
+              </span>
+              {capturingId === COMMAND_PALETTE_CAPTURE_ID ? (
                 <div className="settings-item-control">
-                  <select
-                    className="settings-select"
-                    value={clipboardPiiProtection.mode}
-                    onChange={(e) => handleClipboardPiiModeChange(e.target.value as ClipboardPiiProtectionMode)}
-                  >
-                    <option value="mask">マスキング</option>
-                    <option value="delete">自動消去</option>
-                  </select>
+                  <span className="hotkey-preview">{previewLabel}</span>
+                  <button className="settings-action-btn" onClick={cancelCapture}>
+                    キャンセル
+                  </button>
                 </div>
-              </div>
-            )}
-            {clipboardPiiProtection.enabled &&
-              AUTO_MASK_CATEGORIES.map(({ key, label }) => (
-                <div className="settings-subitem-row settings-subitem-row--nested" key={`clipboard-${key}`}>
+              ) : (
+                <div className="settings-item-control">
+                  <button className="settings-action-btn" onClick={() => startCapture(COMMAND_PALETTE_CAPTURE_ID)}>
+                    {commandPaletteHotkey?.label ?? '未設定'}
+                  </button>
+                  <button
+                    className="hotkey-binding-delete-btn"
+                    onClick={clearCommandPaletteHotkey}
+                    title="ホットキーを未設定にして無効化"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="settings-item">
+            <div className="settings-item-row">
+              <span className="settings-item-label">
+                コマンドパレットの表示件数
+                <HelpIcon
+                  text={
+                    'コマンドパレットに一度に表示する件数の上限を、履歴・定型文・マクロそれぞれ\n' +
+                    '個別に指定できます。固定指定した定型文・マクロがこの件数を超える場合、\n' +
+                    '超えた分は未入力時の一覧には表示されませんが、検索すれば見つけて選択できます。'
+                  }
+                />
+              </span>
+            </div>
+
+            <div className="settings-subitem-list">
+              {(
+                [
+                  { key: 'history', label: '履歴' },
+                  { key: 'templates', label: '定型文' },
+                  { key: 'macros', label: 'マクロ' },
+                  { key: 'notes', label: 'メモ' }
+                ] as { key: CommandPalettePerSectionCategory; label: string }[]
+              ).map(({ key, label }) => (
+                <div className="settings-subitem-row" key={key}>
                   <span className="settings-subitem-label">{label}</span>
                   <div className="settings-item-control">
-                    <span className="toggle-state-label">{clipboardPiiProtection.categories[key] ? 'ON' : 'OFF'}</span>
-                    <label className="theme-toggle-switch">
-                      <input
-                        type="checkbox"
-                        checked={clipboardPiiProtection.categories[key]}
-                        onChange={(e) => handleClipboardPiiCategoryChange(key, e.target.checked)}
-                      />
-                      <span className="theme-toggle-slider" />
-                    </label>
+                    <input
+                      type="number"
+                      className="command-palette-max-input"
+                      min={1}
+                      max={30}
+                      value={commandPaletteMaxPerSection[key]}
+                      onChange={(e) =>
+                        setCommandPaletteMaxPerSection((prev) => ({ ...prev, [key]: Number(e.target.value) }))
+                      }
+                      onBlur={(e) => handleCommandPaletteMaxPerSectionChange(key, Number(e.target.value))}
+                    />
+                    <span className="hint">件</span>
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
 
-            <div className="settings-subitem-row">
-              <span className="settings-subitem-label">スクリーンショット</span>
+          <div className="settings-item">
+            <div className="settings-item-row">
+              <span className="settings-item-label">
+                定型文のトリガー展開
+                <HelpIcon
+                  text={
+                    'ONにすると、定型文に設定した「トリガー」文字列(例: ;greeting)を、\n' +
+                    'Ditto以外のどのアプリでも直接入力するだけで本文へ自動的に置き換えます。\n' +
+                    '半角英数字と一部記号のみ対応です。IMEで日本語変換中の入力には反応しないため、\n' +
+                    'トリガーは半角/直接入力モードで入力してください。'
+                  }
+                />
+              </span>
               <div className="settings-item-control">
-                <span className="toggle-state-label">{autoMaskSensitiveInfo.enabled ? 'ON' : 'OFF'}</span>
+                <span className="toggle-state-label">{textExpansionEnabled ? 'ON' : 'OFF'}</span>
                 <label className="theme-toggle-switch">
                   <input
                     type="checkbox"
-                    checked={autoMaskSensitiveInfo.enabled}
-                    onChange={(e) => handleAutoMaskEnabledChange(e.target.checked)}
+                    checked={textExpansionEnabled}
+                    onChange={(e) => handleTextExpansionEnabledChange(e.target.checked)}
                   />
                   <span className="theme-toggle-slider" />
                 </label>
               </div>
             </div>
-            {autoMaskSensitiveInfo.enabled &&
-              AUTO_MASK_CATEGORIES.map(({ key, label }) => (
-                <div className="settings-subitem-row settings-subitem-row--nested" key={`screenshot-${key}`}>
-                  <span className="settings-subitem-label">{label}</span>
+          </div>
+        </details>
+
+        <details className="settings-group" open>
+          <summary className="settings-group-title">
+            見え方
+            <span className="settings-group-desc">テーマと一覧の見せ方</span>
+          </summary>
+          <div className="settings-item">
+            <div className="settings-item-row">
+              <span className="settings-item-label">テーマカラー</span>
+              <div className="settings-item-control">
+                <span className="toggle-state-label">{theme === 'dark' ? 'ダーク' : 'ライト'}</span>
+                <label className="theme-toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={theme === 'dark'}
+                    onChange={(e) => handleThemeChange(e.target.checked ? 'dark' : 'light')}
+                  />
+                  <span className="theme-toggle-slider" />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div className="settings-item">
+            <div className="settings-item-row">
+              <span className="settings-item-label">
+                クリップの一覧
+                <HelpIcon
+                  text={
+                    '履歴・定型文の一覧で、1件あたり本文を何行まで見せるかを切り替えます。\n' +
+                    '2行にすると、書き出しが同じSQLやURLが並んでも見分けが付きます。1行にすると一度に見える件数が増えます。\n' +
+                    'どちらの場合も、項目にマウスを乗せれば省略された部分を含めた全文が出ます。'
+                  }
+                />
+              </span>
+              <div className="settings-item-control">
+                <span className="toggle-state-label">{clipboardItemLines === 2 ? '2行' : '1行'}</span>
+                <label className="theme-toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={clipboardItemLines === 2}
+                    onChange={(e) => handleClipboardItemLinesChange(e.target.checked)}
+                  />
+                  <span className="theme-toggle-slider" />
+                </label>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details className="settings-group" open>
+          <summary className="settings-group-title">
+            ウィンドウ
+            <span className="settings-group-desc">Dittoのウィンドウそのものの振る舞い</span>
+          </summary>
+          <div className="settings-item">
+            <div className="settings-item-row">
+              <span className="settings-item-label">
+                ウィンドウサイズ
+                <HelpIcon text={'Dittoのウィンドウの大きさを固定するか、自由に変更できるようにするかを切り替えます。'} />
+              </span>
+              <div className="settings-item-control">
+                <span className="toggle-state-label">{windowSizeLocked ? '固定' : '自由'}</span>
+                <label className="theme-toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={windowSizeLocked}
+                    onChange={(e) => handleWindowSizeLockedChange(e.target.checked)}
+                  />
+                  <span className="theme-toggle-slider" />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div className="settings-item">
+            <div className="settings-item-row">
+              <span className="settings-item-label">
+                固定サイズ
+                <HelpIcon text={'「ウィンドウサイズ」が固定の場合のみ、ここで指定した幅・高さでDittoのウィンドウが固定されます。'} />
+              </span>
+              <div className="settings-item-control fixed-window-size-control">
+                <input
+                  type="number"
+                  min={300}
+                  value={fixedWidth}
+                  disabled={!windowSizeLocked}
+                  onChange={(e) => setFixedWidth(e.target.value)}
+                  onBlur={() => commitFixedWindowSize(fixedWidth, fixedHeight)}
+                  aria-label="固定する幅"
+                  title="幅"
+                />
+                <span className="fixed-window-size-sep">×</span>
+                <input
+                  type="number"
+                  min={420}
+                  value={fixedHeight}
+                  disabled={!windowSizeLocked}
+                  onChange={(e) => setFixedHeight(e.target.value)}
+                  onBlur={() => commitFixedWindowSize(fixedWidth, fixedHeight)}
+                  aria-label="固定する高さ"
+                  title="高さ"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="settings-item">
+            <div className="settings-item-row">
+              <span className="settings-item-label">
+                常に最前面に表示
+                <HelpIcon text={'ONにすると、Dittoのウィンドウを他のアプリより常に前面に表示します。'} />
+              </span>
+              <div className="settings-item-control">
+                <span className="toggle-state-label">{alwaysOnTop ? 'ON' : 'OFF'}</span>
+                <label className="theme-toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={alwaysOnTop}
+                    onChange={(e) => handleAlwaysOnTopChange(e.target.checked)}
+                  />
+                  <span className="theme-toggle-slider" />
+                </label>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details className="settings-group">
+          <summary className="settings-group-title">
+            機密情報の保護
+            <span className="settings-group-desc">コピーした内容のうち、個人情報にあたるものの扱い</span>
+          </summary>
+          <div className="settings-item">
+            <div className="settings-item-row">
+              <span className="settings-item-label">
+                機密情報の保護
+                <HelpIcon
+                  text={
+                    '電話番号・郵便番号・メールアドレス・クレジットカード番号らしき内容をOCR/文字列検出し、\n' +
+                    '保護する対象をON/OFFで選べます。\n' +
+                    '「スクリーンショット」: 撮影画像・マクロ失敗時のエビデンス画像内の該当箇所を自動で黒塗りします。\n' +
+                    '「クリップボード履歴」: コピーされた内容がDittoの履歴に記録される前に、\n' +
+                    '「マスキング」(該当箇所を*に置き換えて保存。コピーした内容自体は変わりません)か\n' +
+                    '「自動消去」(履歴に一切保存しません)のどちらかで保護します。\n' +
+                    'いずれも項目ごとにON/OFFを切り替えられます。'
+                  }
+                />
+              </span>
+            </div>
+
+            <div className="settings-subitem-list">
+              <div className="settings-subitem-row">
+                <span className="settings-subitem-label">クリップボード履歴</span>
+                <div className="settings-item-control">
+                  <span className="toggle-state-label">{clipboardPiiProtection.enabled ? 'ON' : 'OFF'}</span>
+                  <label className="theme-toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={clipboardPiiProtection.enabled}
+                      onChange={(e) => handleClipboardPiiEnabledChange(e.target.checked)}
+                    />
+                    <span className="theme-toggle-slider" />
+                  </label>
+                </div>
+              </div>
+              {clipboardPiiProtection.enabled && (
+                <div className="settings-subitem-row settings-subitem-row--nested">
+                  <span className="settings-subitem-label">保護方法</span>
                   <div className="settings-item-control">
-                    <span className="toggle-state-label">{autoMaskSensitiveInfo.categories[key] ? 'ON' : 'OFF'}</span>
-                    <label className="theme-toggle-switch">
-                      <input
-                        type="checkbox"
-                        checked={autoMaskSensitiveInfo.categories[key]}
-                        onChange={(e) => handleAutoMaskCategoryChange(key, e.target.checked)}
-                      />
-                      <span className="theme-toggle-slider" />
-                    </label>
+                    <select
+                      className="settings-select"
+                      value={clipboardPiiProtection.mode}
+                      onChange={(e) => handleClipboardPiiModeChange(e.target.value as ClipboardPiiProtectionMode)}
+                    >
+                      <option value="mask">マスキング</option>
+                      <option value="delete">自動消去</option>
+                    </select>
                   </div>
                 </div>
-              ))}
-          </div>
-        </div>
+              )}
+              {clipboardPiiProtection.enabled &&
+                AUTO_MASK_CATEGORIES.map(({ key, label }) => (
+                  <div className="settings-subitem-row settings-subitem-row--nested" key={`clipboard-${key}`}>
+                    <span className="settings-subitem-label">{label}</span>
+                    <div className="settings-item-control">
+                      <span className="toggle-state-label">{clipboardPiiProtection.categories[key] ? 'ON' : 'OFF'}</span>
+                      <label className="theme-toggle-switch">
+                        <input
+                          type="checkbox"
+                          checked={clipboardPiiProtection.categories[key]}
+                          onChange={(e) => handleClipboardPiiCategoryChange(key, e.target.checked)}
+                        />
+                        <span className="theme-toggle-slider" />
+                      </label>
+                    </div>
+                  </div>
+                ))}
 
-        <div className="settings-item">
-          <div className="settings-item-row">
-            <span className="settings-item-label">現在のバージョン: v{appVersion}</span>
-            <button className="settings-action-btn" onClick={handleCheckForUpdates} disabled={updateStatus?.state === 'checking'}>
-              アップデートを確認
-            </button>
+              <div className="settings-subitem-row">
+                <span className="settings-subitem-label">スクリーンショット</span>
+                <div className="settings-item-control">
+                  <span className="toggle-state-label">{autoMaskSensitiveInfo.enabled ? 'ON' : 'OFF'}</span>
+                  <label className="theme-toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={autoMaskSensitiveInfo.enabled}
+                      onChange={(e) => handleAutoMaskEnabledChange(e.target.checked)}
+                    />
+                    <span className="theme-toggle-slider" />
+                  </label>
+                </div>
+              </div>
+              {autoMaskSensitiveInfo.enabled &&
+                AUTO_MASK_CATEGORIES.map(({ key, label }) => (
+                  <div className="settings-subitem-row settings-subitem-row--nested" key={`screenshot-${key}`}>
+                    <span className="settings-subitem-label">{label}</span>
+                    <div className="settings-item-control">
+                      <span className="toggle-state-label">{autoMaskSensitiveInfo.categories[key] ? 'ON' : 'OFF'}</span>
+                      <label className="theme-toggle-switch">
+                        <input
+                          type="checkbox"
+                          checked={autoMaskSensitiveInfo.categories[key]}
+                          onChange={(e) => handleAutoMaskCategoryChange(key, e.target.checked)}
+                        />
+                        <span className="theme-toggle-slider" />
+                      </label>
+                    </div>
+                  </div>
+                ))}
+            </div>
           </div>
-          {updateStatus && <p className="hint">{updateStatusLabel(updateStatus)}</p>}
-        </div>
+        </details>
 
-        <div className="settings-item">
-          <div className="settings-item-row">
-            <span className="settings-item-label">
-              デバッグログ
-              <HelpIcon text={'Dittoの動作記録です。\n不具合が起きた時や、突然終了してしまった時の原因調査に使えます。\n直近3日分を保存し、それより古いログは自動的に削除されます。'} />
-            </span>
-            <button className="settings-action-btn" onClick={openLog}>
-              ログを表示
-            </button>
+        <details className="settings-group">
+          <summary className="settings-group-title">
+            連携とアプリ情報
+            <span className="settings-group-desc">スマホ連携、バージョン、動作記録</span>
+          </summary>
+          {DITTO_REMOTE_ENABLED && (
+            <div className="settings-item">
+              <div className="settings-item-row">
+                <span className="settings-item-label">
+                  スマホ連携(Ditto Remote)
+                  <HelpIcon
+                    text={
+                      '同一Wi-Fi内のAndroidアプリから、PC側の定型文入力・マクロ実行を\n' +
+                      'ワンタップで起動できます。「接続」でQRコード/数字コードを\n' +
+                      '表示し、スマホ側アプリで読み取ってください。連携にはPC側での明示的な\n' +
+                      '許可(ダイアログ表示)が必要です。'
+                    }
+                  />
+                </span>
+                <button className="settings-action-btn" onClick={openRemotePairing}>
+                  接続
+                </button>
+              </div>
+
+              {remoteDevices.length === 0 ? (
+                <p className="hint">ペアリング済みのデバイスはありません。</p>
+              ) : (
+                <div className="settings-subitem-list">
+                  {remoteDevices.map((device) => (
+                    <div className="settings-subitem-row" key={device.id}>
+                      <span className="settings-subitem-label">{device.name}</span>
+                      <button
+                        className="hotkey-binding-delete-btn"
+                        onClick={() => revokeRemoteDevice(device.id)}
+                        title="このデバイスの連携を解除"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="settings-item">
+            <div className="settings-item-row">
+              <span className="settings-item-label">現在のバージョン: v{appVersion}</span>
+              <button className="settings-action-btn" onClick={handleCheckForUpdates} disabled={updateStatus?.state === 'checking'}>
+                アップデートを確認
+              </button>
+            </div>
+            {updateStatus && <p className="hint">{updateStatusLabel(updateStatus)}</p>}
           </div>
-        </div>
+
+          <div className="settings-item">
+            <div className="settings-item-row">
+              <span className="settings-item-label">
+                デバッグログ
+                <HelpIcon text={'Dittoの動作記録です。\n不具合が起きた時や、突然終了してしまった時の原因調査に使えます。\n直近3日分を保存し、それより古いログは自動的に削除されます。'} />
+              </span>
+              <button className="settings-action-btn" onClick={openLog}>
+                ログを表示
+              </button>
+            </div>
+          </div>
+        </details>
       </div>
 
       {showLog && (

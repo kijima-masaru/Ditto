@@ -28,6 +28,10 @@
   /* accent-bgで塗った面に載せる文字の色。暗いテーマでは通常のaccentだと
      その薄青の上で3.76:1しか出ないため、明るい方の青を使う */
   --accent-on-bg: #1a63c0;
+  /* 下線タブのように「ページの地(--bg)へ直に載せる青い文字」用。--accent-on-bgは
+     薄青の面(--accent-bg)向けに取った値で、--bgの上だと4.54:1と基準ぎりぎりだった
+     (ライト7.14:1 / ダーク7.84:1) */
+  --accent-on-page: #12497f;
   --accent-text: #ffffff;
   --accent-disabled: #9fb8d9;
 
@@ -99,6 +103,7 @@
   --accent-solid: #1f6fd0;
   --accent-bg: #1d3a5c;
   --accent-on-bg: #79b0f5;
+  --accent-on-page: #79b0f5;
   --accent-text: #ffffff;
   --accent-disabled: #3a4b5e;
 
@@ -803,7 +808,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   display: inline-block;
   background: var(--accent-bg);
   color: var(--accent-on-bg);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 4px;
@@ -1031,7 +1036,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 
 /* フォルダ階層表示。スクロール時も上部に固定表示する。マクロ画面は上に他の固定要素が
    無いためtop:0のままでよいが、定型文画面は「履歴/定型文」の2段目タブ(.clipboard-subtabs、
-   高さ42px)がさらに上にあるため、その分だけ.breadcrumb--below-subtabsで押し下げる */
+   高さ36px)がさらに上にあるため、その分だけ.breadcrumb--below-subtabsで押し下げる */
 .breadcrumb {
   display: flex;
   flex-wrap: wrap;
@@ -1047,7 +1052,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 }
 
 .breadcrumb--below-subtabs {
-  top: 42px;
+  top: 36px;
 }
 
 .breadcrumb button {
@@ -1226,13 +1231,20 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   font-size: 12px;
 }
 
+/* 2段目のタブ(履歴/定型文/整形ルール)。
+   以前は上段のクリップ/マクロ/メモと同じ「枠付きで幅いっぱいに並ぶ」形で、
+   親子の関係が見た目に出ておらず、既定の360x640では中身が始まる前に
+   上部だけで約100pxを使っていた。枠を外した下線タブにして一段軽くし、
+   高さも32px→28px(周りの余白込みで42px→36px)へ詰めている。
+   下の.breadcrumb--below-subtabsと.clipboard-history-toolbarのtopは、この36pxに合わせてある */
 .clipboard-subtabs {
   display: flex;
-  gap: 6px;
-  margin-bottom: 10px;
+  gap: 2px;
+  margin-bottom: 8px;
   position: sticky;
   top: 0;
   background: var(--bg);
+  border-bottom: 1px solid var(--border);
   z-index: 2;
 }
 
@@ -1241,12 +1253,17 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 32px;
+  height: 28px;
   padding: 0 4px;
-  border: 1px solid var(--border-strong);
-  background: var(--panel-bg);
+  border: none;
+  /* 選択中の下線とちょうど重なる位置に、透明な線をあらかじめ確保しておく
+     (選択が移っても行の高さが動かないようにするため) */
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  /* 軽くするのは枠を外すことでやる。文字まで薄くすると、選択していないタブが
+     --bgの上で3.59:1しか出ず本文基準を割ってしまう(実測して戻した) */
   color: var(--text-secondary);
-  border-radius: 6px;
+  border-radius: 0;
   font-size: 11px;
   transition:
     background-color var(--motion-fast) var(--ease),
@@ -1254,11 +1271,16 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
     border-color var(--motion-fast) var(--ease);
 }
 
+.clipboard-subtabs button:hover {
+  background: var(--hover-bg);
+  color: var(--text);
+}
+
 .clipboard-subtabs button.active {
-  border-color: var(--accent-on-bg);
-  background: var(--accent-bg);
-  color: var(--accent-on-bg);
-  font-weight: 600;
+  border-bottom-color: var(--accent-on-page);
+  background: transparent;
+  color: var(--accent-on-page);
+  font-weight: 700;
 }
 
 /* 履歴タブ専用の2段目ヘッダー(検索欄・整形ルールへの導線)。
@@ -1268,7 +1290,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   align-items: center;
   gap: 6px;
   position: sticky;
-  top: 42px;
+  top: 36px;
   background: var(--bg);
   z-index: 2;
   margin-bottom: 10px;
@@ -1343,7 +1365,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 /* 定型文のトリガー展開用バッジ。ラベルと区別するため等幅フォント・ニュートラルな配色にする */
 .clip-item-trigger {
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
   background: var(--panel-bg-alt);
   border: 1px solid var(--border);
@@ -1396,7 +1418,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 .clip-item-meta {
   flex-shrink: 0;
   padding-top: 2px;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.4;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
@@ -1508,7 +1530,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   right: 10px;
   background: var(--accent-solid);
   color: var(--accent-text);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 4px;
@@ -1587,6 +1609,70 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* 画面に出る最小の文字は11pxにそろえてある。以前は10pxを8箇所で使っていたが、
+   日本語は同じpx値でも英字より潰れやすく、実機のノートPCでは読み取りに時間がかかった。
+   コントラストは基準を満たしていても、寸法が下限に張り付いている状態だった。
+   本文の13pxは変えていない(密度が要る画面のため、全体を上げる話ではない) */
+
+/* 設定を役割ごとの群に割る。以前は13個の項目が区切りなく縦に並び、見出しは
+   「設定」の1つだけで、探しに来た人が毎回スクロールで拾うことになっていた。
+   使う頻度の低い群(機密情報の保護・連携とアプリ情報)は既定で閉じている */
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-group-title {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  padding: 6px 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  /* 標準の三角マークは位置と大きさがOS任せになるため、下で自前の印を描く */
+  list-style: none;
+}
+
+.settings-group-title::-webkit-details-marker {
+  display: none;
+}
+
+/* 開閉の印。塗りつぶしSVGを使わない方針(icons.tsx冒頭のコメント参照)に合わせ、
+   CSSのボーダーで三角を描く */
+.settings-group-title::before {
+  content: '';
+  flex: 0 0 auto;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid var(--text-muted);
+  transform: translateY(1px);
+  transition: transform var(--motion-fast) var(--ease);
+}
+
+.settings-group[open] > .settings-group-title::before {
+  transform: translateY(1px) rotate(90deg);
+}
+
+.settings-group-title:hover {
+  color: var(--accent);
+}
+
+/* 群が何を集めたものかの一言。見出しと同じ行に置き、狭い時は下へ折り返す */
+.settings-group-desc {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
 }
 
 /* 設定画面の各項目(ウィンドウ表示ホットキー・テーマカラー・バージョン情報・デバッグログ)。
@@ -1837,7 +1923,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   border-radius: 50%;
   border: 1px solid var(--border-strong);
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1;
   cursor: help;
 }
@@ -2868,7 +2954,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 }
 
 .note-item-meta {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
 }
 
@@ -2981,26 +3067,39 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   white-space: nowrap;
 }
 
+/* 文字サイズの選択と色見本も、指針の24pxを下回らない大きさにする
+   (外側の.note-tool-fieldが28pxなので、中に24pxを置いても収まる) */
 .note-tool-field select {
-  height: 22px;
+  height: 24px;
   font-size: 11px;
   padding: 0 2px;
 }
 
 .note-tool-field input[type='color'] {
   width: 28px;
-  height: 20px;
+  height: 24px;
   padding: 1px;
   cursor: pointer;
 }
 
-/* 色を「指定なし」へ戻す小さなボタン。ツールバーの他のボタンより一回り小さくする */
+/* 色を「指定なし」へ戻す小さなボタン。ツールバーの他のボタンより一回り小さくするが、
+   20x20だと指針の24pxを下回っていたため24x24にした(隣の色見本とも少し離す) */
 .note-editor-toolbar button.note-tool-clear {
-  height: 20px;
-  min-width: 20px;
+  height: 24px;
+  min-width: 24px;
+  margin-left: 2px;
   padding: 0;
-  font-size: 10px;
+  font-size: 11px;
   border-width: 1px;
+}
+
+/* 装飾の群と機能の群を分ける縦線 */
+.note-toolbar-divider {
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: 1px;
+  margin: 2px 4px;
+  background: var(--border-strong);
 }
 
 .note-toolbar-spacer {
@@ -3272,7 +3371,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 
 .note-versions-length {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .note-versions-preview {
