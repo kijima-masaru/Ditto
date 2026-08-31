@@ -54,6 +54,8 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
   const [renamingNoteId, setRenamingNoteId] = useState<string | null>(null)
   const [renameNoteInput, setRenameNoteInput] = useState('')
   const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null)
+  // コピーした直後だけ、その項目に「コピーしました」を出す(クリップボード画面と同じ作法)
+  const [copiedNoteId, setCopiedNoteId] = useState<string | null>(null)
 
   const [creatingFolder, setCreatingFolder] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
@@ -100,6 +102,20 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
     const note = await window.api.createNote(folderId)
     await reload()
     openNote(note.id)
+  }
+
+  /** メモを丸ごと複製する(本文・装飾・貼り付けた画像まで引き継ぐ) */
+  const handleDuplicateNote = async (id: string): Promise<void> => {
+    const copy = await window.api.duplicateNote(id)
+    await reload()
+    if (copy) openNote(copy.id)
+  }
+
+  /** メモの本文全体をクリップボードへ入れる */
+  const handleCopyNote = async (id: string): Promise<void> => {
+    await window.api.copyNoteToClipboard(id)
+    setCopiedNoteId(id)
+    window.setTimeout(() => setCopiedNoteId((current) => (current === id ? null : current)), 1500)
   }
 
   /** テキストファイルを選び、新しいメモとして取り込む(文字コードはmain側で判別する) */
@@ -259,6 +275,8 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
     const macros = await window.api.listMacros()
     const result = await window.api.showContextMenu([
       { id: 'open', label: '開く' },
+      { id: 'copy', label: '本文をコピー' },
+      { id: 'duplicate', label: 'メモを複製' },
       { id: 'rename', label: '名前変更' },
       { id: 'pin', label: n.pinned ? 'コマンドパレットの固定を解除' : 'コマンドパレットに固定' },
       { id: 'to-macro', label: 'マクロに入力ステップとして追加', submenu: buildMacroSubmenu(macros) },
@@ -269,6 +287,8 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
       { id: 'delete', label: '削除' }
     ])
     if (result === 'open') openNote(n.id)
+    else if (result === 'copy') void handleCopyNote(n.id)
+    else if (result === 'duplicate') void handleDuplicateNote(n.id)
     else if (result?.startsWith('macro-step:')) {
       const [, macroId, targetId] = result.split(':')
       void window.api.addNoteStepToMacro(macroId, targetId, n.id, n.title)
@@ -434,10 +454,11 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
                       </div>
                     ) : (
                       <div
-                        className="note-item"
+                        className={`note-item${copiedNoteId === n.id ? ' note-item--copied' : ''}`}
                         onClick={() => openNote(n.id)}
                         onContextMenu={(e) => handleNoteContextMenu(e, n)}
                       >
+                        {copiedNoteId === n.id && <span className="clip-copied-badge">コピーしました</span>}
                         <div className="note-item-title">
                           {n.title}
                           {n.pinned && (

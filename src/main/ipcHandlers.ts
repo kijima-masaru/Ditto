@@ -545,6 +545,25 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, manag
 
   ipcMain.handle(IPC.notesDirUrl, async () => notesStore.notesDirUrl())
 
+  ipcMain.handle(IPC.duplicateNote, async (_e, id: string) => {
+    const copy = await notesStore.duplicateNote(id)
+    notifyNotesChanged()
+    return copy
+  })
+
+  /**
+   * メモの本文全体をクリップボードへ入れる。装飾を付けている場合はHTML形式も一緒に
+   * 書き込み、WordやExcelへ貼り付けた時に書式ごと持っていけるようにする
+   * (テキストしか受け取らない相手にはプレーンテキストの方が渡る)
+   */
+  ipcMain.handle(IPC.copyNoteToClipboard, async (_e, id: string) => {
+    const body = await notesStore.getNoteBody(id)
+    const html = await notesStore.getNoteHtml(id)
+    if (html) clipboard.write({ text: body, html })
+    else clipboard.writeText(body)
+    return body.length
+  })
+
   ipcMain.handle(IPC.saveNoteImage, async (_e, noteId: string, dataUrl: string) =>
     notesStore.saveNoteImage(noteId, dataUrl)
   )

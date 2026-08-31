@@ -751,6 +751,35 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
     showToast(done ? '直前のアプリへ入力しました' : '直前のアプリが分かりませんでした(コピーはしました)')
   }, [showToast])
 
+  /* --- メモ丸ごとの操作 --- */
+
+  /**
+   * メモの本文全体をクリップボードへ入れる。装飾を付けている場合はHTML形式も
+   * 一緒に書き込むので、Wordなどへ貼り付けると書式ごと移る(main側で行う)。
+   * 保存済みの内容を読むため、先に自動保存を確定させてから呼ぶ
+   */
+  const copyWholeNote = useCallback(async (): Promise<void> => {
+    const id = noteIdRef.current
+    if (!id) return
+    await flushRef.current()
+    const length = await window.api.copyNoteToClipboard(id)
+    showToast(`メモ全体をコピーしました (${length}文字)`)
+  }, [showToast])
+
+  /** メモを丸ごと複製し、複製したほうをこのウィンドウで開く */
+  const duplicateWholeNote = useCallback(async (): Promise<void> => {
+    const id = noteIdRef.current
+    if (!id) return
+    await flushRef.current()
+    const copy = await window.api.duplicateNote(id)
+    if (!copy) {
+      showToast('複製できませんでした')
+      return
+    }
+    setNoteId(copy.id)
+    showToast('複製しました')
+  }, [showToast])
+
   /* --- 外部ファイルとの往復 --- */
 
   /**
@@ -760,6 +789,9 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
   const openFileMenu = useCallback(async (): Promise<void> => {
     const linked = note?.file
     const chosen = await window.api.showContextMenu([
+      { id: 'copy-all', label: 'メモ全体をコピー' },
+      { id: 'duplicate', label: 'メモを複製' },
+      { id: 'sepcopy', type: 'separator' },
       { id: 'open', label: 'ファイルから読み込む...' },
       { id: 'sep0', type: 'separator' },
       { id: 'save', label: linked ? `上書き保存 (${linked.path})` : '上書き保存', enabled: Boolean(linked) },
@@ -787,6 +819,14 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
       { id: 'unlink', label: 'ファイルとの結び付きを解除', enabled: Boolean(linked) }
     ])
     if (!chosen) return
+    if (chosen === 'copy-all') {
+      await copyWholeNote()
+      return
+    }
+    if (chosen === 'duplicate') {
+      await duplicateWholeNote()
+      return
+    }
     const id = noteIdRef.current
     if (chosen === 'open') {
       const imported = await window.api.importNoteFromFile(null)
@@ -829,7 +869,7 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
       if (updated) setNote(updated)
       showToast(`次の保存から ${NEWLINE_LABELS[newline]} で書き出します`)
     }
-  }, [note, showToast])
+  }, [copyWholeNote, duplicateWholeNote, note, showToast])
 
   /* --- Markdownプレビュー --- */
 
@@ -1005,6 +1045,7 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
     const result = await window.api.showContextMenu([
       { id: 'to-template', label: '選択範囲を定型文として登録', enabled: hasSelection },
       { id: 'copy', label: '選択範囲をコピー', enabled: hasSelection },
+      { id: 'copy-all', label: 'メモ全体をコピー' },
       {
         id: 'to-app',
         label: hasSelection ? '選択範囲を直前のアプリへ入力' : 'メモ全体を直前のアプリへ入力'
@@ -1031,6 +1072,10 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
       if (!hasSelection) return
       await window.api.copyToClipboard(selected)
       showToast('コピーしました')
+      return
+    }
+    if (result === 'copy-all') {
+      await copyWholeNote()
       return
     }
     if (result === 'to-app') {

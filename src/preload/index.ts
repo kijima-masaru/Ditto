@@ -125,6 +125,8 @@ const api = {
   getNoteBody: (id: string): Promise<string> => ipcRenderer.invoke(IPC.getNoteBody, id),
   getNoteHtml: (id: string): Promise<string | null> => ipcRenderer.invoke(IPC.getNoteHtml, id),
   notesDirUrl: (): Promise<string> => ipcRenderer.invoke(IPC.notesDirUrl),
+  duplicateNote: (id: string): Promise<Note | undefined> => ipcRenderer.invoke(IPC.duplicateNote, id),
+  copyNoteToClipboard: (id: string): Promise<number> => ipcRenderer.invoke(IPC.copyNoteToClipboard, id),
   saveNoteImage: (noteId: string, dataUrl: string): Promise<string | null> =>
     ipcRenderer.invoke(IPC.saveNoteImage, noteId, dataUrl),
   importNoteFromFile: (folderId: string | null): Promise<Note | null> =>
