@@ -61,6 +61,29 @@ this session type.`)ため、**自分でリリースを作ろうとせず、必�
 - `npm ci` は使わない。`package-lock.json` の version が package.json と同期されていない
   運用のため、`npm install` を使う
 
+## UIを触るときに使うスキル
+
+`.claude/skills/ui-ux-pro-max/` に、外部から取り込んだUI/UXのスキルを置いている
+(出どころとライセンスは同ディレクトリの `SOURCE.md` を参照)。配色・タイポグラフィ・
+レイアウト・アクセシビリティ・アニメーション・スタック別の実装指針を、
+ローカルのCSVから検索できる。
+
+画面の見た目や操作感を変える作業(新しい画面・コンポーネントの追加、配色や文字の調整、
+UIの見直し)では、思いつきで決める前にこのスキルを引くこと。
+
+```bash
+# リポジトリのルートで実行する
+python3 .claude/skills/ui-ux-pro-max/scripts/search.py "keyboard focus modal" --domain ux
+python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<キーワード>" --stack react
+```
+
+検索結果は「推奨」であって、このリポジトリの決まりごとを上書きするものではない。
+特に次の2点はDitto側の事情が優先する。
+
+- アイコンなど小さな図形は塗りつぶしSVGではなく素のCSSボックスで描く(下記の理由による)
+- このアプリはTailwindもshadcn/uiも使っていない。スキルが返すTailwindのクラス名は
+  そのまま貼らず、`src/renderer/src/App.css` の書き方(CSS変数 + クラス)へ読み替える
+
 ## 開発時のメモ
 
 - 型チェック: `npm run typecheck` (main と renderer の両方)
