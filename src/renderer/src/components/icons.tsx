@@ -60,3 +60,50 @@ export function GearIcon(): React.JSX.Element {
     </span>
   )
 }
+
+/**
+ * コマンドパレットへの固定を示すピン。
+ *
+ * 以前は📌の絵文字をそのまま置いていたが、絵文字はカラーフォントで描かれるため
+ * colorプロパティが効かず、暗いテーマではCSSのfilterで白く塗り替える回避策が要った。
+ * 字形も大きさもOSとフォントの更新で変わるため、他のアイコンと揃わない。
+ * currentColorで描くことで、置いた場所の文字色にそのまま従う。
+ */
+export function PinIcon(): React.JSX.Element {
+  return (
+    <span className="pin-icon" aria-hidden="true">
+      <span className="pin-icon-head" />
+      <span className="pin-icon-neck" />
+      <span className="pin-icon-tip" />
+    </span>
+  )
+}
+
+/** フォルダ。上辺の左側に小さなつまみ(タブ)を出した形にする */
+export function FolderIcon(): React.JSX.Element {
+  return (
+    <span className="folder-icon" aria-hidden="true">
+      <span className="folder-icon-tab" />
+      <span className="folder-icon-body" />
+    </span>
+  )
+}
+
+/** 録画マーク。外側のリングと中の点で「録画」を表す(◎の代わり) */
+export function RecordIcon(): React.JSX.Element {
+  return (
+    <span className="record-icon" aria-hidden="true">
+      <span className="record-icon-dot" />
+    </span>
+  )
+}
+
+/** 閉じる。2本の棒を交差させる(✕の字形はフォントによって太さも大きさも変わるため) */
+export function CloseIcon(): React.JSX.Element {
+  return (
+    <span className="close-icon" aria-hidden="true">
+      <span className="close-icon-bar" />
+      <span className="close-icon-bar" />
+    </span>
+  )
+}

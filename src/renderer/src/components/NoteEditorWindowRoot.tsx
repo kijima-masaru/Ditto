@@ -39,6 +39,7 @@ import { markdownToHtml } from '../lib/noteMarkdown'
 import NoteEditorFindBar from './NoteEditorFindBar'
 import NoteEditorVersions from './NoteEditorVersions'
 import ConfirmDialog from './ConfirmDialog'
+import { CloseIcon } from './icons'
 
 /**
  * メモの編集専用の別ウィンドウのルート。
@@ -1190,8 +1191,9 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => applyStyle({ color: null })}
             title="文字色を既定に戻す"
+            aria-label="文字色を既定に戻す"
           >
-            ✕
+            <CloseIcon />
           </button>
         </label>
 
@@ -1208,8 +1210,9 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => applyStyle({ background: null })}
             title="文字の背景色を消す"
+            aria-label="文字の背景色を消す"
           >
-            ✕
+            <CloseIcon />
           </button>
         </label>
 

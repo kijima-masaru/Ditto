@@ -1,4 +1,5 @@
 import type { NoteVersion } from '../../../shared/types'
+import { CloseIcon } from './icons'
 
 /**
  * メモの編集履歴(版)の一覧。自動保存が走るたびに全部を残すわけではなく、
@@ -28,8 +29,8 @@ export default function NoteEditorVersions(props: Props): React.JSX.Element {
     <div className="note-versions">
       <div className="note-versions-header">
         <span>編集履歴</span>
-        <button type="button" className="note-versions-close" onClick={onClose} title="閉じる">
-          ✕
+        <button type="button" className="note-versions-close" onClick={onClose} title="閉じる" aria-label="編集履歴を閉じる">
+          <CloseIcon />
         </button>
       </div>
       {versions.length === 0 ? (

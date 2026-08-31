@@ -5,6 +5,7 @@ import { useHoverIntent } from '../hooks/useHoverIntent'
 import { useDragReorder } from '../hooks/useDragReorder'
 import FolderPreviewFlyout from './FolderPreviewFlyout'
 import ConfirmDialog from './ConfirmDialog'
+import { FolderIcon, PinIcon } from './icons'
 
 interface Props {
   onRun: (macroCase: MacroCase) => void
@@ -307,7 +308,7 @@ export default function MacroList({ onRun, onCreateMacro, initialFolderId = null
                     </>
                   ) : (
                     <button className="folder-card-name" onClick={() => setCurrentFolderId(f.id)}>
-                      📁 {f.name}
+                      <FolderIcon /> {f.name}
                     </button>
                   )}
 
@@ -379,7 +380,11 @@ export default function MacroList({ onRun, onCreateMacro, initialFolderId = null
                   ) : (
                     <div className="macro-name-item" onContextMenu={(e) => handleMacroContextMenu(e, t)}>
                       {t.name}
-                      {t.pinned && <span className="clip-item-pin" title="コマンドパレットに固定">📌</span>}
+                      {t.pinned && (
+                        <span className="clip-item-pin" title="コマンドパレットに固定">
+                          <PinIcon />
+                        </span>
+                      )}
                     </div>
                   )}
                 </li>

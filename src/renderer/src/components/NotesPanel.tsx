@@ -3,6 +3,7 @@ import type { ContextMenuItem, MacroCase, Note, NoteFolder } from '../../../shar
 import { flattenFolders, folderBreadcrumb } from '../folderTree'
 import { useDragReorder } from '../hooks/useDragReorder'
 import ConfirmDialog from './ConfirmDialog'
+import { FolderIcon, PinIcon } from './icons'
 
 /**
  * メモの一覧。クリップボード・マクロと同じくフォルダで整理でき、操作方法(右クリック
@@ -408,7 +409,7 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
                       </>
                     ) : (
                       <button className="folder-card-name" onClick={() => setCurrentFolderId(f.id)}>
-                        📁 {f.name}
+                        <FolderIcon /> {f.name}
                       </button>
                     )}
                   </li>
@@ -463,7 +464,7 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
                           {n.title}
                           {n.pinned && (
                             <span className="clip-item-pin" title="コマンドパレットに固定">
-                              📌
+                              <PinIcon />
                             </span>
                           )}
                         </div>

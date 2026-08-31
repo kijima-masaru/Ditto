@@ -421,6 +421,10 @@ export interface AppSettings {
   /** コマンドパレットに一度に表示する件数の上限。履歴・定型文・マクロそれぞれの区分ごとに
    *  個別に指定できる。既定値はいずれも6 */
   commandPaletteMaxPerSection: CommandPaletteMaxPerSection
+  /** クリップボードの一覧で、1件あたり本文を何行まで見せるか。
+   *  1行だと書き出しが同じ項目(似たSQLやURL)を見分けられないため既定は2。
+   *  以前の見え方に戻したい場合は1にする */
+  clipboardItemLines: 1 | 2
   /** メモの編集画面の既定の見た目(装飾していない文字の大きさ・行番号・現在行の強調・折り返し) */
   noteEditorAppearance: NoteEditorAppearance
   /** Ditto Remote(スマホ連携)でペアリング済みのデバイス一覧 */
@@ -660,6 +664,7 @@ export const IPC = {
   setFixedWindowSize: 'settings:set-fixed-window-size',
   setAlwaysOnTop: 'settings:set-always-on-top',
   setTextExpansionEnabled: 'settings:set-text-expansion-enabled',
+  setClipboardItemLines: 'settings:set-clipboard-item-lines',
   setAutoMaskEnabled: 'settings:set-auto-mask-enabled',
   setAutoMaskSensitiveInfo: 'settings:set-auto-mask-sensitive-info',
   setClipboardPiiProtectionEnabled: 'settings:set-clipboard-pii-protection-enabled',
