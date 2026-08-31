@@ -191,7 +191,10 @@ app.whenReady().then(async () => {
     log.error('[main] child-process-gone:', details)
   })
 
-  createWindow()
+  // awaitする。createWindowは設定ファイルの読み込みを待ってからmainWindowを作るため、
+  // 待たずに進むと以降の初期化(コマンドパレットの事前生成など)がmainWindow未生成のまま走り、
+  // 「本体と同じ幅」のような本体を参照する処理が既定値にフォールバックしてしまう
+  await createWindow()
   const targetManager = new TargetManager()
   registerIpcHandlers(() => mainWindow, targetManager)
   initPreviewWindows(() => mainWindow)

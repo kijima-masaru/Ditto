@@ -1,6 +1,7 @@
 import { BrowserWindow, screen } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
+import log from './logger'
 import { IPC } from '../shared/types'
 import { widthMatchingMainWindow } from './subWindowLayout'
 
@@ -53,15 +54,29 @@ function sendMacroId(w: BrowserWindow, macroId: string): void {
   if (!w.isDestroyed()) w.webContents.send(IPC.openMacroForPlayback, macroId)
 }
 
+/**
+ * 位置合わせに失敗しても表示自体は必ず行う。
+ * ready-to-showの中で例外が起きるとshow()まで到達せず、
+ * 「選んでも何も出てこない」状態になってしまうため
+ */
+function showSafely(w: BrowserWindow): void {
+  try {
+    positionAtCursor(w)
+  } catch (err) {
+    log.error('macroPlaybackWindow: failed to position window', err)
+  }
+  w.show()
+  w.focus()
+  w.moveTop()
+}
+
 /** 指定したマクロの再生画面(idle状態。実行はユーザーがボタンを押すまで開始しない)を開く */
 export function open(macroId: string): void {
+  log.info('macroPlaybackWindow: open', macroId, 'existing=', Boolean(win && !win.isDestroyed()))
   if (win && !win.isDestroyed()) {
     win.setSize(playbackWidth(), win.getSize()[1])
-    positionAtCursor(win)
     sendMacroId(win, macroId)
-    win.show()
-    win.focus()
-    win.moveTop()
+    showSafely(win)
     return
   }
 
@@ -83,11 +98,26 @@ export function open(macroId: string): void {
       sandbox: false
     }
   })
+  // 常に最前面へ。再生中は操作対象のアプリが前面に来るため、パレットと同じ
+  // screen-saverレベルにして進捗を見続けられるようにする
+  win.setAlwaysOnTop(true, 'screen-saver')
   win.once('ready-to-show', () => {
     if (!win || win.isDestroyed()) return
-    positionAtCursor(win)
-    win.show()
-    win.focus()
+    showSafely(win)
+  })
+  // ready-to-showは通常必ず発火するが、万一届かなかった場合に「選んでも何も出ない」状態で
+  // 止まらないよう、少し待ってまだ表示されていなければ出す。
+  // did-finish-loadで代用しないのは、そちらがready-to-showより先に来ることがあり、
+  // 描画前に表示して白い画面が一瞬見えてしまうため
+  const showFallback = setTimeout(() => {
+    if (win && !win.isDestroyed() && !win.isVisible()) {
+      log.warn('macroPlaybackWindow: ready-to-show did not fire, showing anyway')
+      showSafely(win)
+    }
+  }, 3000)
+  win.on('closed', () => clearTimeout(showFallback))
+  win.webContents.on('did-fail-load', (_e, code, desc) => {
+    log.error('macroPlaybackWindow: did-fail-load', code, desc)
   })
   win.on('closed', () => {
     win = null

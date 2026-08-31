@@ -41,6 +41,7 @@ export default function PreviewWindowRoot(): React.JSX.Element {
       document.documentElement.setAttribute('data-theme', s.theme)
       // 一覧の行数設定も引き継ぐ(本体の一覧と見え方を揃えるため)
       document.documentElement.style.setProperty('--clip-item-lines', String(s.clipboardItemLines))
+      document.documentElement.setAttribute('data-clip-lines', String(s.clipboardItemLines))
     })
   }, [])
 
