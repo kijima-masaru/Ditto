@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { PreviewKind } from '../../../shared/types'
 import { useHoverIntent } from '../hooks/useHoverIntent'
+import { FolderIcon } from './icons'
 
 interface FolderLike {
   id: string
@@ -86,7 +87,7 @@ function FolderPreviewRow({
       onMouseLeave={hover.scheduleHide}
     >
       <button className="folder-preview-item folder-preview-folder" onClick={() => onNavigate(folder.id)}>
-        📁 {folder.name}
+        <FolderIcon /> {folder.name}
       </button>
     </div>
   )

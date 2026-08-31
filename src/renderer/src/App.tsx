@@ -12,7 +12,7 @@ import CommandPaletteRoot from './components/CommandPaletteRoot'
 import MacroPlaybackWindowRoot from './components/MacroPlaybackWindowRoot'
 import NotesPanel from './components/NotesPanel'
 import NoteEditorWindowRoot from './components/NoteEditorWindowRoot'
-import { GearIcon } from './components/icons'
+import { GearIcon, RecordIcon } from './components/icons'
 import { useScreenRecording } from './hooks/useScreenRecording'
 import { useScreenshot } from './hooks/useScreenshot'
 
@@ -64,6 +64,8 @@ function MainApp(): React.JSX.Element {
   const [macroModal, setMacroModal] = useState<MacroModal>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [theme, setTheme] = useState<ThemeMode>('light')
+  // クリップボードの一覧で本文を何行見せるか。CSS変数として渡し、.clip-item-textが参照する
+  const [clipboardItemLines, setClipboardItemLines] = useState<1 | 2>(2)
   // 設定画面で登録したホットキーの遷移先(タブ+フォルダ)へジャンプするための状態。
   // topPageNonceが変わるたびにClipboardPanel/MacroListをkey経由で強制的に作り直し、
   // その時点のtopPageFolderIdを初期フォルダとして渡す(通常のタブ切替では変化しないため
@@ -75,7 +77,10 @@ function MainApp(): React.JSX.Element {
   const [screenshotSavedPath, setScreenshotSavedPath] = useState<string | null>(null)
 
   useEffect(() => {
-    window.api.getSettings().then((s) => setTheme(s.theme))
+    window.api.getSettings().then((s) => {
+      setTheme(s.theme)
+      setClipboardItemLines(s.clipboardItemLines)
+    })
   }, [])
 
   useEffect(() => {
@@ -94,6 +99,10 @@ function MainApp(): React.JSX.Element {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--clip-item-lines', String(clipboardItemLines))
+  }, [clipboardItemLines])
 
   // 録画枠(オーバーレイウィンドウ)のフッターボタンは、実際のキャプチャ処理を持つ
   // このウィンドウのuseScreenRecordingに操作を中継する形で動く(マクロ機能とは独立)
@@ -151,13 +160,25 @@ function MainApp(): React.JSX.Element {
 
       <header className="app-header">
         <nav>
-          <button className={view.name === 'clipboard' ? 'active' : ''} onClick={() => setView({ name: 'clipboard' })}>
+          <button
+            className={view.name === 'clipboard' ? 'active' : ''}
+            aria-current={view.name === 'clipboard' ? 'page' : undefined}
+            onClick={() => setView({ name: 'clipboard' })}
+          >
             クリップ
           </button>
-          <button className={view.name === 'macro-list' ? 'active' : ''} onClick={() => setView({ name: 'macro-list' })}>
+          <button
+            className={view.name === 'macro-list' ? 'active' : ''}
+            aria-current={view.name === 'macro-list' ? 'page' : undefined}
+            onClick={() => setView({ name: 'macro-list' })}
+          >
             マクロ
           </button>
-          <button className={view.name === 'notes' ? 'active' : ''} onClick={() => setView({ name: 'notes' })}>
+          <button
+            className={view.name === 'notes' ? 'active' : ''}
+            aria-current={view.name === 'notes' ? 'page' : undefined}
+            onClick={() => setView({ name: 'notes' })}
+          >
             メモ
           </button>
         </nav>
@@ -166,7 +187,7 @@ function MainApp(): React.JSX.Element {
           onClick={recorder.toggleFrame}
           title="録画枠を表示/非表示"
         >
-          <span className="record-icon-glyph">◎</span>
+          <RecordIcon />
         </button>
         <button
           className={`settings-icon-btn${view.name === 'settings' ? ' active' : ''}`}
@@ -244,7 +265,13 @@ function MainApp(): React.JSX.Element {
 
         {view.name === 'notes' && <NotesPanel key={topPageNonce} />}
 
-        {view.name === 'settings' && <SettingsPanel theme={theme} onThemeChange={setTheme} />}
+        {view.name === 'settings' && (
+          <SettingsPanel
+            theme={theme}
+            onThemeChange={setTheme}
+            onClipboardItemLinesChange={setClipboardItemLines}
+          />
+        )}
       </main>
 
       {macroModal && (

@@ -494,6 +494,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null, manag
     return settings
   })
 
+  ipcMain.handle(IPC.setClipboardItemLines, async (_e, lines: 1 | 2) =>
+    settingsStore.setClipboardItemLines(lines)
+  )
+
   ipcMain.handle(IPC.setAutoMaskEnabled, async (_e, enabled: boolean) => {
     return settingsStore.setAutoMaskEnabled(enabled)
   })

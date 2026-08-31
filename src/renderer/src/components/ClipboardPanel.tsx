@@ -11,12 +11,34 @@ import { useHoverIntent } from '../hooks/useHoverIntent'
 import { useDragReorder } from '../hooks/useDragReorder'
 import FolderPreviewFlyout from './FolderPreviewFlyout'
 import ConfirmDialog from './ConfirmDialog'
+import { FolderIcon, PinIcon } from './icons'
 
 type SubTab = 'history' | 'templates' | 'rules'
 
 function truncate(text: string, max = 80): string {
   const oneLine = text.replace(/\s+/g, ' ').trim()
   return oneLine.length > max ? `${oneLine.slice(0, max)}…` : oneLine
+}
+
+/** 一覧で2行まで見せるため、1行分より多めに残してから切る(実際の折り返しはCSSが行う) */
+const LIST_TEXT_MAX = 160
+
+/**
+ * コピーした時刻を「たった今 / 12分前 / 3時間前 / 昨日 / 8/29」の形にする。
+ * 似た内容が並んだ時に、時刻が手掛かりになって見分けが付くようにするためのもの
+ */
+function formatCopiedAt(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  const minutes = Math.floor((Date.now() - date.getTime()) / 60000)
+  if (minutes < 1) return 'たった今'
+  if (minutes < 60) return `${minutes}分前`
+  const now = new Date()
+  if (now.toDateString() === date.toDateString()) return `${Math.floor(minutes / 60)}時間前`
+  const yesterday = new Date(now)
+  yesterday.setDate(now.getDate() - 1)
+  if (yesterday.toDateString() === date.toDateString()) return '昨日'
+  return `${date.getMonth() + 1}/${String(date.getDate()).padStart(2, '0')}`
 }
 
 // 定型文の本文に埋め込める動的変数(main/templateVariables.tsで解決する記法と対応)
@@ -500,6 +522,8 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                 <li
                   key={h.id}
                   className={`clip-item${copiedId === h.id ? ' clip-item--copied' : ''}`}
+                  // 省略された部分をマウスを乗せれば読めるようにする(切り詰めで内容を失わせない)
+                  title={h.type === 'image' ? '画像' : h.text}
                   onClick={() => handleHistoryClick(h)}
                   onContextMenu={(e) => handleHistoryContextMenu(e, h)}
                 >
@@ -511,7 +535,10 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                       </div>
                     </div>
                   ) : (
-                    <div className="clip-item-text">{truncate(h.text)}</div>
+                    <div className="clip-item-body">
+                      <div className="clip-item-text">{truncate(h.text, LIST_TEXT_MAX)}</div>
+                      <div className="clip-item-meta">{formatCopiedAt(h.copiedAt)}</div>
+                    </div>
                   )}
                   {copiedId === h.id && <span className="clip-copied-badge">コピーしました</span>}
                 </li>
@@ -600,7 +627,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                     </>
                   ) : (
                     <button className="folder-card-name" onClick={() => setCurrentFolderId(f.id)}>
-                      📁 {f.name}
+                      <FolderIcon /> {f.name}
                     </button>
                   )}
 
@@ -626,7 +653,7 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                             onContextMenu={(e) => handleTemplateContextMenu(e, t)}
                           >
                             {t.label && <div className="clip-item-label">{t.label}</div>}
-                            <div className="clip-item-text">{truncate(t.text)}</div>
+                            <div className="clip-item-text">{truncate(t.text, LIST_TEXT_MAX)}</div>
                             {copiedId === t.id && <span className="clip-copied-badge">コピーしました</span>}
                           </div>
                         )}
@@ -732,10 +759,14 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                       <div className="clip-item-header">
                         {t.label && <div className="clip-item-label">{t.label}</div>}
                         {t.trigger && <div className="clip-item-trigger">{t.trigger}</div>}
-                        {t.pinned && <span className="clip-item-pin" title="コマンドパレットに固定">📌</span>}
+                        {t.pinned && (
+                          <span className="clip-item-pin" title="コマンドパレットに固定">
+                            <PinIcon />
+                          </span>
+                        )}
                       </div>
                     )}
-                    <div className="clip-item-text">{truncate(t.text)}</div>
+                    <div className="clip-item-text">{truncate(t.text, LIST_TEXT_MAX)}</div>
                     {copiedId === t.id && <span className="clip-copied-badge">コピーしました</span>}
                   </li>
                 )

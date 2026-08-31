@@ -1,4 +1,5 @@
 import type { NoteSearchOptions } from '../lib/noteSearch'
+import { CloseIcon } from './icons'
 
 /**
  * メモの検索・置換バー。判断や実際の書き換えはメモの編集画面(NoteEditorWindowRoot)側が持ち、
@@ -86,8 +87,8 @@ export default function NoteEditorFindBar(props: Props): React.JSX.Element {
         <span className={`note-find-status${invalidRegex || matchCount === 0 ? ' note-find-status--none' : ''}`}>
           {status}
         </span>
-        <button type="button" className="note-find-close" onClick={onClose} title="閉じる(Esc)">
-          ✕
+        <button type="button" className="note-find-close" onClick={onClose} title="閉じる(Esc)" aria-label="検索を閉じる">
+          <CloseIcon />
         </button>
       </div>
 

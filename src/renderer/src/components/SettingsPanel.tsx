@@ -23,6 +23,8 @@ import { flattenFolders } from '../folderTree'
 interface Props {
   theme: ThemeMode
   onThemeChange: (theme: ThemeMode) => void
+  /** 一覧の行数はCSS変数として本体側が持つため、変更を伝えて即座に反映させる */
+  onClipboardItemLinesChange: (lines: 1 | 2) => void
 }
 
 const LOG_LEVELS = ['all', 'error', 'warn', 'info', 'verbose', 'debug', 'silly'] as const
@@ -98,7 +100,7 @@ function updateStatusLabel(status: UpdateStatus | null): string {
   }
 }
 
-export default function SettingsPanel({ theme, onThemeChange }: Props): React.JSX.Element {
+export default function SettingsPanel({ theme, onThemeChange, onClipboardItemLinesChange }: Props): React.JSX.Element {
   const [hotkeyBindings, setHotkeyBindings] = useState<HotkeyBinding[] | null>(null)
   const [loading, setLoading] = useState(true)
   // どのバインディング行(binding.id)がキーキャプチャ中か。同時に1行のみキャプチャ可能
@@ -117,6 +119,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const [fixedHeight, setFixedHeight] = useState('640')
   const [alwaysOnTop, setAlwaysOnTop] = useState(false)
   const [textExpansionEnabled, setTextExpansionEnabled] = useState(false)
+  const [clipboardItemLines, setClipboardItemLines] = useState<1 | 2>(2)
   const [commandPaletteHotkey, setCommandPaletteHotkey] = useState<HotkeyCombo | null>(null)
   const [commandPaletteMaxPerSection, setCommandPaletteMaxPerSection] = useState<CommandPaletteMaxPerSection>({
     history: 6,
@@ -168,6 +171,7 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
       }
       setAlwaysOnTop(s.alwaysOnTop)
       setTextExpansionEnabled(s.textExpansionEnabled)
+      setClipboardItemLines(s.clipboardItemLines)
       setCommandPaletteHotkey(s.commandPaletteHotkey)
       setCommandPaletteMaxPerSection(s.commandPaletteMaxPerSection)
       setAutoMaskSensitiveInfo(s.autoMaskSensitiveInfo)
@@ -286,6 +290,13 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
   const changeBindingTarget = (id: string, value: string): void => {
     const target = decodeNavigationTarget(value)
     updateBindings((prev) => prev.map((b) => (b.id === id ? { ...b, target } : b)))
+  }
+
+  const handleClipboardItemLinesChange = (twoLines: boolean): void => {
+    const lines: 1 | 2 = twoLines ? 2 : 1
+    setClipboardItemLines(lines)
+    onClipboardItemLinesChange(lines)
+    void window.api.setClipboardItemLines(lines)
   }
 
   const handleThemeChange = async (value: ThemeMode): Promise<void> => {
@@ -599,6 +610,32 @@ export default function SettingsPanel({ theme, onThemeChange }: Props): React.JS
                   type="checkbox"
                   checked={theme === 'dark'}
                   onChange={(e) => handleThemeChange(e.target.checked ? 'dark' : 'light')}
+                />
+                <span className="theme-toggle-slider" />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="settings-item">
+          <div className="settings-item-row">
+            <span className="settings-item-label">
+              クリップの一覧
+              <HelpIcon
+                text={
+                  '履歴・定型文の一覧で、1件あたり本文を何行まで見せるかを切り替えます。\n' +
+                  '2行にすると、書き出しが同じSQLやURLが並んでも見分けが付きます。1行にすると一度に見える件数が増えます。\n' +
+                  'どちらの場合も、項目にマウスを乗せれば省略された部分を含めた全文が出ます。'
+                }
+              />
+            </span>
+            <div className="settings-item-control">
+              <span className="toggle-state-label">{clipboardItemLines === 2 ? '2行' : '1行'}</span>
+              <label className="theme-toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={clipboardItemLines === 2}
+                  onChange={(e) => handleClipboardItemLinesChange(e.target.checked)}
                 />
                 <span className="theme-toggle-slider" />
               </label>

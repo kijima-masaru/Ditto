@@ -39,6 +39,8 @@ export default function PreviewWindowRoot(): React.JSX.Element {
     // 引き継がないと常にライトテーマ(既定値)になり、メインウィンドウと色が食い違ってしまう
     window.api.getSettings().then((s) => {
       document.documentElement.setAttribute('data-theme', s.theme)
+      // 一覧の行数設定も引き継ぐ(本体の一覧と見え方を揃えるため)
+      document.documentElement.style.setProperty('--clip-item-lines', String(s.clipboardItemLines))
     })
   }, [])
 

@@ -263,6 +263,8 @@ const api = {
     ipcRenderer.invoke(IPC.setAlwaysOnTop, alwaysOnTop),
   setTextExpansionEnabled: (enabled: boolean): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setTextExpansionEnabled, enabled),
+  setClipboardItemLines: (lines: 1 | 2): Promise<AppSettings> =>
+    ipcRenderer.invoke(IPC.setClipboardItemLines, lines),
   setCommandPaletteHotkey: (hotkey: HotkeyCombo): Promise<AppSettings> =>
     ipcRenderer.invoke(IPC.setCommandPaletteHotkey, hotkey),
   setCommandPaletteMaxPerSection: (category: CommandPalettePerSectionCategory, value: number): Promise<AppSettings> =>
