@@ -308,7 +308,8 @@ export default function MacroList({ onRun, onCreateMacro, initialFolderId = null
                     </>
                   ) : (
                     <button className="folder-card-name" onClick={() => setCurrentFolderId(f.id)}>
-                      <FolderIcon /> {f.name}
+                      <FolderIcon />
+                      <span>{f.name}</span>
                     </button>
                   )}
 

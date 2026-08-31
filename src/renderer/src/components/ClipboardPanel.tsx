@@ -627,7 +627,8 @@ export default function ClipboardPanel({ initialFolderId = null, initialSubTab =
                     </>
                   ) : (
                     <button className="folder-card-name" onClick={() => setCurrentFolderId(f.id)}>
-                      <FolderIcon /> {f.name}
+                      <FolderIcon />
+                      <span>{f.name}</span>
                     </button>
                   )}
 

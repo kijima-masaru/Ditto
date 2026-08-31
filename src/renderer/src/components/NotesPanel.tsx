@@ -413,7 +413,8 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
                       </>
                     ) : (
                       <button className="folder-card-name" onClick={() => setCurrentFolderId(f.id)}>
-                        <FolderIcon /> {f.name}
+                        <FolderIcon />
+                        <span>{f.name}</span>
                       </button>
                     )}
                   </li>

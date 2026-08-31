@@ -574,7 +574,7 @@ button.danger:hover {
   background: var(--danger-hover-bg);
 }
 
-button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):not(.macro-playback-window-close):not(.note-editor-toolbar button):not(.note-find-bar button):not(.note-versions button) {
+button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):not(.macro-playback-window-close):not(.note-editor-toolbar button):not(.note-find-bar button):not(.note-versions button):not(.folder-card-name):not(.folder-preview-folder) {
   background: var(--btn-bg);
   color: var(--text-secondary);
   border: 1.5px solid var(--border-strong);
@@ -583,12 +583,12 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   cursor: pointer;
 }
 
-button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):not(.macro-playback-window-close):not(.note-editor-toolbar button):not(.note-find-bar button):not(.note-versions button):hover {
+button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):not(.macro-playback-window-close):not(.note-editor-toolbar button):not(.note-find-bar button):not(.note-versions button):not(.folder-card-name):not(.folder-preview-folder):hover {
   background: var(--btn-bg-hover);
   border-color: var(--border-strong);
 }
 
-button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):not(.macro-playback-window-close):not(.note-editor-toolbar button):not(.note-find-bar button):not(.note-versions button):disabled {
+button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs button):not(.clipboard-history-toolbar button):not(.macro-playback-window-close):not(.note-editor-toolbar button):not(.note-find-bar button):not(.note-versions button):not(.folder-card-name):not(.folder-preview-folder):disabled {
   background: var(--bg);
   color: var(--text-muted);
   border-color: var(--border);
@@ -1100,10 +1100,14 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
 
 .folder-preview-folder {
   /* buttonは既定でshrink-to-fit幅になり、兄弟のdiv(定型文/マクロ項目)行と幅が
-     揃わず縮んで見えてしまうため、ブロック要素として幅いっぱいに広げる */
-  display: block;
+     揃わず縮んで見えてしまうため、幅いっぱいに広げる。
+     アイコンと名前はflexのgapで空ける */
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
   text-align: left;
+  cursor: pointer;
   background: var(--panel-bg-alt);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -1125,8 +1129,17 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   opacity: 0.4;
 }
 
+/* フォルダカードの中の名前。ボタン要素だが見た目は「カードの中の文字」にする
+   (共通のbutton指定に詳細度で負けると、カードの中にもう一段ボタンの枠が
+   描かれて文字が上寄りに見えるため、上の除外リストに入れてある)。
+   アイコンと名前はflexのgapで空ける。文字の間の空白文字に頼ると
+   フォントによって詰まり方が変わる */
 .folder-card-name {
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
   text-align: left;
   background: transparent;
   border: none;
@@ -1134,6 +1147,7 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   font-size: 13px;
   font-weight: 600;
   color: var(--text-secondary);
+  cursor: pointer;
 }
 
 .folder-card-name:hover {
