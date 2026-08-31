@@ -5,6 +5,7 @@ import { uIOhook, UiohookKey, type UiohookKeyboardEvent, type UiohookMouseEvent 
 import activeWin from 'active-win'
 import { ensureGlobalHookStarted, keepGlobalHookAlive } from './adapters/windowTargetBase'
 import * as win32 from './win32'
+import log from './logger'
 import * as settingsStore from './settingsStore'
 import { resolveTemplateText } from './templateVariables'
 import { widthMatchingMainWindow } from './subWindowLayout'
@@ -82,10 +83,19 @@ function paletteWidth(): number {
   return widthMatchingMainWindow(getMainWindow?.() ?? null, FALLBACK_WIDTH)
 }
 
-// パレット表示のたびに、前回開いた時に自動調整された高さが残らないよう基準サイズへ戻す。
-// 幅もこのタイミングでDitto本体の現在の幅に合わせ直す
+/**
+ * パレット表示のたびに、前回開いた時に自動調整された高さが残らないよう基準サイズへ戻す。
+ * 幅もこのタイミングでDitto本体の現在の幅に合わせ直す。
+ *
+ * このウィンドウは resizable: false で作っており、その状態では setSize() が
+ * 最小/最大サイズの制約に阻まれて何も起こらない(Electronで実測して確認した。
+ * 作成時の幅のまま変わらない)。そのため一時的にリサイズ可能へ戻してから
+ * サイズを変え、すぐ元に戻している
+ */
 function resetSize(w: BrowserWindow): void {
+  w.setResizable(true)
   w.setSize(paletteWidth(), HEIGHT)
+  w.setResizable(false)
 }
 
 // 表示件数に応じてrenderer側から要求された高さへウィンドウを調整する。位置(x, y)の
@@ -99,7 +109,10 @@ function resizeWindow(height: number): void {
   const { workArea } = screen.getDisplayMatching(bounds)
   const clampedHeight = Math.max(MIN_HEIGHT, Math.min(Math.round(height), workArea.height))
   const y = Math.min(bounds.y, Math.max(workArea.y, workArea.y + workArea.height - clampedHeight))
+  // resetSizeと同じ理由で、リサイズ不可のままだとサイズ変更が効かない場合がある
+  win.setResizable(true)
   win.setBounds({ x: bounds.x, y, width: bounds.width, height: clampedHeight })
+  win.setResizable(false)
 }
 
 function show(): void {
@@ -342,14 +355,34 @@ export function initCommandPalette(
     await insertTemplate(templateId)
   })
 
+  /**
+   * パレットで選んだものを別ウィンドウで開く。
+   *
+   * 先にウィンドウを出してからパレットを隠す。逆順にすると、パレットを隠した時点で
+   * Windowsのフォアグラウンドが元のアプリへ戻ってしまい、そのあとに作ったウィンドウを
+   * 前面に出せずに他のウィンドウの背面で開くこと(SetForegroundWindowの制限)がある。
+   * パレット自身はフォーカスが外れた時点でも隠れる(blurハンドラ)ため、
+   * 表示が先でも取り残されることはない。
+   * 失敗を握りつぶすと「押しても何も起きない」状態になるため、必ずログへ残す
+   */
+  const openFromPalette = (what: string, run: () => void): void => {
+    try {
+      run()
+    } catch (err) {
+      log.error(`commandPalette: failed to open ${what}`, err)
+    } finally {
+      hide()
+    }
+  }
+
   ipcMain.handle(IPC.commandPaletteOpenMacro, (_e, macroId: string) => {
-    hide()
-    openMacroForPlayback(macroId)
+    log.info('commandPalette: open macro playback', macroId)
+    openFromPalette('macro playback window', () => openMacroForPlayback(macroId))
   })
 
   ipcMain.handle(IPC.commandPaletteOpenNote, (_e, noteId: string) => {
-    hide()
-    noteEditorWindow.open(noteId)
+    log.info('commandPalette: open note editor', noteId)
+    openFromPalette('note editor window', () => noteEditorWindow.open(noteId))
   })
 
   ipcMain.handle(IPC.setCommandPaletteHotkey, async (_e, combo: HotkeyCombo) => {

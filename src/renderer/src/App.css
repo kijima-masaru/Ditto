@@ -1322,7 +1322,21 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   -webkit-line-clamp: var(--clip-item-lines, 2);
   -webkit-box-orient: vertical;
   overflow: hidden;
-  word-break: break-word;
+  /* URLやコマンドのような長い塊も、入りきらない時は途中で折って行を埋める。
+     break-wordだと単語の切れ目でしか折れず、行の右側が大きく余ったまま
+     省略記号になってしまう */
+  overflow-wrap: anywhere;
+}
+
+/* 1行表示の時は行数クランプではなく、昔ながらの1行省略にする。
+   -webkit-line-clampは単語の切れ目で折るため、「ssh demo.test-…」のように
+   右側を余らせたまま早く省略されてしまう。nowrap+ellipsisなら幅いっぱいまで
+   文字を詰めてから省略できる */
+:root[data-clip-lines='1'] .clip-item-text {
+  display: block;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  text-overflow: ellipsis;
 }
 
 /* 本文とコピー時刻を横に並べる。時刻を下の行に置くと1件あたりの高さが増えて

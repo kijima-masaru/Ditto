@@ -102,6 +102,8 @@ function MainApp(): React.JSX.Element {
 
   useEffect(() => {
     document.documentElement.style.setProperty('--clip-item-lines', String(clipboardItemLines))
+    // 1行の時だけ省略の仕方を変えるため、CSSから引けるよう属性にも持たせる(App.css参照)
+    document.documentElement.setAttribute('data-clip-lines', String(clipboardItemLines))
   }, [clipboardItemLines])
 
   // 録画枠(オーバーレイウィンドウ)のフッターボタンは、実際のキャプチャ処理を持つ
