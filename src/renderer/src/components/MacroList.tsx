@@ -6,7 +6,7 @@ import { useDragReorder } from '../hooks/useDragReorder'
 import { useListKeyboard } from '../lib/useListKeyboard'
 import FolderPreviewFlyout from './FolderPreviewFlyout'
 import ConfirmDialog from './ConfirmDialog'
-import { FolderIcon, PinIcon } from './icons'
+import { FolderIcon, MoreIcon, PinIcon } from './icons'
 
 interface Props {
   onRun: (macroCase: MacroCase) => void
@@ -399,6 +399,20 @@ export default function MacroList({ onRun, onCreateMacro, initialFolderId = null
                           <PinIcon />
                         </span>
                       )}
+                      {/* 右クリックでしか出せなかった操作の、見えている入口 */}
+                      <button
+                        type="button"
+                        className="clip-item-more clip-item-more--inline"
+                        title="その他の操作"
+                        aria-label="その他の操作"
+                        tabIndex={-1}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          void handleMacroContextMenu(null, t)
+                        }}
+                      >
+                        <MoreIcon />
+                      </button>
                     </div>
                   )}
                 </li>

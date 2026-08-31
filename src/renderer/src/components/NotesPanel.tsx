@@ -4,7 +4,7 @@ import { flattenFolders, folderBreadcrumb } from '../folderTree'
 import { useDragReorder } from '../hooks/useDragReorder'
 import { useListKeyboard } from '../lib/useListKeyboard'
 import ConfirmDialog from './ConfirmDialog'
-import { FolderIcon, PinIcon } from './icons'
+import { FolderIcon, MoreIcon, PinIcon } from './icons'
 
 /**
  * メモの一覧。クリップボード・マクロと同じくフォルダで整理でき、操作方法(右クリック
@@ -487,6 +487,20 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
                         </div>
                         {n.preview && <div className="note-item-preview">{n.preview}</div>}
                         <div className="note-item-meta">{formatUpdatedAt(n.updatedAt)}</div>
+                        {/* 右クリックでしか出せなかった操作の、見えている入口 */}
+                        <button
+                          type="button"
+                          className="clip-item-more"
+                          title="その他の操作"
+                          aria-label="その他の操作"
+                          tabIndex={-1}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            void handleNoteContextMenu(null, n)
+                          }}
+                        >
+                          <MoreIcon />
+                        </button>
                       </div>
                     )}
                   </li>

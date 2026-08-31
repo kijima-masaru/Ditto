@@ -1136,20 +1136,29 @@ export default function NoteEditorWindowRoot(): React.JSX.Element {
 
   return (
     <div className="note-editor-window" onKeyDown={handleKeyDown}>
+      {/* 以前は「メモの名前(空にすると本文の1行目を使います)」をplaceholderだけで
+          見せていたが、1文字打った瞬間に名前欄だという説明ごと消えてしまっていた。
+          しかも消える補足は、まさに書いている最中に思い出したい内容だった。
+          ラベルを欄の外に出し、補足は下に常設する */}
       <div className="note-editor-header">
-        <input
-          className="note-editor-title"
-          value={title}
-          onChange={(e) => handleTitleChange(e.target.value)}
-          onFocus={() => {
-            titleFocusedRef.current = true
-          }}
-          onBlur={() => {
-            titleFocusedRef.current = false
-          }}
-          placeholder="メモの名前(空にすると本文の1行目を使います)"
-          aria-label="メモの名前"
-        />
+        <label className="note-editor-title-label" htmlFor="note-editor-title">
+          名前
+        </label>
+        <div className="note-editor-title-field">
+          <input
+            id="note-editor-title"
+            className="note-editor-title"
+            value={title}
+            onChange={(e) => handleTitleChange(e.target.value)}
+            onFocus={() => {
+              titleFocusedRef.current = true
+            }}
+            onBlur={() => {
+              titleFocusedRef.current = false
+            }}
+          />
+          <span className="note-editor-title-hint">空欄なら本文の1行目が名前になります</span>
+        </div>
       </div>
 
       <div className="note-editor-toolbar">

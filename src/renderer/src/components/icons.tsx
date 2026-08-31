@@ -107,3 +107,28 @@ export function CloseIcon(): React.JSX.Element {
     </span>
   )
 }
+
+/**
+ * 「その他の操作」を表す3つの点。一覧の各行に常設し、押すと右クリックと同じメニューを開く。
+ *
+ * 削除・ピン留め・フォルダ移動・定型文への登録といった操作は右クリックの中にしか無く、
+ * その案内は一覧が空のときにしか出ていなかった(1件でも入ると消える)。
+ * 見えている入口をここで作る。冒頭のコメントのとおり、塗りつぶしはCSSボックスで描く。
+ *
+ * このボタンを置く側では tabIndex={-1} を付けている。一覧はroving tabindexで
+ * 「Tabの止まり場は一覧全体で1つ」に保っており(useListKeyboard.ts参照)、
+ * 行ごとにボタンが順路へ入ると100件の一覧でTabを100回押すことになるため。
+ * キーボードからは Shift+F10 で同じメニューが開く
+ */
+export function MoreIcon(): React.JSX.Element {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          style={{ display: 'inline-block', width: 3, height: 3, borderRadius: '50%', background: 'currentColor' }}
+        />
+      ))}
+    </span>
+  )
+}
