@@ -309,6 +309,8 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
 
   return (
     <div className="folder-browser" onContextMenu={handleAreaContextMenu}>
+      {/* 新規作成のボタンは置かない。狭い画面で検索欄を圧迫するため、
+          作成は空き領域やフォルダの右クリックメニュー(「新規メモを作成」)から行う */}
       <div className="notes-toolbar" onContextMenu={(e) => e.stopPropagation()}>
         <input
           className="notes-search"
@@ -316,9 +318,6 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
           onChange={(e) => setQuery(e.target.value)}
           placeholder="メモを検索(本文も対象)"
         />
-        <button className="primary notes-new-btn" onClick={() => handleCreateNote(currentFolderId)}>
-          新規メモ
-        </button>
       </div>
 
       {!searching && (
@@ -362,11 +361,16 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
           {searching ? (
             <p>一致するメモがありません。</p>
           ) : currentFolderId ? (
-            <p>このフォルダにはメモがありません。</p>
+            <>
+              <p>このフォルダにはメモがありません。</p>
+              <p className="hint">右クリックの「新規メモを作成」から追加できます。</p>
+            </>
           ) : (
             <>
               <p>メモはまだありません。</p>
-              <p>「新規メモ」から作成すると、編集用のウィンドウが開きます。</p>
+              <p className="hint">
+                何もないところを右クリックして「新規メモを作成」を選ぶと、編集用のウィンドウが開きます。
+              </p>
             </>
           )}
         </div>
