@@ -4,6 +4,10 @@ dist/
 release/
 *.log
 *.tsbuildinfo
+# スキルのPythonスクリプトを実行すると作られるバイトコードキャッシュ。
+# 実行のたびに中身が変わり、Pythonのバージョンごとに別物になるためコミットしない
+__pycache__/
+*.pyc
 # 開発用シミュレータが保存する状態。セッション鍵を平文で含むためコミットしない
 scripts/.remote-client-state.json
 scripts/.remote-server-state.json
