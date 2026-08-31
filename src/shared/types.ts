@@ -708,6 +708,8 @@ export const IPC = {
   searchNotes: 'notes:search', // 本文まで含めた全文検索。一致したメモのidを返す
   getNoteBody: 'notes:get-body',
   getNoteHtml: 'notes:get-html', // 装飾付き本文(notes/<id>.html)。無ければnullを返す
+  duplicateNote: 'notes:duplicate', // メモを本文・装飾・画像ごと複製する
+  copyNoteToClipboard: 'notes:copy', // メモの本文全体をクリップボードへコピーする
   importNoteFromFile: 'notes:import-file', // ダイアログでテキストファイルを選び、新しいメモとして取り込む
   saveNoteToFile: 'notes:save-file', // 取り込み元のファイルへ上書き保存する
   exportNoteToFile: 'notes:export-file', // 名前を付けてファイルへ保存する(以後の保存先にもなる)

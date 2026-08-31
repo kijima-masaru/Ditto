@@ -3163,3 +3163,10 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   border: 1px solid var(--border);
   border-radius: 4px;
 }
+
+/* コピー直後の合図。クリップボード画面の項目と同じ見せ方に揃えている */
+.note-item--copied {
+  position: relative;
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}

@@ -341,6 +341,42 @@ function htmlLinesFromPlainText(text: string): string {
 }
 
 /**
+ * メモを丸ごと複製する。本文・装飾・貼り付けた画像まで引き継いだ別のメモを作る。
+ *
+ * ピン留めと外部ファイルとの結び付きは引き継がない。同じファイルへ2つのメモが
+ * 書き戻せてしまうと、あとから保存した方で相手の内容を消してしまうため。
+ * 並び順は元のメモのすぐ下になるようにする(表示は order の昇順で並べるだけなので、
+ * 間に入れるための小数をそのまま使える)
+ */
+export async function duplicateNote(id: string): Promise<Note | undefined> {
+  const notes = await listNotes()
+  const source = notes.find((n) => n.id === id)
+  if (!source) return undefined
+  const now = new Date().toISOString()
+  const copy: Note = {
+    ...source,
+    id: randomUUID(),
+    title: `${source.title} のコピー`,
+    titleManual: true,
+    order: source.order + 0.5,
+    createdAt: now,
+    updatedAt: now
+  }
+  delete copy.pinned
+  delete copy.pinnedOrder
+  delete copy.file
+
+  await writeBody(copy.id, await getNoteBody(id), await getNoteHtml(id))
+  try {
+    await fs.cp(noteImagesDir(id), noteImagesDir(copy.id), { recursive: true })
+  } catch {
+    // 画像を貼っていないメモではフォルダ自体が無い
+  }
+  await writeNotes([...notes, copy])
+  return copy
+}
+
+/**
  * 外部ファイルとの結び付き(パス・文字コード・改行コード)を記録する。
  * 以後の「上書き保存」はここに記録した内容で行う
  */
