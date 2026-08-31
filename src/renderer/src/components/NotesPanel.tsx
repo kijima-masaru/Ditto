@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { ContextMenuItem, MacroCase, Note, NoteFolder } from '../../../shared/types'
 import { flattenFolders, folderBreadcrumb } from '../folderTree'
 import { useDragReorder } from '../hooks/useDragReorder'
+import { useListKeyboard } from '../lib/useListKeyboard'
 import ConfirmDialog from './ConfirmDialog'
 import { FolderIcon, PinIcon } from './icons'
 
@@ -268,9 +269,10 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
     }
   }
 
-  const handleNoteContextMenu = async (e: React.MouseEvent, n: Note): Promise<void> => {
-    e.preventDefault()
-    e.stopPropagation()
+  // eはキーボード(Shift+F10・メニューキー)から呼ぶ場合はnullになる
+  const handleNoteContextMenu = async (e: React.MouseEvent | null, n: Note): Promise<void> => {
+    e?.preventDefault()
+    e?.stopPropagation()
     const ids = visibleNotes.map((vn) => vn.id)
     const index = ids.indexOf(n.id)
     const macros = await window.api.listMacros()
@@ -304,6 +306,15 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
       if (next) handleReorderNotes(next)
     }
   }
+
+  // 一覧をキーボードだけで操作できるようにする(useListKeyboard.ts参照)
+  const noteKeys = useListKeyboard('メモ', {
+    items: noteDrag.orderedItems,
+    onActivate: (n) => openNote(n.id),
+    onContextMenu: (n) => void handleNoteContextMenu(null, n),
+    onDelete: (n) => setDeletingNoteId(n.id),
+    disabled: renamingNoteId !== null || deletingNoteId !== null
+  })
 
   if (loading) return <div className="panel">読み込み中...</div>
 
@@ -424,7 +435,7 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
           )}
 
           {visibleNotes.length > 0 && (
-            <ul className="note-list">
+            <ul className="note-list" {...noteKeys.listProps}>
               {noteDrag.orderedItems.map((n) => {
                 const isEditingNote = renamingNoteId === n.id || deletingNoteId === n.id
                 // 検索中は表示順が並び順と一致しないため、ドラッグでの並び替えは無効にする
@@ -433,6 +444,7 @@ export default function NotesPanel({ initialFolderId = null }: Props): React.JSX
                   <li
                     key={n.id}
                     className={drag?.className}
+                    {...noteKeys.getItemProps(n)}
                     {...(drag
                       ? {
                           draggable: drag.draggable,
