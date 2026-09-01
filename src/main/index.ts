@@ -20,6 +20,7 @@ import { initLastForegroundApp } from './lastForegroundApp'
 import { TargetManager } from './targetManager'
 import * as remoteServer from './remoteServer'
 import { stopBlockingRealMouseInput } from './mouseBlock'
+import { boundsAtCursor } from './subWindowLayout'
 import log from './logger'
 import { pruneOldLogs } from './debugLog'
 
@@ -50,15 +51,12 @@ let isQuitting = false
 // スコープに保持する
 let remoteServerHandle: { stop(): void } | null = null
 
-// ウィンドウをマウスカーソル位置(中心が合うよう)に移動する。カーソルがいる
-// ディスプレイの作業領域からはみ出さないようクランプする
+// ウィンドウをマウスカーソル位置(中心が合うよう)に移動する。
+// 位置とサイズの両方をカーソルのいるディスプレイの作業領域に収める(boundsAtCursor参照)。
+// 以前はサイズをクランプしていなかったため、既定の高さ640より作業領域が低いディスプレイ
+// (例: 1366x768で縦の作業領域が600台)ではyがマイナスになり、上端が画面の外へ出ていた
 function positionAtCursor(win: BrowserWindow): void {
-  const cursor = screen.getCursorScreenPoint()
-  const { workArea } = screen.getDisplayNearestPoint(cursor)
-  const [width, height] = win.getSize()
-  const x = Math.min(Math.max(cursor.x - Math.round(width / 2), workArea.x), workArea.x + workArea.width - width)
-  const y = Math.min(Math.max(cursor.y - Math.round(height / 2), workArea.y), workArea.y + workArea.height - height)
-  win.setPosition(x, y)
+  win.setBounds(boundsAtCursor(...(win.getSize() as [number, number])))
 }
 
 // 保存済みの座標(x, y)を、現在のディスプレイ構成の作業領域に収まるようクランプする。

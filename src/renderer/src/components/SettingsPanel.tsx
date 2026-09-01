@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import HelpIcon from './HelpIcon'
+import { CloseIcon, CopyIcon, FolderIcon, RefreshIcon } from './icons'
 import type {
   AutoMaskCategory,
   ClipboardPiiProtectionMode,
@@ -432,10 +433,7 @@ export default function SettingsPanel({ theme, onThemeChange, onClipboardItemLin
           拾うことになるため、役割ごとの群に割った。使う頻度の低い2群は既定で閉じてある */}
       <div className="settings-list">
         <details className="settings-group" open>
-          <summary className="settings-group-title">
-            呼び出し方
-            <span className="settings-group-desc">ホットキー・コマンドパレット・トリガーなど、Dittoを呼び出す手段</span>
-          </summary>
+          <summary className="settings-group-title">呼び出し方</summary>
           <div className="settings-item">
             <div className="settings-item-row">
               <span className="settings-item-label">
@@ -597,10 +595,7 @@ export default function SettingsPanel({ theme, onThemeChange, onClipboardItemLin
         </details>
 
         <details className="settings-group" open>
-          <summary className="settings-group-title">
-            見え方
-            <span className="settings-group-desc">テーマと一覧の見せ方</span>
-          </summary>
+          <summary className="settings-group-title">見え方</summary>
           <div className="settings-item">
             <div className="settings-item-row">
               <span className="settings-item-label">テーマカラー</span>
@@ -646,10 +641,7 @@ export default function SettingsPanel({ theme, onThemeChange, onClipboardItemLin
         </details>
 
         <details className="settings-group" open>
-          <summary className="settings-group-title">
-            ウィンドウ
-            <span className="settings-group-desc">Dittoのウィンドウそのものの振る舞い</span>
-          </summary>
+          <summary className="settings-group-title">ウィンドウ</summary>
           <div className="settings-item">
             <div className="settings-item-row">
               <span className="settings-item-label">
@@ -724,10 +716,7 @@ export default function SettingsPanel({ theme, onThemeChange, onClipboardItemLin
         </details>
 
         <details className="settings-group">
-          <summary className="settings-group-title">
-            機密情報の保護
-            <span className="settings-group-desc">コピーした内容のうち、個人情報にあたるものの扱い</span>
-          </summary>
+          <summary className="settings-group-title">機密情報の保護</summary>
           <div className="settings-item">
             <div className="settings-item-row">
               <span className="settings-item-label">
@@ -830,10 +819,7 @@ export default function SettingsPanel({ theme, onThemeChange, onClipboardItemLin
         </details>
 
         <details className="settings-group">
-          <summary className="settings-group-title">
-            連携とアプリ情報
-            <span className="settings-group-desc">スマホ連携、バージョン、動作記録</span>
-          </summary>
+          <summary className="settings-group-title">連携とアプリ情報</summary>
           {DITTO_REMOTE_ENABLED && (
             <div className="settings-item">
               <div className="settings-item-row">
@@ -909,17 +895,36 @@ export default function SettingsPanel({ theme, onThemeChange, onClipboardItemLin
                   </option>
                 ))}
               </select>
-              <button className="debug-log-icon-btn" onClick={loadLog} disabled={logLoading} title="更新">
-                ⟳
+              {/* ここだけ絵文字のまま残っていた。絵文字はカラーフォントでcolorが効かず、
+                  暗いテーマで浮くうえ大きさもフォント任せになるため、他の画面と同じ
+                  CSSボックスのアイコンに揃える(icons.tsx冒頭のコメント参照) */}
+              <button
+                className="debug-log-icon-btn"
+                onClick={loadLog}
+                disabled={logLoading}
+                title="更新"
+                aria-label="更新"
+              >
+                <RefreshIcon />
               </button>
-              <button className="debug-log-icon-btn" onClick={() => window.api.openDebugLogFolder()} title="フォルダを開く">
-                📁
+              <button
+                className="debug-log-icon-btn"
+                onClick={() => window.api.openDebugLogFolder()}
+                title="フォルダを開く"
+                aria-label="フォルダを開く"
+              >
+                <FolderIcon />
               </button>
-              <button className="debug-log-icon-btn" onClick={copyLog} title="ログをコピー">
-                📋
+              <button className="debug-log-icon-btn" onClick={copyLog} title="ログをコピー" aria-label="ログをコピー">
+                <CopyIcon />
               </button>
-              <button className="debug-log-close-btn" onClick={() => setShowLog(false)} title="閉じる">
-                ×
+              <button
+                className="debug-log-close-btn"
+                onClick={() => setShowLog(false)}
+                title="閉じる"
+                aria-label="閉じる"
+              >
+                <CloseIcon />
               </button>
             </div>
             <pre className="debug-log-modal-body" ref={logBodyRef}>

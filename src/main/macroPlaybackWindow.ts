@@ -1,9 +1,9 @@
-import { BrowserWindow, screen } from 'electron'
+import { BrowserWindow } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import log from './logger'
 import { IPC } from '../shared/types'
-import { widthMatchingMainWindow } from './subWindowLayout'
+import { boundsAtCursor, widthMatchingMainWindow } from './subWindowLayout'
 
 /**
  * コマンドパレットで選んだマクロの再生画面だけを表示する専用の別ウィンドウ。
@@ -37,15 +37,23 @@ function playbackWidth(): number {
   return widthMatchingMainWindow(getMainWindow?.() ?? null, FALLBACK_WIDTH)
 }
 
-// ウィンドウをマウスカーソル位置(中心が合うよう)に移動する。カーソルがいる
-// ディスプレイの作業領域からはみ出さないようクランプする
+/**
+ * ウィンドウをマウスカーソルのいるディスプレイへ、カーソルを中心にして置き直す。
+ *
+ * setPositionではなくsetBoundsで位置とサイズを一度に指定する。位置だけを動かすと、
+ * 移動先のディスプレイに収まらないサイズのままになり、はみ出した状態になるため。
+ *
+ * 置いたあと実際の位置を読み直してログに残す。複数ディスプレイでは、要求した座標が
+ * そのまま通らずWindows側で押し戻されることがあり、その場合ここの「希望」と「実際」が
+ * 食い違う。「選んでも出てこない」という報告を、次のログで切り分けられるようにしておく
+ */
 function positionAtCursor(w: BrowserWindow): void {
-  const cursor = screen.getCursorScreenPoint()
-  const { workArea } = screen.getDisplayNearestPoint(cursor)
-  const [width, height] = w.getSize()
-  const x = Math.min(Math.max(cursor.x - Math.round(width / 2), workArea.x), workArea.x + workArea.width - width)
-  const y = Math.min(Math.max(cursor.y - Math.round(height / 2), workArea.y), workArea.y + workArea.height - height)
-  w.setPosition(x, y)
+  const want = boundsAtCursor(...(w.getSize() as [number, number]))
+  w.setBounds(want)
+  const got = w.getBounds()
+  if (got.x !== want.x || got.y !== want.y) {
+    log.warn('macroPlaybackWindow: 位置が要求どおりにならなかった 希望=', want, '実際=', got)
+  }
 }
 
 /** 既に開いているウィンドウの表示対象を差し替える。読み込み済みのウィンドウにしか
@@ -68,21 +76,37 @@ function showSafely(w: BrowserWindow): void {
   w.show()
   w.focus()
   w.moveTop()
+  // 表示してからもう一度置き直す。非表示のウィンドウを別のディスプレイへ動かす指示は
+  // Windowsに無視されることがあり、その場合ここで初めて目的の位置へ移る
+  try {
+    positionAtCursor(w)
+  } catch (err) {
+    log.error('macroPlaybackWindow: failed to reposition after show', err)
+  }
+  log.info('macroPlaybackWindow: 表示した bounds=', w.getBounds(), 'visible=', w.isVisible())
 }
 
 /** 指定したマクロの再生画面(idle状態。実行はユーザーがボタンを押すまで開始しない)を開く */
 export function open(macroId: string): void {
   log.info('macroPlaybackWindow: open', macroId, 'existing=', Boolean(win && !win.isDestroyed()))
   if (win && !win.isDestroyed()) {
+    // 幅だけ本体に合わせ、位置と最終的なサイズはshowSafely内のpositionAtCursorが決める
     win.setSize(playbackWidth(), win.getSize()[1])
     sendMacroId(win, macroId)
     showSafely(win)
     return
   }
 
+  // 生成の時点でカーソルのあるディスプレイへ置く。既定位置(プライマリ)で作ってから
+  // 動かす形だと、表示前の移動をWindowsが元のディスプレイへ押し戻すことがあり、
+  // 複数ディスプレイで「選んでも出てこない」状態になりうる
+  const initial = boundsAtCursor(playbackWidth(), HEIGHT)
+  log.info('macroPlaybackWindow: 生成位置=', initial)
   win = new BrowserWindow({
-    width: playbackWidth(),
-    height: HEIGHT,
+    x: initial.x,
+    y: initial.y,
+    width: initial.width,
+    height: initial.height,
     // Ditto本体の最小幅(300)と揃える。ここが本体より大きいと、本体を細くした際に
     // 幅を合わせられなくなる
     minWidth: 300,
@@ -120,6 +144,7 @@ export function open(macroId: string): void {
     log.error('macroPlaybackWindow: did-fail-load', code, desc)
   })
   win.on('closed', () => {
+    log.info('macroPlaybackWindow: closed')
     win = null
   })
 
