@@ -61,6 +61,11 @@
   --motion-fast: 120ms;
   --motion: 180ms;
   --ease: cubic-bezier(0.2, 0, 0.2, 1);
+
+  /* 一覧の行の右端に置く操作(ピン留めの印・その他の操作)の列。
+     2つが同じ縦の線に乗るよう、位置と大きさをここで1つに決めている */
+  --row-action-right: 6px;
+  --row-action-size: 28px;
 }
 
 /* OS側で「動きを減らす」を選んでいる人には動かさない。
@@ -1421,6 +1426,27 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   color: var(--text-muted);
 }
 
+/* 定型文の行では、ピン留めの印を「その他の操作」(⋯)の真上に置く。
+   以前はヘッダーの流れの中(margin-left:auto)にあり、行の右padding(40px)の
+   内側で止まるため⋯より28pxほど左にずれていた。同じ--row-action-*を使って
+   縦の線をそろえる */
+.clip-list > .clip-item .clip-item-pin {
+  position: absolute;
+  top: var(--row-action-right);
+  right: var(--row-action-right);
+  width: var(--row-action-size);
+  height: var(--row-action-size);
+  margin-left: 0;
+  padding-left: 0;
+  justify-content: center;
+}
+
+/* 「コピーしました」の合図は右上に出るため、ピン留めされた行ではその列を避ける。
+   避けないと幅91pxの合図がピンを丸ごと覆ってしまう(実測して確認した) */
+.clip-list > .clip-item:has(.clip-item-pin) .clip-copied-badge {
+  right: calc(var(--row-action-right) + var(--row-action-size) + 4px);
+}
+
 /* 定型文のトリガー展開用バッジ。ラベルと区別するため等幅フォント・ニュートラルな配色にする */
 .clip-item-trigger {
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -1540,10 +1566,10 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
    (ホバーでしか"存在しない"ことにはしない。触れる面は常にここにある) */
 .clip-item-more {
   position: absolute;
-  right: 6px;
-  bottom: 6px;
-  width: 28px;
-  height: 28px;
+  right: var(--row-action-right);
+  bottom: var(--row-action-right);
+  width: var(--row-action-size);
+  height: var(--row-action-size);
   display: flex;
   align-items: center;
   justify-content: center;
