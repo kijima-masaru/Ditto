@@ -375,6 +375,65 @@ body {
 }
 
 /* 閉じる */
+/* 再読み込み。3/4の円弧(borderの1辺を透明にして作る)と、その先端の三角。
+   塗りつぶしSVGを使わない方針のため、円弧も三角もCSSのborderで描いている */
+.refresh-icon {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+}
+
+.refresh-icon-ring {
+  position: absolute;
+  inset: 0;
+  border: 1.6px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+}
+
+.refresh-icon-arrow {
+  position: absolute;
+  right: -1px;
+  top: 0;
+  width: 0;
+  height: 0;
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+  border-bottom: 4.5px solid currentColor;
+}
+
+/* コピー。重なった2枚の紙。奥の1枚は枠だけ、手前は面で描いて重なりを見せる */
+.copy-icon {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+}
+
+.copy-icon-back {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 8px;
+  height: 10px;
+  border: 1.4px solid currentColor;
+  border-radius: 1.5px;
+}
+
+.copy-icon-front {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 8px;
+  height: 10px;
+  border: 1.4px solid currentColor;
+  border-radius: 1.5px;
+  background: var(--panel-bg);
+}
+
 .close-icon {
   position: relative;
   display: block;
@@ -1620,16 +1679,31 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
    「設定」の1つだけで、探しに来た人が毎回スクロールで拾うことになっていた。
    使う頻度の低い群(機密情報の保護・連携とアプリ情報)は既定で閉じている */
 .settings-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: block;
+}
+
+/* カード同士は少し離す。見出しの下にカードが詰まって並ぶと、どこまでが1つの設定なのか
+   目で追いにくかった。
+   隣接セレクタで間隔を作っているのは、<details>をflexコンテナにしてもgapが効かないため
+   (中身は::details-content側に置かれるので、詳細要素のflexの一員にならない) */
+.settings-item + .settings-item {
+  margin-top: 12px;
+}
+
+/* 見出しと、その群の最初のカードの間 */
+.settings-group-title {
+  margin-bottom: 10px;
+}
+
+/* 群と群の間は、群の中のカード同士より広く取って区切りを効かせる */
+.settings-list {
+  gap: 20px;
 }
 
 .settings-group-title {
   display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px 8px;
+  align-items: center;
+  gap: 8px;
   padding: 6px 2px;
   font-size: 13px;
   font-weight: 700;
@@ -1666,14 +1740,6 @@ button:not(.primary):not(.danger):not(.app-header button):not(.clipboard-subtabs
   color: var(--accent);
 }
 
-/* 群が何を集めたものかの一言。見出しと同じ行に置き、狭い時は下へ折り返す */
-.settings-group-desc {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--text-muted);
-}
 
 /* 設定画面の各項目(ウィンドウ表示ホットキー・テーマカラー・バージョン情報・デバッグログ)。
    1項目=1カードとして独立させ、ラベルと操作(ボタン/トグルスイッチ)を1行に横並びで表示する */

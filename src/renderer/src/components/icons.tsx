@@ -132,3 +132,26 @@ export function MoreIcon(): React.JSX.Element {
     </span>
   )
 }
+
+/**
+ * 再読み込み。開いた口のあるリング(3/4の円弧)と、その先端の三角で回転を表す。
+ * 冒頭のコメントのとおり塗りつぶしSVGは使わないため、円弧はborderを1辺だけ透明にして作る
+ */
+export function RefreshIcon(): React.JSX.Element {
+  return (
+    <span className="refresh-icon" aria-hidden="true">
+      <span className="refresh-icon-ring" />
+      <span className="refresh-icon-arrow" />
+    </span>
+  )
+}
+
+/** コピー。重なった2枚の紙で表す(📋の代わり) */
+export function CopyIcon(): React.JSX.Element {
+  return (
+    <span className="copy-icon" aria-hidden="true">
+      <span className="copy-icon-back" />
+      <span className="copy-icon-front" />
+    </span>
+  )
+}
